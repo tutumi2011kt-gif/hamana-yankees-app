@@ -1,0 +1,12 @@
+{
+  "name": "浜名ヤンキース 広報アプリ",
+  "short_name": "浜名ヤンキース",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fffaf2",
+  "theme_color": "#fff7e8",
+  "icons": [
+    {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
