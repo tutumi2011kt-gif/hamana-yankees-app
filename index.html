@@ -18,7 +18,7 @@
 <body>
 <div class="app" id="top">
 <header><div class="logo">⚾</div><div><h1>浜名ヤンキース 広報アプリ</h1><div class="sub">iPhone / PC対応・ChatGPTで仕上げる入力支援アプリ</div></div></header>
-<section class="hero"><span class="badge">v6・体験会画像プリセット対応</span><h2>今日は何を作る？</h2><p>入力内容は自動保存されます。Safariが再読み込みされても、日付・時間・文章などを復元します。</p><div id="appStatus" class="status warn">アプリを準備しています…</div><div id="errorBox" class="errorbox"></div></section>
+<section class="hero"><span class="badge">v6.1・少年野球固定</span><h2>今日は何を作る？</h2><p>入力内容は自動保存されます。Safariが再読み込みされても、日付・時間・文章などを復元します。</p><div id="appStatus" class="status warn">アプリを準備しています…</div><div id="errorBox" class="errorbox"></div></section>
 <div class="mode-grid"><a class="mode practice" href="#activity"><strong>⚾ 活動報告</strong><small>練習・試合の投稿</small></a><a class="mode trial" href="#trial"><strong>📣 体験会案内</strong><small>必要な日程だけ追加して入力</small></a><a class="mode reel" href="#reel"><strong>🎬 リール動画</strong><small>動画＋募集テロップ</small></a></div>
 
 <section class="card" id="activity">
@@ -45,7 +45,7 @@
 <label class="mood-card"><input type="radio" name="trialMood" value="親子で安心"><span>👩‍👦 親子で安心<small>初めての子、見守る保護者、やさしく教えるコーチを中心に</small></span></label>
 <label class="mood-card"><input type="radio" name="trialMood" value="季節感しっかり"><span>🍁 季節感しっかり<small>春夏秋冬の空気感や背景をより強く出す</small></span></label>
 </div>
-<div class="note" style="margin-top:11px"><b>固定ルール：</b>文章・画像の両方に「※雨天は中止することもあります」を必ず入れます。画像には日程・時間・場所・持ち物も必ず入れます。</div>
+<div class="note" style="margin-top:11px"><b>固定ルール：</b>文章・画像の両方に「※雨天は中止することもあります」を必ず入れます。画像には日程・時間・場所・持ち物も必ず入れます。<br><b>画像は必ず通常の少年野球。</b> Tボール・ティースタンドは使いません。</div>
 <div class="actions"><button type="button" class="primary" id="trialGenerate">プロンプトを作る</button><button type="button" class="ghost" id="trialCopy">コピー</button></div><label>ChatGPTへ送る内容</label><textarea class="prompt-box" id="trialPrompt" readonly></textarea><div class="sticky"><a class="secondary chatlink" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPTを開く</a></div>
 </section>
 
@@ -72,7 +72,7 @@ function toast(msg){const t=$('toast'); if(!t)return; t.textContent=msg;t.classL
 function valRadio(name){const el=q(`input[name="${name}"]:checked`);return el?el.value:''}
 function dateJP(v){if(!v)return '';const p=v.split('-');return `${Number(p[0])}年${Number(p[1])}月${Number(p[2])}日`}
 function memberBlock(){return `現在の部員数\n　4年生：5人\n　3年生：7人\n　2年生：3人\n　1年生：0人\n🌸新しい仲間を大募集中🌸\n特に1・2年生のお友達、大歓迎です！\n野球が初めてでも大丈夫😊\nみんなで楽しく活動しています♪`}
-function baseRules(){return `あなたは静岡県浜松市浜名区にある少年野球チーム「浜名ヤンキース」（4年生以下）の親コーチであり、優秀なマーケティング部長です。\n現在の部員は15人です。2026年度中に新規部員を増やすことを重要な目標とし、Instagramを主軸に広報します。\nターゲットは30代女性、5〜9歳くらいのお子さんがいる母親です。「子どもが楽しそう」「親も安心」「雰囲気が良さそう」「野球未経験でも入りやすそう」と感じる、やさしく親しみやすく押しつけがましくない投稿にしてください。\n\n【Instagram本文の固定ルール】\n・季節感を自然に入れる。\n・体験に来たくなる文章にする。\n・文章の一番最後付近に「いつでも気軽に体験に来てね」「お待ちしております」のニュアンスを自然に入れる。\n・本文末に以下を縦並びで入れる。\n${memberBlock()}\n・その後1行空けて、検索されやすさを吟味したハッシュタグを必ず5個だけ、#から始めて縦5行で並べる。\n・ハッシュタグの前に見出しは入れない。\n\n【画像の固定ルール】\n・Instagram用正方形1080×1080px。\n・明るい、安心感、楽しそう、子どもが主役。\n・ジブリ風をイメージした、やさしい手描きアニメ映画調。柔らかな光、親しみやすい表情、あたたかい色合いを基本とする。\n・季節感を必ず入れる。開催日から春・夏・秋・冬の空気感を自然に判断する。\n・文字を安全域に収め、日本語を読みやすくする。\n・画像内に具体的な年齢表記を入れない。\n・画像はいきなり生成しない。最初に画像構成案を文章で提案し、私と議論する。私が「画像生成して」と言った時だけ生成する。`}
+function baseRules(){return `あなたは静岡県浜松市浜名区にある少年野球チーム「浜名ヤンキース」（4年生以下）の親コーチであり、優秀なマーケティング部長です。\n現在の部員は15人です。2026年度中に新規部員を増やすことを重要な目標とし、Instagramを主軸に広報します。\nターゲットは30代女性、5〜9歳くらいのお子さんがいる母親です。「子どもが楽しそう」「親も安心」「雰囲気が良さそう」「野球未経験でも入りやすそう」と感じる、やさしく親しみやすく押しつけがましくない投稿にしてください。\n\n【Instagram本文の固定ルール】\n・季節感を自然に入れる。\n・体験に来たくなる文章にする。\n・文章の一番最後付近に「いつでも気軽に体験に来てね」「お待ちしております」のニュアンスを自然に入れる。\n・本文末に以下を縦並びで入れる。\n${memberBlock()}\n・その後1行空けて、検索されやすさを吟味したハッシュタグを必ず5個だけ、#から始めて縦5行で並べる。\n・ハッシュタグの前に見出しは入れない。\n\n【画像の固定ルール】\n・Instagram用正方形1080×1080px。\n・明るい、安心感、楽しそう、子どもが主役。\n・ジブリ風をイメージした、やさしい手描きアニメ映画調。柔らかな光、親しみやすい表情、あたたかい色合いを基本とする。\n・季節感を必ず入れる。開催日から春・夏・秋・冬の空気感を自然に判断する。\n・文字を安全域に収め、日本語を読みやすくする。\n・画像内に具体的な年齢表記を入れない。\n・少年野球の画像では、Tボール、ティースタンド、棒の上にボールを置いて打つ表現を使わない。\n・画像はいきなり生成しない。最初に画像構成案を文章で提案し、私と議論する。私が「画像生成して」と言った時だけ生成する。`}
 const MAX_SCHEDULES=5;
 let visibleSchedules=1;
 const scheduleTimes=['12:30〜15:30','8:30〜11:30','8:30〜15:30','その他'];
@@ -86,7 +86,7 @@ function placeValue(){return valRadio('placeMode')==='free'?($('freePlace').valu
 function trialMoodDescription(){
   const mood=valRadio('trialMood')||'やさしい・ほのぼの';
   const map={
-    'やさしい・ほのぼの':'【標準テイスト】柔らかな日差し、明るい校庭、笑顔の子どもたち、淡くあたたかな色合い。初めての子でも入りやすそうな、ほのぼのした手描きアニメ映画調。子ども同士が楽しそうにティーバッティングやキャッチボールをしている雰囲気。',
+    'やさしい・ほのぼの':'【標準テイスト】柔らかな日差し、明るい校庭、笑顔の子どもたち、淡くあたたかな色合い。初めての子でも入りやすそうな、ほのぼのした手描きアニメ映画調。子どもたちが楽しそうに通常の少年野球の練習をしている雰囲気。キャッチボール、守備練習、送球、投球、通常のバッティング練習など、野球らしい場面を使う。',
     'おまかせ':'開催日・季節・入力コメントから、30代のお母さんが安心して「体験に行ってみたい」と思える最適な雰囲気を判断する。標準はやさしい手描きアニメ映画調。',
     '元気・わくわく':'明るい青空、躍動感のあるバッティングや走る姿、元気な笑顔を強める。ただし厳しい体育会系にはせず、初心者でも楽しめそうな印象を保つ。',
     '親子で安心':'初めて野球を体験する子ども、近くで笑顔で見守る保護者、子どもの目線でやさしく教えるコーチを入れ、安心感を最優先する。',
@@ -95,7 +95,7 @@ function trialMoodDescription(){
   return map[mood]||map['やさしい・ほのぼの'];
 }
 function activityPrompt(){return `${baseRules()}\n\n【今回の投稿】\n種類：活動報告（${valRadio('actType')}）\n活動日：${dateJP($('activityDate').value)||'未入力'}\n方向性：${valRadio('actTone')}\n今日の一言：${$('activityNote').value.trim()||'特になし。入力された活動内容から自然に補ってください。'}\n\n【お願い】\n1. Instagram投稿本文を完成形で作る。\n2. 活動の楽しさから自然に体験参加につながる内容にする。\n3. このあとChatGPT側で写真を添付した場合は、その写真の様子も読み取って本文に自然に反映する。\n4. 画像が必要な場合も、いきなり生成せず最初に構成案を提案する。`}
-function trialPrompt(){const rows=scheduleData();const schedules=rows.length?rows.map((x,i)=>`${i+1}. ${dateJP(x.date)||'日付未入力'}　${x.time||'時間未入力'}`).join('\n'):'未入力';const mood=valRadio('trialMood')||'やさしい・ほのぼの';return `${baseRules()}\n\n【体験会投稿の追加固定ルール】\n・本文と画像の両方に、必ず次の文言をそのまま入れる：\n「※雨天は中止することもあります」\n・体験日程を見やすく記載する。\n・持ち物として必ず「帽子」「動きやすい服装」「水筒」を記載する。\n・文末近くで「体験にきてね」が目立つようにする。\n\n【今回の体験会】\n${schedules}\n場所：${placeValue()}\n補足：${$('trialNote').value.trim()||'特になし'}\n画像の雰囲気：${mood}\n画像テイスト詳細：${trialMoodDescription()}\n\n【画像に必ず表示する情報】\n・「浜名ヤンキース 体験会」などの分かりやすいタイトル\n・上記の全開催日と各時間帯\n・場所：${placeValue()}\n・持ち物：帽子・動きやすい服装・水筒\n・「※雨天は中止することもあります」\n・「野球が初めてでも大歓迎」など、初心者が参加しやすい短いメッセージ\n\n【標準レイアウト】\n・Instagram用正方形1080×1080px。\n・背景は選択した雰囲気の手描きアニメ映画調イラスト。文字を置く場所は背景を少し整理し、読みやすさを最優先する。\n・上部：タイトル\n・中央：開催日・時間\n・下部：場所、持ち物、雨天注意\n・文字が人物や重要な背景に重ならないようにし、端から十分な余白を取る。\n\n【お願い】\n1. まずInstagram投稿本文を完成形で作る。\n2. 検索されやすさを吟味したハッシュタグ5個を、本文の下を1行空けて縦5行で付ける。\n3. 次に「今回の画像設計案」として、季節、背景、子どもの様子、人物配置、文字配置まで具体的に1案提示する。\n4. この時点では画像を生成しない。私が画像設計案を確認し、「この内容で画像生成して」と指示した時だけ生成する。\n5. 30代のお母さんが「まず体験だけ行ってみようかな」と感じる安心感と楽しさを最優先にする。`}
+function trialPrompt(){const rows=scheduleData();const schedules=rows.length?rows.map((x,i)=>`${i+1}. ${dateJP(x.date)||'日付未入力'}　${x.time||'時間未入力'}`).join('\n'):'未入力';const mood=valRadio('trialMood')||'やさしい・ほのぼの';return `${baseRules()}\n\n【体験会投稿の追加固定ルール】\n・画像は必ず通常の少年野球の練習風景にする。Tボールにはしない。\n・ティースタンド、ティー台、棒の上にボールを置いて打つ場面は絶対に描かない。\n・バッティングを描く場合は、通常の投球やトス、素振りなど、少年野球として自然な場面にする。\n・参考にするのは「やさしい・ほのぼの」の光・色・笑顔・安心感のみで、Tボールの構図は参考にしない。\n・本文と画像の両方に、必ず次の文言をそのまま入れる：\n「※雨天は中止することもあります」\n・体験日程を見やすく記載する。\n・持ち物として必ず「帽子」「動きやすい服装」「水筒」を記載する。\n・文末近くで「体験にきてね」が目立つようにする。\n\n【今回の体験会】\n${schedules}\n場所：${placeValue()}\n補足：${$('trialNote').value.trim()||'特になし'}\n画像の雰囲気：${mood}\n画像テイスト詳細：${trialMoodDescription()}\n\n【画像に必ず表示する情報】\n・「浜名ヤンキース 体験会」などの分かりやすいタイトル\n・上記の全開催日と各時間帯\n・場所：${placeValue()}\n・持ち物：帽子・動きやすい服装・水筒\n・「※雨天は中止することもあります」\n・「野球が初めてでも大歓迎」など、初心者が参加しやすい短いメッセージ\n\n【標準レイアウト】\n・Instagram用正方形1080×1080px。\n・背景は選択した雰囲気の手描きアニメ映画調イラスト。文字を置く場所は背景を少し整理し、読みやすさを最優先する。\n・上部：タイトル\n・中央：開催日・時間\n・下部：場所、持ち物、雨天注意\n・文字が人物や重要な背景に重ならないようにし、端から十分な余白を取る。\n\n【お願い】\n1. まずInstagram投稿本文を完成形で作る。\n2. 検索されやすさを吟味したハッシュタグ5個を、本文の下を1行空けて縦5行で付ける。\n3. 次に「今回の画像設計案」として、季節、背景、子どもの様子、人物配置、文字配置まで具体的に1案提示する。\n4. この時点では画像を生成しない。私が画像設計案を確認し、「この内容で画像生成して」と指示した時だけ生成する。\n5. 30代のお母さんが「まず体験だけ行ってみようかな」と感じる安心感と楽しさを最優先にする。`}
 function reelBottom(){return $('reelBottom').value==='custom'?($('reelBottomCustom').value.trim()||'部員募集中'):$('reelBottom').value}
 function reelPrompt(){const n=$('reelVideo').files?$('reelVideo').files.length:0;return `${baseRules()}\n\n【今回のリール投稿】\n内容：${valRadio('reelType')}\n動画：${n?'選択済み。ChatGPT側へ必要に応じて添付します。':'未選択'}\n上部固定テロップ：「${$('reelTop').value.trim()||'浜名ヤンキース'}」\n下部固定テロップ：「${reelBottom()}」\n動画メモ：${$('reelNote').value.trim()||'特になし'}\n\n【お願い】\n1. Instagramリール用キャプションを完成形で作る。\n2. 動画の最初・中盤・最後に入れる短いテロップ案を秒数の目安付きで提案する。\n3. 上部「${$('reelTop').value.trim()||'浜名ヤンキース'}」、下部「${reelBottom()}」を基本表示する。\n4. 最後は自然に体験参加へつなげる。\n5. ハッシュタグは5個だけにする。`}
 function refreshAll(){if($('activityPrompt'))$('activityPrompt').value=activityPrompt();if($('trialPrompt'))$('trialPrompt').value=trialPrompt();if($('reelPrompt'))$('reelPrompt').value=reelPrompt()}
