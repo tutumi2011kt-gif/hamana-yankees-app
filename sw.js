@@ -1,4 +1,4 @@
-const CACHE='hamana-yankees-v6-1';
+const CACHE='hamana-yankees-v6-2';
 const ASSETS=['./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>{
