@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 128" role="img" aria-label="ヘルメット">
+<rect x="4" y="5" width="124" height="118" rx="28" fill="#eff9fa"/>
+<circle cx="106" cy="24" r="11" fill="#fff7d8" opacity=".9"/><circle cx="27" cy="105" r="7" fill="#d7ebeb"/>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M20 67Q18 30 58 24Q95 20 111 54L116 66H96Q87 66 79 59Q66 73 50 74H31Q22 75 20 67Z" fill="#182d52" stroke="#10213e" stroke-width="5"/><path d="M28 54q17-30 52-18" fill="none" stroke="#627da8" stroke-width="5" stroke-linecap="round"/><path d="M28 74h43q7 0 12 8H28Z" fill="#263e6e"/><path d="M80 58q7 5 17 6" stroke="#e55159" stroke-width="5"/><path d="M54 38l9 10 10-10M63 48v12" stroke="white" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>

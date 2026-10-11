@@ -1,0 +1,56 @@
+{
+  "revision": "2026-10-11-1",
+  "profiles": {
+    "river-summer": [
+      "ballbasket",
+      "tballbasket",
+      "foldbasket",
+      "helmet",
+      "bluesheet",
+      "knockbat",
+      "bso",
+      "bases",
+      "homebase",
+      "linecar",
+      "catcher",
+      "measure",
+      "tent",
+      "toolbox",
+      "teabag",
+      "bench",
+      "coachchair",
+      "tballstand"
+    ],
+    "river-winter": [
+      "ballbasket",
+      "tballbasket",
+      "foldbasket",
+      "helmet",
+      "bluesheet",
+      "knockbat",
+      "bso",
+      "bases",
+      "homebase",
+      "linecar",
+      "catcher",
+      "measure",
+      "tent",
+      "toolbox",
+      "teabag",
+      "bench",
+      "coachchair",
+      "tballstand"
+    ],
+    "practice-summer": [],
+    "practice-winter": [],
+    "official-summer": [],
+    "official-winter": []
+  },
+  "notes": {
+    "river-winter": "冬の河川敷練習は仮設定です。現在は夏と同じ品目で、テントのみ2つです。",
+    "practice-summer": "練習試合（夏）の持ち物はまだ未登録です。",
+    "practice-winter": "練習試合（冬）の持ち物はまだ未登録です。",
+    "official-summer": "公式戦（夏）の持ち物はまだ未登録です。",
+    "official-winter": "公式戦（冬）の持ち物はまだ未登録です。"
+  }
+}

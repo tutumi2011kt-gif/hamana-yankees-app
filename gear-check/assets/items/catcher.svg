@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 128" role="img" aria-label="キャッチャー道具">
+<rect x="4" y="5" width="124" height="118" rx="28" fill="#eff9fa"/>
+<circle cx="106" cy="24" r="11" fill="#fff7d8" opacity=".9"/><circle cx="27" cy="105" r="7" fill="#d7ebeb"/>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M48 27l14-9 14 9 6 17-8 42H50l-9-42Z" fill="#22375d" stroke="#112541" stroke-width="5"/><path d="M48 36h27M52 52h21M55 69h16" stroke="#ea4c4c" stroke-width="4"/><rect x="15" y="49" width="23" height="48" rx="5" fill="#314569" stroke="#172a42" stroke-width="4"/><rect x="87" y="49" width="23" height="48" rx="5" fill="#314569" stroke="#172a42" stroke-width="4"/><path d="M19 62h15M19 78h15M91 62h15M91 78h15" stroke="#95b6da" stroke-width="4"/><path d="M45 11q19-16 37 0" stroke="#28364e" stroke-width="6" fill="none"/></g></svg>

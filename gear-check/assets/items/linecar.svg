@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 128" role="img" aria-label="ラインカー">
+<rect x="4" y="5" width="124" height="118" rx="28" fill="#eff9fa"/>
+<circle cx="106" cy="24" r="11" fill="#fff7d8" opacity=".9"/><circle cx="27" cy="105" r="7" fill="#d7ebeb"/>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M25 51l14-19h47l15 52H30Z" fill="#4599d5" stroke="#255985" stroke-width="5"/><path d="M39 33l3-13h33l7 13" fill="#a8d6f2" stroke="#255985" stroke-width="4"/><path d="M50 40h26M46 53h34" stroke="#d9f3ff" stroke-width="4"/><path d="M98 56l13-26" stroke="#233f5c" stroke-width="5" stroke-linecap="round"/><circle cx="42" cy="87" r="11" fill="#25394e"/><circle cx="88" cy="87" r="11" fill="#25394e"/><circle cx="42" cy="87" r="4" fill="#c8dae8"/><circle cx="88" cy="87" r="4" fill="#c8dae8"/></g></svg>

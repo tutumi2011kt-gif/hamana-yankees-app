@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 128" role="img" aria-label="Tボール置き">
+<rect x="4" y="5" width="124" height="118" rx="28" fill="#eff9fa"/>
+<circle cx="106" cy="24" r="11" fill="#fff7d8" opacity=".9"/><circle cx="27" cy="105" r="7" fill="#d7ebeb"/>
+<g stroke-linecap="round" stroke-linejoin="round"><circle cx="67" cy="22" r="13" fill="#fff" stroke="#d8d5d0" stroke-width="3"/><path d="M62 11q12 8 6 21" stroke="#e95e57" stroke-width="2.5" fill="none"/><path d="M67 36v56M56 44h22M67 92l-35 13M67 92l35 13" stroke="#304960" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M60 54h14" stroke="#86a2b0" stroke-width="4"/></g></svg>

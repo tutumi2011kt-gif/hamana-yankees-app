@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 128" role="img" aria-label="スコアラー椅子">
+<rect x="4" y="5" width="124" height="118" rx="28" fill="#eff9fa"/>
+<circle cx="106" cy="24" r="11" fill="#fff7d8" opacity=".9"/><circle cx="27" cy="105" r="7" fill="#d7ebeb"/>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M46 22h42v43H46Z" fill="#7396bf" stroke="#3a5979" stroke-width="5"/><path d="M34 70h67M44 74l-8 30M92 74l9 30" stroke="#354b5c" stroke-width="6" stroke-linecap="round"/><path d="M51 33h31" stroke="#c6deee" stroke-width="4"/></g></svg>

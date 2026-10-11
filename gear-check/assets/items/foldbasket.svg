@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 128" role="img" aria-label="折り畳みボールかご">
+<rect x="4" y="5" width="124" height="118" rx="28" fill="#eff9fa"/>
+<circle cx="106" cy="24" r="11" fill="#fff7d8" opacity=".9"/><circle cx="27" cy="105" r="7" fill="#d7ebeb"/>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M28 34h73l-7 42H36Z" fill="#7796ba" stroke="#264660" stroke-width="5"/><path d="M34 45h62M37 56h57M45 36v37M62 36v37M80 36v37" stroke="#dce8f2" stroke-width="3"/><path d="M36 78l-10 21M94 78l12 21M37 32q28-29 56 0" stroke="#2c4053" stroke-width="5" fill="none" stroke-linecap="round"/><g fill="white" stroke="#cdcabf" stroke-width="2"><circle cx="51" cy="32" r="10"/><circle cx="70" cy="30" r="12"/><circle cx="89" cy="32" r="10"/></g></g></svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 128" role="img" aria-label="テント">
+<rect x="4" y="5" width="124" height="118" rx="28" fill="#eff9fa"/>
+<circle cx="106" cy="24" r="11" fill="#fff7d8" opacity=".9"/><circle cx="27" cy="105" r="7" fill="#d7ebeb"/>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M14 51L65 22L116 51Z" fill="#7fceec" stroke="#3274b1" stroke-width="5" stroke-linejoin="round"/><path d="M14 51l13 12h78l11-12" fill="#4694cf" stroke="#3274b1" stroke-width="4"/><path d="M27 62v42M105 62v42" stroke="#617482" stroke-width="6"/><path d="M39 51l25-25 25 25" stroke="#e2f5ff" stroke-width="4" fill="none"/><path d="M21 106h17M98 106h17" stroke="#657482" stroke-width="5" stroke-linecap="round"/></g></svg>
