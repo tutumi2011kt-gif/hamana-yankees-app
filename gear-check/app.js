@@ -123,7 +123,7 @@ function render(){
   const modeLabel=MODES.find(x=>x.id===state.mode)?.label||'河川敷練習';
   ROOT.innerHTML='<main class="app"><header class="hero"><img class="hero-art" src="./assets/hero.svg" alt=""><div class="hero-shade"></div><div class="brand"><span class="mini-tag">⚾ HAMANA YANKEES</span><h1>浜名ヤンキース<strong>道具チェック</strong></h1><div class="strap">みんなで準備、忘れ物ゼロ！</div></div></header><div class="intro"><i></i><span>今日も元気に、準備スタート！</span></div>'+
   (view==='check' || !master ? modeTabs()+seasonTabs():'')+
-  (loadError?'<div class="status warn">'+esc(loadError)+' <button type="button" class="reset" data-action="retry">再読み込み</button></div>':view==='check'?checklist():adminPage())+
+  (loadError?'<div class="status warn">'+esc(loadError)+' <button type="button" class="reset" data-action="retry">再読み込み</button></div>':!master?'<div class="status">持ち物リストを準備しています…</div>':view==='check'?checklist():adminPage())+
   '<footer class="footer">浜名ヤンキース｜'+esc(modeLabel)+'<br>道具リストは全員共通・チェックはこの端末だけで保存<br>※公開ページのため、個人情報は登録しないでください。</footer></main>';
 }
 function updateProgress(){
