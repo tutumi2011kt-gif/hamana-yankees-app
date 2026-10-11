@@ -89,7 +89,7 @@ function seasonTabs(){
 function itemHTML(item,checked){
   const on=checked.has(item.id);
   const img=imageURL(item);
-  const art=img?'<img loading="lazy" src="'+esc(img)+'" alt="" />':'<span aria-hidden="true">📦</span>';
+  const art=img?'<img loading="lazy" src="'+esc(img)+'" alt="" onerror="this.onerror=null;this.src=\'./assets/items/'+esc(item.id)+'.svg\'" />':'<span aria-hidden="true">📦</span>';
   return '<label class="gear-row '+(on?'done':'')+'" data-row="'+esc(item.id)+'"><input type="checkbox" data-action="check" data-id="'+esc(item.id)+'" '+(on?'checked':'')+' aria-label="'+esc(item.name)+'"><span class="checkmark" aria-hidden="true"></span><span class="gear-image">'+art+'</span><span class="gear-main"><span class="gear-name">'+esc(item.name)+'</span></span>'+(qty(item)?'<span class="gear-qty">'+esc(qty(item))+'</span>':'')+'</label>';
 }
 function storeHTML(n){
@@ -121,7 +121,7 @@ function adminPage(){
 }
 function render(){
   const modeLabel=MODES.find(x=>x.id===state.mode)?.label||'河川敷練習';
-  ROOT.innerHTML='<main class="app"><header class="hero"><img class="hero-art" src="./assets/hero.svg" alt=""><div class="hero-shade"></div><div class="brand"><span class="mini-tag">⚾ HAMANA YANKEES</span><h1>浜名ヤンキース<strong>道具チェック</strong></h1><div class="strap">みんなで準備、忘れ物ゼロ！</div></div></header><div class="intro"><i></i><span>今日も元気に、準備スタート！</span></div>'+
+  ROOT.innerHTML='<main class="app"><header class="hero"><img class="hero-art" src="./assets/hero/riverbank.webp" alt="" onerror="this.onerror=null;this.src=\'./assets/hero.svg\'"><div class="hero-shade"></div><div class="brand"><span class="mini-tag">⚾ HAMANA YANKEES</span><h1>浜名ヤンキース<strong>道具チェック</strong></h1><div class="strap">みんなで準備、忘れ物ゼロ！</div></div></header><div class="intro"><i></i><span>今日も元気に、準備スタート！</span></div>'+
   (view==='check' || !master ? modeTabs()+seasonTabs():'')+
   (loadError?'<div class="status warn">'+esc(loadError)+' <button type="button" class="reset" data-action="retry">再読み込み</button></div>':!master?'<div class="status">持ち物リストを準備しています…</div>':view==='check'?checklist():adminPage())+
   '<footer class="footer">浜名ヤンキース｜'+esc(modeLabel)+'<br>道具リストは全員共通・チェックはこの端末だけで保存<br>※公開ページのため、個人情報は登録しないでください。</footer></main>';

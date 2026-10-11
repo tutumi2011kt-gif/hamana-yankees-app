@@ -50,3 +50,6 @@
 
 ### 運用上の推奨
 GitHubで編集したら、リストと画像を別のスマホで確認してから保護者へ周知してください。
+
+## 案F イラスト刷新（準備中）
+画像の優先順位・命名・導入手順は [DESIGN_ASSET_PLAN.md](./DESIGN_ASSET_PLAN.md) を参照。`assets/hero/riverbank.webp`、`assets/mascots/*.webp`、`assets/items/<ID>.webp` をアップロードする。**画像がすべて登録されるまでこのブランチをmainにマージしない**。画像の新旧を混在させないため、全23品目の画像存在・表示・キャッシュ更新を確認する。
