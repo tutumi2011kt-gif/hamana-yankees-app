@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 390" role="img" aria-label="野球を楽しむ浜名ヤンキースの子どもたちのイラスト">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#bceaff"/><stop offset="1" stop-color="#e5faff"/></linearGradient>
+<linearGradient id="river" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#93d8f0"/><stop offset="1" stop-color="#55b5de"/></linearGradient>
+<linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a0df83"/><stop offset="1" stop-color="#55b26c"/></linearGradient>
+</defs>
+<rect width="900" height="390" fill="url(#sky)"/>
+<g fill="#fff" opacity=".95"><path d="M82 77q2-30 33-28q11-31 43-17q25-18 43 11q28-4 33 23Z"/><path d="M420 58q4-27 32-23q22-28 44-11q18-13 35 12q27-5 34 22Z"/><path d="M706 78q9-21 30-16q12-19 34-12q20-24 42 5q29-3 35 23Z"/></g>
+<circle cx="779" cy="85" r="40" fill="#ffd45a" opacity=".75"/>
+<path d="M0 244q110-87 226-34q90-71 188-11q92-73 180-24q100-63 306 33v182H0Z" fill="#b7dbb1"/>
+<path d="M0 270q164-50 270-10q167-49 320-2q139-63 310 13v119H0Z" fill="#91c9a1"/>
+<path d="M0 279q238-13 416-2q214-21 484-2v61q-246-31-447-12q-192 0-453 9Z" fill="url(#river)"/>
+<path d="M0 318q223-13 448 2q217-12 452 0v70H0Z" fill="url(#grass)"/>
+<g fill="none" stroke="#b9e8fb" stroke-width="5" opacity=".85"><path d="M34 301h90m50 6h80m160-9h115m91 4h97"/></g>
+<g stroke="#6c95a9" stroke-width="6" stroke-linecap="round" opacity=".65"><path d="M85 260h755"/><path d="M110 258v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24m55 24v-24"/></g>
+<path d="M0 353q235-28 456 0q207-24 444 7v30H0Z" fill="#61b773"/>
+<g fill="#498d60"><path d="M90 342l10-22 9 24m53 9 9-24 11 22m142-8 10-22 11 25m107 12 8-19 9 21m193-18 12-24 8 21m106 15 7-19 11 20"/></g>
+<g transform="translate(600 28)">
+<!-- cheering character -->
+<path d="M47 235l-23 92 32 7 35-89Z" fill="#f7f8ff" stroke="#34415a" stroke-width="7" stroke-linejoin="round"/>
+<path d="M117 238l23 94-32 7-33-94Z" fill="#f7f8ff" stroke="#34415a" stroke-width="7" stroke-linejoin="round"/>
+<path d="M20 324l42 5-5 27-50-5Z" fill="#e94f54" stroke="#33445a" stroke-width="5"/>
+<path d="M106 330l38-5 9 29-47 7Z" fill="#e94f54" stroke="#33445a" stroke-width="5"/>
+<path d="M21 332l37 4M111 338l31-5" stroke="white" stroke-width="6"/>
+<path d="M16 350q-19 5-14 19h61q3-12-5-17ZM106 357q-6 13 5 18h57q1-15-18-21Z" fill="#253c5f"/>
+<path d="M37 137l22-31 72 7 22 43-7 95q-52 17-117-9Z" fill="#182d54" stroke="#102743" stroke-width="7"/>
+<path d="M48 131l-6 107M138 144l-2 94" stroke="#e04f56" stroke-width="8"/>
+<path d="M46 149l-28 70" stroke="#e4b38e" stroke-width="24" stroke-linecap="round"/>
+<path d="M151 148q25-60 38-85" stroke="#e4b38e" stroke-width="24" stroke-linecap="round"/>
+<circle cx="189" cy="57" r="14" fill="#e4b38e"/><path d="M173 50q14 12 29 1" fill="none" stroke="#b77856" stroke-width="3"/>
+<ellipse cx="89" cy="76" rx="49" ry="51" fill="#efbd98" stroke="#b88367" stroke-width="4"/>
+<path d="M42 66q9-42 53-44q46-1 47 42Z" fill="#172c52" stroke="#102743" stroke-width="5"/>
+<path d="M38 66q55-15 113 3" fill="none" stroke="#122542" stroke-width="15" stroke-linecap="round"/>
+<path d="M67 43l14 14 14-14m-14 14v8" stroke="white" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M58 87q15-12 27 0m12 0q12-12 25 0" fill="none" stroke="#463c36" stroke-width="5" stroke-linecap="round"/>
+<path d="M81 105q14 13 28 0" fill="none" stroke="#aa6156" stroke-width="5" stroke-linecap="round"/>
+<circle cx="53" cy="101" r="9" fill="#ef9993" opacity=".6"/><circle cx="128" cy="102" r="9" fill="#ef9993" opacity=".6"/>
+<text x="52" y="198" font-size="24" font-family="cursive, sans-serif" font-style="italic" font-weight="900" fill="#e55563" stroke="white" stroke-width=".8" paint-order="stroke">Yankees</text>
+<path d="M25 244q49 19 116 7" stroke="#15283d" stroke-width="7" fill="none"/>
+<g transform="translate(3 207) rotate(-16)"><path d="M0 8Q-11-12 3-24q15-7 18 12q13-25 25-9q8 13-9 36q-22 22-37-7Z" fill="#a56b39" stroke="#784b2d" stroke-width="5"/><path d="M12-11v22m13-23v23" stroke="#c89255" stroke-width="3"/></g>
+</g>
+<g transform="translate(774 110) scale(.65)">
+<!-- second smaller team kid -->
+<path d="M40 193L25 287l35 3 28-77Z" fill="white" stroke="#283b57" stroke-width="8"/>
+<path d="M111 203l24 81-38 5-31-73Z" fill="white" stroke="#283b57" stroke-width="8"/>
+<path d="M23 283h40v24H17ZM97 283h42v24H94Z" fill="#e55563"/>
+<path d="M33 92l91-1 30 124-141-4Z" fill="#203864" stroke="#10233e" stroke-width="8"/>
+<path d="M31 117l-23 89M128 115l55 48" stroke="#e6b38b" stroke-width="24" stroke-linecap="round"/>
+<ellipse cx="82" cy="67" rx="54" ry="50" fill="#efbe98" stroke="#b78162" stroke-width="4"/>
+<path d="M25 52Q33 1 90 8q50 3 54 48Z" fill="#182e54" stroke="#102543" stroke-width="6"/>
+<path d="M26 55q56-12 121 3" stroke="#11223b" stroke-width="16" stroke-linecap="round"/>
+<path d="M59 31l19 16 19-16m-19 16v8" fill="none" stroke="white" stroke-width="8" stroke-linejoin="round"/>
+<circle cx="65" cy="72" r="5" fill="#382f33"/><circle cx="102" cy="72" r="5" fill="#382f33"/>
+<path d="M70 94q13 13 28 0" fill="none" stroke="#9b5144" stroke-width="6" stroke-linecap="round"/>
+<text x="41" y="158" font-size="28" font-family="cursive, sans-serif" font-style="italic" font-weight="800" fill="#e55563" stroke="white" stroke-width="1" paint-order="stroke">Yankees</text>
+</g>
+<g fill="#fff" stroke="#eaa85a" stroke-width="2" transform="translate(840 302) rotate(-15)"><circle r="18"/><path d="M-6-15q18 13 0 31M7-15q-17 13 0 31" fill="none" stroke="#e85a50" stroke-width="2"/></g>
+</svg>
