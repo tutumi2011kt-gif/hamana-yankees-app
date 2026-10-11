@@ -87,4 +87,10 @@
   document.getElementById('app').addEventListener('submit',e=>{const form=e.target;if(!form.dataset.form)return;e.preventDefault();const f=new FormData(form);if(form.dataset.form==='add'){const name=String(f.get('name')||'').trim(),qty=String(f.get('qty')||'').trim(),store=Number(f.get('store'));if(!name)return;const id='custom_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);state.items.push({id,name,store,qty});if(f.has('addCurrent')){const k=key();state.profiles[k]=[...(state.profiles[k]||[]),id]}save();render();document.getElementById('newname')?.focus()}else if(form.dataset.form==='edit'){const item=state.items.find(i=>i.id===form.dataset.id);if(!item)return;const name=String(f.get('name')||'').trim();if(!name)return;item.name=name;item.store=Number(f.get('store'));item.qty=String(f.get('qty')||'').trim();item.summerQty=String(f.get('summerQty')||'').trim();item.winterQty=String(f.get('winterQty')||'').trim();editId=null;save();render()}});
   render();
 })();
+</script><script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', {scope: './'}).catch(() => {});
+  });
+}
 </script></body></html>
