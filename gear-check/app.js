@@ -95,7 +95,7 @@ function itemHTML(item,checked){
 function storeHTML(n){
   const list=selected().filter(x=>x.store===n),checked=checkedSet();
   const done=list.filter(x=>checked.has(x.id)).length;
-  return '<section class="panel store-card '+(n===2?'store-two':'')+'"><div class="store-head"><div class="store-title"><span class="store-icon" aria-hidden="true">🏠</span><span class="store-label">器具庫 '+n+'</span></div><span class="store-count" data-count="'+n+'">'+done+' / '+list.length+'</span></div><div class="store-body">'+(list.length?list.map(i=>itemHTML(i,checked)).join(''):'<div class="empty">この器具庫の持ち物はまだ設定されていません。</div>')+'</div></section>';
+  return '<section class="panel store-card '+(n===2?'store-two':'')+'"><div class="store-head"><div class="store-title"><img class="store-house-art" src="./assets/store/storehouse'+n+'.webp" alt=""><span class="store-label">器具庫 '+n+'</span></div><img class="store-mascot" src="./assets/mascots/'+(n===1?'cheering':'store-cheering')+'.webp" alt=""><span class="store-count" data-count="'+n+'">'+done+' / '+list.length+'</span></div><div class="store-body">'+(list.length?list.map(i=>itemHTML(i,checked)).join(''):'<div class="empty">この器具庫の持ち物はまだ設定されていません。</div>')+'</div></section>';
 }
 function checklist(){
   const list=selected(),checked=checkedSet(),done=list.filter(x=>checked.has(x.id)).length;
