@@ -1,0 +1,19 @@
+{
+  "name": "浜名ヤンキース 道具チェック",
+  "short_name": "道具チェック",
+  "description": "練習・試合の器具庫持ち出しチェック",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#17324d",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
