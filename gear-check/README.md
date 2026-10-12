@@ -67,3 +67,15 @@ GitHubで編集したら、リストと画像を別のスマホで確認して�
 
 ## 2026-10-12 イラスト7点の更新
 ボールかご（黒いバッグ）、置きT用ボールかご（黄色・ボール入り）、折り畳みボールかご（青い空コンテナ）、メジャー（大）（黄色の枠・白い巻尺）、テント（緑屋根）、工具箱（青紫）、長椅子（黒座面）の画像を、`assets/items/〈道具ID〉-20261012.webp` に更新しました。画像は各アイテム独立で変更可能です。既存の旧画像もバックアップとして維持しています。変更時には items.json の image と revision を更新します。
+
+
+## Firebase sync (phase 1: safe connection, 2026-10-12)
+- The app remains on GitHub Pages; parents use the same URL and no login.
+- cloud.js uses Firebase CDN Web SDK. On Firestore document gearCheck/config, it can receive mode + seasonal profile updates in real time, falling back to the GitHub JSON if Firebase is unavailable/empty/locked.
+- Firebase project: hamana-yankees-gear-check. Public web config is not a server credential; actual read/write permissions depend on Firebase rules.
+- Next configuration steps:
+  1. In Firebase Authentication > Settings > Authorized domains, add tutumi2011kt-gif.github.io.
+  2. Open the GitHub Pages app > 管理者向け設定 > Googleでログイン; copy the UID.
+  3. In Firebase Firestore > ルール, replace __ADMIN_UID__ in gear-check/firestore.rules with that UID and publish.
+  4. Phase 2: app-based editor and first initialization of gearCheck/config. Until then the ② link to GitHub remains as before.
+- firestore.rules in this repository is a TEMPLATE and is not deployed automatically.

@@ -1,0 +1,31 @@
+// 1. Sign in via the app as the one approved administrator.
+// 2. Replace __ADMIN_UID__ with the UID shown in the app (NOT an email).
+// 3. Paste the full rules into Firestore > ルール and click 公開.
+// Do not deploy while the placeholder remains.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /gearCheck/config {
+      allow get: if true;
+      allow list: if false;
+      function isAdmin() {
+        return request.auth != null && request.auth.uid == '__ADMIN_UID__';
+      }
+      function validData() {
+        return request.resource.data.keys().hasOnly(['modes','profiles','notes','revision','updatedAt'])
+          && request.resource.data.keys().hasAll(['modes','profiles','notes','revision','updatedAt'])
+          && request.resource.data.modes is list
+          && request.resource.data.modes.size() <= 40
+          && request.resource.data.profiles is map
+          && request.resource.data.notes is map
+          && request.resource.data.revision is string
+          && request.resource.data.updatedAt is timestamp;
+      }
+      allow create, update: if isAdmin() && validData();
+      allow delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

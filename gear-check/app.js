@@ -4,18 +4,52 @@ const ROOT = document.getElementById('app');
 const STORAGE_KEY = 'hamana-yankees-gear-check-v2';
 const OLD_KEY = 'hamana-yankees-gear-check-v1';
 const CACHE_KEY = 'hamana-yankees-gear-master-cache-v1';
-const MODES = [
+const DEFAULT_MODES = [
   {id:'practice',label:'練習試合',icon:'⚾'},
   {id:'official',label:'公式戦',icon:'🏆'},
   {id:'river',label:'河川敷練習',icon:'🌿'}
 ];
+let MODES=DEFAULT_MODES.map(m=>({...m}));
 const REPO = 'https://github.com/tutumi2011kt-gif/hamana-yankees-app';
 let master=null, view='check', isOffline=false, loadError='';
+let firebaseBridge=null, firebaseStatus='connecting', firebaseUser=null, firebaseMessage='';
+const cloudStatusLabel=()=>({
+  connecting:'接続準備中',ready:'Firebaseから自動更新中',
+  empty:'データ未登録（現在はGitHubのリストを表示）',
+  locked:'閲覧ルール未設定（現在はGitHubのリストを表示）',
+  offline:'Firebaseに接続できません（現在はGitHubのリストを表示）'
+})[firebaseStatus]||'確認中';
+function receiveCloud(data){
+  if(!master||!data||!Array.isArray(data.modes)||!data.modes.length||data.modes.length>40||
+     !data.modes.every(m=>m&&/^[a-z0-9_-]{1,50}$/.test(m.id)&&typeof m.label==='string'&&m.label.length<=40)||
+     new Set(data.modes.map(m=>m.id)).size!==data.modes.length||
+     !verify(master.items,{profiles:data.profiles})){
+    firebaseMessage='共有リストの形式が正しくありません。';
+    return;
+  }
+  MODES=data.modes.map(m=>({id:m.id,label:m.label,icon:typeof m.icon==='string'?m.icon.slice(0,4):'⚾'}));
+  master.lists={profiles:data.profiles,notes:data.notes||{},revision:data.revision||''};
+  saveCache(master);
+  if(!MODES.some(m=>m.id===state.mode)){state.mode=MODES[0].id;save()}
+  isOffline=false;
+  render();
+}
+async function startFirebase(){
+  try {
+    const mod=await import('./cloud.js');
+    firebaseBridge=mod.connect({
+      onData:receiveCloud,
+      onStatus:s=>{firebaseStatus=s;render()},
+      onUser:u=>{firebaseUser=u;render()}
+    });
+    render();
+  }catch(e){firebaseStatus='offline';render()}
+}
 function safeJSON(text){try{return JSON.parse(text)}catch{return null}}
 function readState(){
   const v=safeJSON(localStorage.getItem(STORAGE_KEY) || '');
   const old=v || safeJSON(localStorage.getItem(OLD_KEY) || '') || {};
-  const mode=MODES.some(x=>x.id===old.mode)?old.mode:'river';
+  const mode=typeof old.mode==='string'&&/^[a-z0-9_-]{1,50}$/.test(old.mode)?old.mode:'river';
   const pref=['auto','summer','winter'].includes(old.seasonPreference)?old.seasonPreference:'auto';
   const checks=old.checks && typeof old.checks==='object' && !Array.isArray(old.checks)?old.checks:{};
   return {mode,seasonPreference:pref,checks};
@@ -111,6 +145,13 @@ function adminPage(){
   const link=(path,label,alt=false)=>'<a class="admin-link '+(alt?'alt':'')+'" href="'+REPO+'/'+path+'" target="_blank" rel="noopener noreferrer">'+label+'　↗</a>';
   return '<button type="button" class="admin-back" data-action="back">← チェック画面に戻る</button>'+
   '<div class="admin-title">⚙ 管理者向け設定</div>'+
+  '<div class="status '+(firebaseStatus==='ready'?'':'warn')+'">☁ '+esc(cloudStatusLabel())+'</div>'+
+  '<div class="admin-card"><h3>Firebase・管理者ログイン</h3><p>保護者はログイン不要。管理者だけGoogleでログインします。持ち物の登録には別途Firestoreの権限設定が必要です。</p>'+
+  (firebaseMessage?'<p class="status warn">'+esc(firebaseMessage)+'</p>':'')+
+  (!firebaseBridge?'<p>Firebaseを準備しています。</p>':!firebaseUser?
+   '<button type="button" class="admin-link" data-action="firebase-login">Googleでログイン</button>':
+   '<p>✅ Googleログイン済み</p><p>管理者UID：<code style="overflow-wrap:anywhere">'+esc(firebaseUser.uid)+'</code></p><button type="button" class="admin-small" data-action="firebase-copy">UIDをコピー</button> <button type="button" class="admin-small" data-action="firebase-logout">ログアウト</button>')+
+  '<p>現在は接続準備の段階です。セキュリティルールと管理者登録後に、②の画面内編集機能を有効化します。</p></div>'+
   '<p class="admin-notice">道具マスターと画像はGitHubで管理します。編集・保存には、このリポジトリへの書き込み権限があるGitHubアカウントが必要です。閲覧するだけならログイン不要です。</p>'+
   '<section class="admin-section">'+
   '<div class="admin-card"><h3>① 道具の追加・名称・数量を編集</h3><p>道具一覧ファイルの items 配列を変更します。新しい道具には重複しないIDと保管場所を指定してください。</p>'+link('edit/main/gear-check/data/items.json','道具一覧を編集')+'</div>'+
@@ -142,6 +183,16 @@ ROOT.addEventListener('click',e=>{
   else if(a==='back'){view='check';render();window.scrollTo({top:0,behavior:'instant'})}
   else if(a==='reset'){if(confirm('この活動の今日のチェックをすべて外しますか？')){state.checks[checkKey()]=[];save();render()}}
   else if(a==='retry'){loadMaster().then(render)}
+  else if(a==='firebase-login'&&firebaseBridge){
+    firebaseBridge.login().catch(e=>{
+      firebaseMessage='ログインできませんでした。「承認済みドメイン」に tutumi2011kt-gif.github.io を追加し、ポップアップを許可してください。'+(e?.code?' ['+e.code+']':'');render()
+    });
+  }
+  else if(a==='firebase-logout'&&firebaseBridge){firebaseBridge.logout().catch(()=>{})}
+  else if(a==='firebase-copy'&&firebaseUser){
+    navigator.clipboard?.writeText(firebaseUser.uid).then(()=>{firebaseMessage='UIDをコピーしました。';render()})
+    .catch(()=>{firebaseMessage='表示されているUIDを選択してコピーしてください。';render()});
+  }
 });
 ROOT.addEventListener('change',e=>{
   const input=e.target;if(input.dataset.action!=='check'||!master)return;
@@ -161,6 +212,7 @@ async function init(){
   render();
   await loadMaster();
   render();
+  startFirebase();
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
   }
