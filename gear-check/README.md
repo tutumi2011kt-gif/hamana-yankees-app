@@ -16,8 +16,11 @@
 - `app.js`：活動切替・季節切替・チェック保存・共有ファイルの読込
 - `data/items.json`：全道具のID・名称・保管場所・数量・画像のパス
 - `data/lists.json`：活動・季節ごとの道具ID一覧と注意文
-- `assets/hero.svg`：チームカラーの子どもたちと河川敷の背景イラスト
-- `assets/items/〈道具ID〉.svg`：道具ごとに独立したイラスト
+- `assets/hero/riverbank.webp`：承認済み案Fのヘッダー（河川敷・子ども・タイトルをまとめた画像）
+- `assets/mascots/*.webp`：子どもキャラクター（個別差し替え可能）
+- `assets/store/*.webp`：器具庫1・2の見出しイラスト
+- `assets/items/〈道具ID〉.webp`：道具ごとに独立したイラスト（23種類）
+- `assets/items/flagpole.svg`, `flagpole_support.svg`：団旗の棒と支える棒の仮イラスト
 - `sw.js`：オフライン閲覧用キャッシュ
 
 ## 道具を追加する
@@ -30,7 +33,7 @@
 ## 道具のイラストを変更する
 1. イラストを用意します。**SVGか背景透明PNG**がおすすめ。写真をそのまま使うより、背景透明のイラストが馴染みます。
 2. GitHubの `assets/items/` に新しい画像をアップロードします。画像ごとに別ファイルなので、ヘルメットだけ・ボールかごだけを変更できます。
-3. `data/items.json` の該当 `image` を新しいファイル名に変更します（画像を同じファイル名で差し替えることも可能）。
+3. `data/items.json` の該当 `image` を新しいファイル名に変更します（画像を同じファイル名で差し替えることも可能）。WebPも利用できます。
 4. **重要：** `items.json` 上部の `revision` も新しい値に変更してください（例： `2026-10-12-1` ）。ブラウザが古い画像を保持するのを防ぎます。
 5. 保存後にGitHub Pagesが公開されるのを待ち、スマホでアプリを再表示して確認します。
 
@@ -55,3 +58,9 @@ GitHubで編集したら、リストと画像を別のスマホで確認して�
 画像の優先順位・命名・導入手順は [DESIGN_ASSET_PLAN.md](./DESIGN_ASSET_PLAN.md) を参照。`assets/hero/riverbank.webp`、`assets/mascots/*.webp`、`assets/items/<ID>.webp` をアップロードする。**画像がすべて登録されるまでこのブランチをmainにマージしない**。画像の新旧を混在させないため、全23品目の画像存在・表示・キャッシュ更新を確認する。
 
 案Fの倉庫イラスト `assets/store/storehouse1.webp`/`storehouse2.webp` と、キャラクター4枚 `assets/mascots/*.webp` は画像一式に同梱。キャラクターの画像ファイルは単体で変更可能です。
+
+## 2026年10月 イラスト差し替え作業
+- 素材画像は `gear-check/assets/hero/`, `gear-check/assets/mascots/`, `gear-check/assets/store/`, `gear-check/assets/items/` に配置。
+- `gear-check/items/`、`gear-check/mascots/`、`gear-check/store/` に誤ってアップロードされた画像は正しい `assets/` に移動済み。
+- フラッグポール2種類を含む全25道具が登録され、河川敷練習（夏・冬）は各20道具。公式戦・練習試合のリストは未設定。
+- ヘッダー画像はタイトルを含むため、同じタイトルを画面上に重ねて表示しません。見出しはスクリーンリーダー用にHTML内に残しています。
