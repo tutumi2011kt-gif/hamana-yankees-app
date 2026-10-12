@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-11-pop-art-v2",
+  "revision": "2026-10-12-pop-art-flagpole-1",
   "items": [
     {
       "id": "ballbasket",
@@ -109,6 +109,20 @@
         "winter": "2つ"
       },
       "image": "./assets/items/tent.webp"
+    },
+    {
+      "id": "flagpole",
+      "name": "団旗の棒",
+      "store": 1,
+      "qty": "",
+      "image": "./assets/items/flagpole.svg"
+    },
+    {
+      "id": "flagpole_support",
+      "name": "団旗の棒を支える棒",
+      "store": 1,
+      "qty": "",
+      "image": "./assets/items/flagpole_support.svg"
     },
     {
       "id": "toolbox",
