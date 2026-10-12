@@ -1,26 +1,26 @@
 {
-  "revision": "2026-10-12-ballbasket-bag-1",
+  "revision": "2026-10-12-7items-illustrations-v1",
   "items": [
     {
       "id": "ballbasket",
       "name": "ボールかご",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/ballbasket-bag.webp"
+      "image": "./assets/items/ballbasket-20261012.webp"
     },
     {
       "id": "tballbasket",
       "name": "置きT用ボールかご",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/tballbasket.webp"
+      "image": "./assets/items/tballbasket-20261012.webp"
     },
     {
       "id": "foldbasket",
       "name": "折り畳みボールかご",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/foldbasket.webp"
+      "image": "./assets/items/foldbasket-20261012.webp"
     },
     {
       "id": "helmet",
@@ -97,7 +97,7 @@
       "name": "メジャー（大）",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/measure.webp"
+      "image": "./assets/items/measure-20261012.webp"
     },
     {
       "id": "tent",
@@ -108,7 +108,7 @@
         "summer": "3つ",
         "winter": "2つ"
       },
-      "image": "./assets/items/tent.webp"
+      "image": "./assets/items/tent-20261012.webp"
     },
     {
       "id": "flagpole",
@@ -129,7 +129,7 @@
       "name": "工具箱",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/toolbox.webp"
+      "image": "./assets/items/toolbox-20261012.webp"
     },
     {
       "id": "teabag",
@@ -143,7 +143,7 @@
       "name": "長椅子",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/bench.webp"
+      "image": "./assets/items/bench-20261012.webp"
     },
     {
       "id": "coachchair",
