@@ -1,103 +1,103 @@
 {
-  "revision": "2026-10-12-flagpole-1",
+  "revision": "2026-10-12-pop-art-flagpole-1",
   "items": [
     {
       "id": "ballbasket",
       "name": "ボールかご",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/ballbasket.svg"
+      "image": "./assets/items/ballbasket.webp"
     },
     {
       "id": "tballbasket",
       "name": "置きT用ボールかご",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/tballbasket.svg"
+      "image": "./assets/items/tballbasket.webp"
     },
     {
       "id": "foldbasket",
       "name": "折り畳みボールかご",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/foldbasket.svg"
+      "image": "./assets/items/foldbasket.webp"
     },
     {
       "id": "helmet",
       "name": "ヘルメット",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/helmet.svg"
+      "image": "./assets/items/helmet.webp"
     },
     {
       "id": "bluesheet",
       "name": "ブルーシート",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/bluesheet.svg"
+      "image": "./assets/items/bluesheet.webp"
     },
     {
       "id": "knockbat",
       "name": "ノックバット",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/knockbat.svg"
+      "image": "./assets/items/knockbat.webp"
     },
     {
       "id": "bso",
       "name": "BSO",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/bso.svg"
+      "image": "./assets/items/bso.webp"
     },
     {
       "id": "smallcones",
       "name": "小さいマーカーコーン",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/smallcones.svg"
+      "image": "./assets/items/smallcones.webp"
     },
     {
       "id": "bases",
       "name": "1・2・3塁ベース",
       "store": 1,
       "qty": "1組",
-      "image": "./assets/items/bases.svg"
+      "image": "./assets/items/bases.webp"
     },
     {
       "id": "homebase",
       "name": "ホームベース",
       "store": 1,
       "qty": "2つ",
-      "image": "./assets/items/homebase.svg"
+      "image": "./assets/items/homebase.webp"
     },
     {
       "id": "linecar",
       "name": "ラインカー",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/linecar.svg"
+      "image": "./assets/items/linecar.webp"
     },
     {
       "id": "catcher",
       "name": "キャッチャー道具",
       "store": 1,
       "qty": "2つ",
-      "image": "./assets/items/catcher.svg"
+      "image": "./assets/items/catcher.webp"
     },
     {
       "id": "umpire",
       "name": "審判道具",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/umpire.svg"
+      "image": "./assets/items/umpire.webp"
     },
     {
       "id": "measure",
       "name": "メジャー（大）",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/measure.svg"
+      "image": "./assets/items/measure.webp"
     },
     {
       "id": "tent",
@@ -108,7 +108,7 @@
         "summer": "3つ",
         "winter": "2つ"
       },
-      "image": "./assets/items/tent.svg"
+      "image": "./assets/items/tent.webp"
     },
     {
       "id": "flagpole",
@@ -129,56 +129,56 @@
       "name": "工具箱",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/toolbox.svg"
+      "image": "./assets/items/toolbox.webp"
     },
     {
       "id": "teabag",
       "name": "お茶バック",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/teabag.svg"
+      "image": "./assets/items/teabag.webp"
     },
     {
       "id": "bench",
       "name": "長椅子",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/bench.svg"
+      "image": "./assets/items/bench.webp"
     },
     {
       "id": "coachchair",
       "name": "監督・コーチの椅子",
       "store": 2,
       "qty": "2つ",
-      "image": "./assets/items/coachchair.svg"
+      "image": "./assets/items/coachchair.webp"
     },
     {
       "id": "scoretable",
       "name": "スコアラー机",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/scoretable.svg"
+      "image": "./assets/items/scoretable.webp"
     },
     {
       "id": "scorechair",
       "name": "スコアラー椅子",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/scorechair.svg"
+      "image": "./assets/items/scorechair.webp"
     },
     {
       "id": "shovel",
       "name": "スコップ",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/shovel.svg"
+      "image": "./assets/items/shovel.webp"
     },
     {
       "id": "tballstand",
       "name": "Tボール置き",
       "store": 2,
       "qty": "",
-      "image": "./assets/items/tballstand.svg"
+      "image": "./assets/items/tballstand.webp"
     }
   ]
 }
