@@ -1,12 +1,12 @@
 {
-  "revision": "2026-10-12-pop-art-flagpole-1",
+  "revision": "2026-10-12-ballbasket-bag-1",
   "items": [
     {
       "id": "ballbasket",
       "name": "ボールかご",
       "store": 1,
       "qty": "",
-      "image": "./assets/items/ballbasket.webp"
+      "image": "./assets/items/ballbasket-bag.webp"
     },
     {
       "id": "tballbasket",
