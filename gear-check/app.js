@@ -45,6 +45,48 @@ async function startFirebase(){
     render();
   }catch(e){firebaseStatus='offline';render()}
 }
+
+let firebaseLoginBusy=false;
+function authErrorMessage(error){
+  const code=error?.code||'unknown';
+  const errors={
+    'auth/unauthorized-domain':'このURLがFirebaseの「承認済みドメイン」に登録されていません。Firebase → Authentication → 設定 → 承認済みドメインで「tutumi2011kt-gif.github.io」を追加してください。',
+    'auth/popup-blocked':'Googleログインのポップアップがブラウザにブロックされました。アドレスバー右側のポップアップ禁止マークからこのサイトのポップアップを許可してください。',
+    'auth/popup-closed-by-user':'Googleログイン画面が閉じられました。もう一度ログインを押してください。',
+    'auth/cancelled-popup-request':'ログイン画面が中断されました。少し待ってから、もう一度お試しください。',
+    'auth/network-request-failed':'通信エラーが発生しました。インターネット接続を確認してください。',
+    'auth/operation-not-supported-in-this-environment':'この起動方法ではGoogleログインできません。ホーム画面のアイコンではなく、Safari・ChromeでアプリのURLを開いてお試しください。',
+    'auth/invalid-api-key':'Firebaseの接続設定を確認する必要があります。'
+  };
+  return (errors[code]||'Googleログインが完了しませんでした。通常のブラウザ（Safari・Chrome）で開き直し、ポップアップを許可してお試しください。')+'（エラー: '+code+'）';
+}
+function beginFirebaseLogin(){
+  if(!firebaseBridge||firebaseLoginBusy)return;
+  if(window.matchMedia?.('(display-mode: standalone)').matches||navigator.standalone===true){
+    firebaseMessage='ホーム画面から起動したアプリではGoogleログイン画面が開かない場合があります。まずSafariまたはChromeで、このアプリのURLを直接開いてログインしてください。';
+    render();return;
+  }
+  firebaseLoginBusy=true;
+  firebaseMessage='Googleログイン画面を開いています。ポップアップの別画面を確認してください。表示されない場合は、ブラウザのポップアップ禁止設定をご確認ください。';
+  let attempt;
+  try{
+    // The popup must be requested synchronously from the user's click, BEFORE render().
+    attempt=firebaseBridge.login();
+  }catch(error){
+    firebaseLoginBusy=false;firebaseMessage=authErrorMessage(error);render();return;
+  }
+  render();
+  Promise.resolve(attempt).then(()=>{
+    firebaseLoginBusy=false;
+    firebaseMessage='Googleログインが完了しました。管理者UIDを確認してください。';
+    render();
+  },error=>{
+    firebaseLoginBusy=false;
+    firebaseMessage=authErrorMessage(error);
+    render();
+  });
+}
+
 function safeJSON(text){try{return JSON.parse(text)}catch{return null}}
 function readState(){
   const v=safeJSON(localStorage.getItem(STORAGE_KEY) || '');
@@ -147,10 +189,11 @@ function adminPage(){
   '<div class="admin-title">⚙ 管理者向け設定</div>'+
   '<div class="status '+(firebaseStatus==='ready'?'':'warn')+'">☁ '+esc(cloudStatusLabel())+'</div>'+
   '<div class="admin-card"><h3>Firebase・管理者ログイン</h3><p>保護者はログイン不要。管理者だけGoogleでログインします。持ち物の登録には別途Firestoreの権限設定が必要です。</p>'+
-  (firebaseMessage?'<p class="status warn">'+esc(firebaseMessage)+'</p>':'')+
+  (firebaseMessage?'<p class="status warn" role="status" aria-live="polite">'+esc(firebaseMessage)+'</p>':'')+
   (!firebaseBridge?'<p>Firebaseを準備しています。</p>':!firebaseUser?
-   '<button type="button" class="admin-link" data-action="firebase-login">Googleでログイン</button>':
+   '<button type="button" class="admin-link" data-action="firebase-login" '+(firebaseLoginBusy?'disabled':'')+'>'+(firebaseLoginBusy?'ログイン画面を確認中…':'Googleでログイン')+'</button>':
    '<p>✅ Googleログイン済み</p><p>管理者UID：<code style="overflow-wrap:anywhere">'+esc(firebaseUser.uid)+'</code></p><button type="button" class="admin-small" data-action="firebase-copy">UIDをコピー</button> <button type="button" class="admin-small" data-action="firebase-logout">ログアウト</button>')+
+  '<p>Googleのログイン画面は別ウィンドウで開きます。開かない場合は、ブラウザのポップアップ許可設定とFirebaseの承認済みドメインを確認してください。</p>'+
   '<p>現在は接続準備の段階です。セキュリティルールと管理者登録後に、②の画面内編集機能を有効化します。</p></div>'+
   '<p class="admin-notice">道具マスターと画像はGitHubで管理します。編集・保存には、このリポジトリへの書き込み権限があるGitHubアカウントが必要です。閲覧するだけならログイン不要です。</p>'+
   '<section class="admin-section">'+
@@ -183,11 +226,7 @@ ROOT.addEventListener('click',e=>{
   else if(a==='back'){view='check';render();window.scrollTo({top:0,behavior:'instant'})}
   else if(a==='reset'){if(confirm('この活動の今日のチェックをすべて外しますか？')){state.checks[checkKey()]=[];save();render()}}
   else if(a==='retry'){loadMaster().then(render)}
-  else if(a==='firebase-login'&&firebaseBridge){
-    firebaseBridge.login().catch(e=>{
-      firebaseMessage='ログインできませんでした。「承認済みドメイン」に tutumi2011kt-gif.github.io を追加し、ポップアップを許可してください。'+(e?.code?' ['+e.code+']':'');render()
-    });
-  }
+  else if(a==='firebase-login'){beginFirebaseLogin()}
   else if(a==='firebase-logout'&&firebaseBridge){firebaseBridge.logout().catch(()=>{})}
   else if(a==='firebase-copy'&&firebaseUser){
     navigator.clipboard?.writeText(firebaseUser.uid).then(()=>{firebaseMessage='UIDをコピーしました。';render()})
