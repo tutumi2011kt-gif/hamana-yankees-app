@@ -1,6 +1,6 @@
 // Firebase web client config is public; access is restricted by Firestore Rules.
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import {getFirestore,doc,onSnapshot,setDoc,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import {getFirestore,doc,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 
 const config={
@@ -24,7 +24,15 @@ export function connect({onData,onStatus,onUser}){
   return {
     login:()=>signInWithPopup(auth,new GoogleAuthProvider()),
     logout:()=>signOut(auth),
-    save:data=>setDoc(docRef,{modes:data.modes,profiles:data.profiles,
-      notes:data.notes,revision:String(data.revision),updatedAt:serverTimestamp()})
+    save:(data,expected)=>runTransaction(getFirestore(firebase),async tx=>{
+      const current=await tx.get(docRef);
+      if(expected===null){
+        if(current.exists())throw new Error('already-initialized');
+      }else if(!current.exists()||current.data().revision!==expected){
+        throw new Error('revision-conflict');
+      }
+      tx.set(docRef,{modes:data.modes,profiles:data.profiles,
+        notes:data.notes,revision:String(data.revision),updatedAt:serverTimestamp()});
+    })
   };
 }

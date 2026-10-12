@@ -79,3 +79,7 @@ GitHubで編集したら、リストと画像を別のスマホで確認して�
   3. In Firebase Firestore > ルール, replace __ADMIN_UID__ in gear-check/firestore.rules with that UID and publish.
   4. Phase 2: app-based editor and first initialization of gearCheck/config. Until then the ② link to GitHub remains as before.
 - firestore.rules in this repository is a TEMPLATE and is not deployed automatically.
+
+
+## Firebase activity editor (2026-10-12)
+The admin page can now initialize Firestore once from existing GitHub seasonal lists (button: 現在の活動リストをFirebaseに初期登録), then edit 3 default activities, add activity names, select summer/winter gear from storehouse 1 and 2, copy a previous list, and save. Firestore onSnapshot updates open clients in real-time; device checkmarks remain local. Saving runs a Firestore transaction and checks the current revision; conflicting or unauthorized saves fail with a useful message. Firestore Rules need to be manually published with the administrator UID. No personal information should be stored in the publicly readable list.
