@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-12-7items-illustrations-v1",
+  "revision": "2026-10-13-new-3-items-v1",
   "items": [
     {
       "id": "ballbasket",
@@ -21,6 +21,13 @@
       "store": 1,
       "qty": "",
       "image": "./assets/items/foldbasket-20261012.webp"
+    },
+    {
+      "id": "colorballs",
+      "name": "カラーボール",
+      "store": 1,
+      "qty": "",
+      "image": "./assets/items/colorballs.webp"
     },
     {
       "id": "helmet",
@@ -179,6 +186,20 @@
       "store": 2,
       "qty": "",
       "image": "./assets/items/tballstand.webp"
+    },
+    {
+      "id": "foldbasket-bottle",
+      "name": "折りたたみかご（水筒入れ）",
+      "store": 2,
+      "qty": "2つ",
+      "image": "./assets/items/foldbasket-bottle.webp"
+    },
+    {
+      "id": "foldbasket-glove",
+      "name": "折りたたみかご（グローブ入れ）",
+      "store": 2,
+      "qty": "1つ",
+      "image": "./assets/items/foldbasket-glove.webp"
     }
   ]
 }

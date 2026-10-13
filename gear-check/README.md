@@ -83,3 +83,11 @@ GitHubで編集したら、リストと画像を別のスマホで確認して�
 
 ## Firebase activity editor (2026-10-12)
 The admin page can now initialize Firestore once from existing GitHub seasonal lists (button: 現在の活動リストをFirebaseに初期登録), then edit 3 default activities, add activity names, select summer/winter gear from storehouse 1 and 2, copy a previous list, and save. Firestore onSnapshot updates open clients in real-time; device checkmarks remain local. Saving runs a Firestore transaction and checks the current revision; conflicting or unauthorized saves fail with a useful message. Firestore Rules need to be manually published with the administrator UID. No personal information should be stored in the publicly readable list.
+
+
+## 道具を3件追加 (2026-10-13)
+- 器具庫1: カラーボール (id: colorballs)
+- 器具庫2: 折りたたみかご（水筒入れ） (id: foldbasket-bottle; 数量: 2つ)
+- 器具庫2: 折りたたみかご（グローブ入れ） (id: foldbasket-glove; 数量: 1つ)
+- 承認済みイラスト一覧から各道具画像を切り出し、独立したWebPとして格納。
+- 画像・道具マスターはGitHubに追加。既存のFirebase活動別持ち物リストは変更せず、管理者が必要な活動・季節で項目を選択し「登録して全員に反映」を押すと保護者画面に反映される。
