@@ -98,3 +98,11 @@ The admin page can now initialize Firestore once from existing GitHub seasonal l
 - 承認された「球道無限」横断幕のイラストを、道具チェック用に切り出して `assets/items/banner.webp` に追加。
 - `data/items.json` に横断幕を登録し、Service Workerのキャッシュを更新。
 - Firebase上の活動・季節別リストは変更せず、管理者が必要な活動と季節を選び「横断幕」にチェックして保存する方式。
+
+
+## 保護者へのQR共有 (2026-10-17)
+- 道具チェック画面と管理者向け設定画面の最下部に「友だちにアプリを紹介」ボタンを追加。
+- ボタン押下で公開URL https://tutumi2011kt-gif.github.io/hamana-yankees-app/gear-check/ の静的QR画像を表示。QR読み取り検証済み。
+- URLコピーとスマホOSのネイティブ共有（LINEなど）に対応。Web Share APIがない場合はURLコピーにフォールバック。
+- QR画像をアプリのService Workerキャッシュ対象にし、オフラインでも表示可能。
+- Firebaseの活動別リストと保護者個人のチェック状態には変更なし。

@@ -11,6 +11,8 @@ const DEFAULT_MODES = [
 ];
 let MODES=DEFAULT_MODES.map(m=>({...m}));
 const REPO = 'https://github.com/tutumi2011kt-gif/hamana-yankees-app';
+const SHARE_URL = 'https://tutumi2011kt-gif.github.io/hamana-yankees-app/gear-check/';
+let shareOpen = false, shareMessage = '';
 let editor=null, editorBusy=false, editorStatus='';
 let master=null, view='check', isOffline=false, loadError='';
 let firebaseBridge=null, firebaseStatus='connecting', firebaseUser=null, firebaseMessage='';
@@ -292,12 +294,62 @@ function adminPage(){
   '<div class="admin-card"><h3>③ 道具のイラストを変更</h3>'+link('tree/main/gear-check/assets/items','道具イラスト一覧を見る')+'</div>'+
   '<div class="admin-card"><h3>④ 管理手順を見る</h3>'+link('blob/main/gear-check/README.md','更新手順を確認',true)+'</div>';
 }
+function shareHTML(){
+  return '<section class="share-section" aria-label="アプリの紹介">'+
+    '<button type="button" class="share-main-button" data-action="share-toggle" aria-expanded="'+shareOpen+'" aria-controls="share-qr-panel">'+
+      '📱 友だちにアプリを紹介　<span class="share-button-arrow">'+(shareOpen?'▲':'▼')+'</span>'+
+    '</button>'+
+    (shareOpen?'<div id="share-qr-panel" class="share-panel">'+
+      '<p class="share-heading">⚾ 浜名ヤンキース 道具チェック</p>'+
+      '<p class="share-instructions">相手のスマホでカメラを向けてね！<br>表示されたリンクをタップするとアプリが開くよ。</p>'+
+      '<div class="share-qr-frame"><img src="./assets/share-qr.png" width="280" height="280" alt="浜名ヤンキース道具チェックアプリを開くQRコード"></div>'+
+      '<p class="share-url">'+esc(SHARE_URL)+'</p>'+
+      '<div class="share-actions">'+
+        '<button type="button" class="share-action" data-action="share-copy">🔗 URLをコピー</button>'+
+        '<button type="button" class="share-action primary" data-action="share-native">📤 LINEなどで送る</button>'+
+      '</div>'+
+      (shareMessage?'<p class="share-message" role="status">'+esc(shareMessage)+'</p>':'')+
+      '<p class="share-hint">保護者の方はログイン不要。ホーム画面に追加すると次から簡単に開けるよ。</p>'+
+    '</div>':'')+
+  '</section>';
+}
+async function copyShareURL(){
+  let copied=false;
+  try{
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(SHARE_URL);
+      copied=true;
+    }
+  }catch{}
+  if(!copied){
+    const box=document.createElement('textarea');
+    box.value=SHARE_URL;box.setAttribute('readonly','');
+    box.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(box);box.select();
+    try{copied=document.execCommand('copy')}catch{}
+    box.remove();
+  }
+  shareMessage=copied?'✅ URLをコピーしたよ！ LINEなどに貼り付けて送ってね。':'コピーできませんでした。上のURLを長押ししてコピーしてね。';
+  render();
+}
+function openNativeShare(){
+  if(navigator.share){
+    let result;
+    try{result=navigator.share({title:'浜名ヤンキース｜道具チェック',text:'少年野球の持ち物チェックアプリだよ！',url:SHARE_URL})}
+    catch(e){shareMessage='共有画面を開けませんでした。URLをコピーして送ってね。';render();return}
+    Promise.resolve(result).catch(e=>{
+      if(e?.name==='AbortError')return;
+      shareMessage='共有ができませんでした。URLをコピーして送ってね。';render();
+    });
+  }else copyShareURL();
+}
+
 function render(){
   const modeLabel=MODES.find(x=>x.id===state.mode)?.label||'河川敷練習';
   ROOT.innerHTML='<main class="app"><header class="hero"><img class="hero-art" src="./assets/hero/riverbank.webp" alt="" onerror="this.onerror=null;this.src=\'./assets/hero.svg\'"><div class="hero-shade"></div><div class="brand"><span class="mini-tag">⚾ HAMANA YANKEES</span><h1>浜名ヤンキース<strong>道具チェック</strong></h1><div class="strap">みんなで準備、忘れ物ゼロ！</div></div></header><div class="intro"><i></i><span>今日も元気に、準備スタート！</span></div>'+
   (view==='check' || !master ? modeTabs()+seasonTabs():'')+
   (loadError?'<div class="status warn">'+esc(loadError)+' <button type="button" class="reset" data-action="retry">再読み込み</button></div>':!master?'<div class="status">持ち物リストを準備しています…</div>':view==='check'?checklist():adminPage())+
-  '<footer class="footer">浜名ヤンキース｜'+esc(modeLabel)+'<br>道具リストは全員共通・チェックはこの端末だけで保存<br>※公開ページのため、個人情報は登録しないでください。</footer></main>';
+  '<footer class="footer">浜名ヤンキース｜'+esc(modeLabel)+'<br>道具リストは全員共通・チェックはこの端末だけで保存<br>※公開ページのため、個人情報は登録しないでください。</footer>'+shareHTML()+'</main>';
 }
 function updateProgress(){
   const all=selected(),done=checkedSet(),finished=all.filter(x=>done.has(x.id)).length;
@@ -315,6 +367,9 @@ ROOT.addEventListener('click',e=>{
   else if(a==='back'){view='check';render();window.scrollTo({top:0,behavior:'instant'})}
   else if(a==='reset'){if(confirm('この活動の今日のチェックをすべて外しますか？')){state.checks[checkKey()]=[];save();render()}}
   else if(a==='retry'){loadMaster().then(render)}
+  else if(a==='share-toggle'){shareOpen=!shareOpen;shareMessage='';render();if(shareOpen)ROOT.querySelector('#share-qr-panel')?.scrollIntoView({behavior:'smooth',block:'nearest'})}
+  else if(a==='share-copy'){copyShareURL()}
+  else if(a==='share-native'){openNativeShare()}
   else if(a==='edit-mode'&&master&&!editorBusy){if(chooseEditor(id,editor?.season||'summer'))render()}
   else if(a==='edit-season'&&master&&!editorBusy&&['summer','winter'].includes(id)){
     if(editor?.newMode){if(editor.dirty&&!confirm('未保存の内容を破棄して季節を変えますか？'))return;editor.season=id;editor.dirty=false;render()}

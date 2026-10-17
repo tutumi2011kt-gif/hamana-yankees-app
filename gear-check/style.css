@@ -103,3 +103,19 @@ button{font:inherit;cursor:pointer}a{color:inherit}button:focus-visible,a:focus-
 .admin-primary{display:block;width:100%;border:0;border-radius:13px;padding:15px;background:#1a956e;color:white;font-size:14px;font-weight:950;min-height:51px;margin:14px 0}
 .admin-primary:disabled{opacity:.45;cursor:not-allowed}
 .admin-tip{font-size:11px!important;color:#7b7357!important;line-height:1.75!important}
+
+/* Share the public gear-check app with other parents: QR is static/offline-friendly. */
+.share-section{margin:22px 0 8px;text-align:center}
+.share-main-button{width:100%;max-width:560px;min-height:54px;border:2px solid #badedb;border-radius:17px;background:#eaf8f2;color:#176b57;font-size:15px;font-weight:950;padding:13px 14px;box-shadow:0 4px 0 #d3e9e0}
+.share-button-arrow{font-size:12px;margin-left:8px}
+.share-panel{background:white;border:1px solid #d9eae6;border-radius:18px;padding:19px 12px 17px;margin:15px auto 0;max-width:560px;box-shadow:var(--shadow)}
+.share-heading{font-weight:950;font-size:16px;color:#24476a;margin:0 0 8px}
+.share-instructions{color:#5f7581;font-size:13px;line-height:1.85;margin:0 0 12px}
+.share-qr-frame{display:inline-block;max-width:100%;background:#fff;border:1px solid #e0e8e8;border-radius:12px;padding:11px}
+.share-qr-frame img{display:block;width:min(72vw,280px);height:auto;aspect-ratio:1;image-rendering:pixelated}
+.share-url{font-size:11px;color:#456f80;overflow-wrap:anywhere;word-break:break-word;margin:12px auto 14px;max-width:330px}
+.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.share-action{border:1px solid #b6d9df;border-radius:12px;padding:12px 8px;background:#f1f8fa;color:#285d75;font-size:12px;font-weight:900;min-height:49px}
+.share-action.primary{background:#1c9372;color:white;border-color:#1c9372}
+.share-message{margin:13px 0 3px;padding:9px;background:#e5f7ec;border-radius:10px;font-size:12px;color:#146b4e}
+.share-hint{font-size:11px;color:#748b91;line-height:1.7;margin:13px 0 0}
