@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-13-new-3-items-v1",
+  "revision": "2026-10-17-banner-v1",
   "items": [
     {
       "id": "ballbasket",
@@ -130,6 +130,13 @@
       "store": 1,
       "qty": "",
       "image": "./assets/items/flagpole_support.svg"
+    },
+    {
+      "id": "banner",
+      "name": "横断幕",
+      "store": 1,
+      "qty": "",
+      "image": "./assets/items/banner.webp"
     },
     {
       "id": "toolbox",

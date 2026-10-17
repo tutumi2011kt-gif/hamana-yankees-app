@@ -91,3 +91,10 @@ The admin page can now initialize Firestore once from existing GitHub seasonal l
 - 器具庫2: 折りたたみかご（グローブ入れ） (id: foldbasket-glove; 数量: 1つ)
 - 承認済みイラスト一覧から各道具画像を切り出し、独立したWebPとして格納。
 - 画像・道具マスターはGitHubに追加。既存のFirebase活動別持ち物リストは変更せず、管理者が必要な活動・季節で項目を選択し「登録して全員に反映」を押すと保護者画面に反映される。
+
+
+## 横断幕アイテムを追加 (2026-10-17)
+- 器具庫1: 横断幕 (id: banner, 通常数量: なし)
+- 承認された「球道無限」横断幕のイラストを、道具チェック用に切り出して `assets/items/banner.webp` に追加。
+- `data/items.json` に横断幕を登録し、Service Workerのキャッシュを更新。
+- Firebase上の活動・季節別リストは変更せず、管理者が必要な活動と季節を選び「横断幕」にチェックして保存する方式。
