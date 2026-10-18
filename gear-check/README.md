@@ -106,3 +106,11 @@ The admin page can now initialize Firestore once from existing GitHub seasonal l
 - URLコピーとスマホOSのネイティブ共有（LINEなど）に対応。Web Share APIがない場合はURLコピーにフォールバック。
 - QR画像をアプリのService Workerキャッシュ対象にし、オフラインでも表示可能。
 - Firebaseの活動別リストと保護者個人のチェック状態には変更なし。
+
+
+## iPhone Home Screen app refreshing (2026-10-18)
+- Problem: standalone PWAs can resume an existing page (without browser chrome/reload), leaving GitHub-backed equipment master and app assets unchanged until a navigation.
+- Added visible '最新の持ち物リストに更新' control to regular checklist; it reloads the page (service worker uses network-first), while the device's localStorage checkmarks persist.
+- On visibility return after >=15 seconds in background, automatically reload **only the normal checklist view** if online. Never interrupt the admin editor (including unsaved draft) or Google popup.
+- Firebase onSnapshot continues handling changes to activity-specific lists while open; reopening also reloads the GitHub item master so newly added equipment can be recognized.
+- Service Worker revision bumped to trigger updated app resource caching. No Firestore changes.

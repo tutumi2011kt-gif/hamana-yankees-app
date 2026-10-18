@@ -344,10 +344,42 @@ function openNativeShare(){
   }else copyShareURL();
 }
 
+// Home-screen PWA may resume a previous webview instead of navigating again.
+// Refresh from GitHub when returning to the checklist after being in the background.
+const FOREGROUND_RELOAD_THRESHOLD_MS=15000;
+let hiddenAt=document.hidden?Date.now():0;
+let refreshingPage=false;
+function reloadLatest(){
+  if(refreshingPage)return;
+  refreshingPage=true;
+  window.location.reload();
+}
+function refreshOnResume(){
+  if(!hiddenAt)return;
+  const elapsed=Date.now()-hiddenAt;
+  hiddenAt=0;
+  // Never interrupt a Firebase admin edit or an active Google-login popup.
+  if(elapsed>=FOREGROUND_RELOAD_THRESHOLD_MS&&view==='check'&&!firebaseLoginBusy&&navigator.onLine!==false){
+    reloadLatest();
+  }
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){hiddenAt=Date.now();return}
+  refreshOnResume();
+});
+window.addEventListener('pagehide',()=>{hiddenAt=Date.now()});
+window.addEventListener('pageshow',e=>{if(e.persisted)refreshOnResume()});
+window.addEventListener('focus',()=>{if(!document.hidden)refreshOnResume()});
+function refreshButtonHTML(){
+  return '<div class="refresh-panel"><button type="button" class="refresh-button" data-action="reload-latest">'+
+    '↻ 最新の持ち物リストに更新</button><span class="refresh-help">ホーム画面から開き直した時も、自動で最新版を確認します</span></div>';
+}
+
 function render(){
   const modeLabel=MODES.find(x=>x.id===state.mode)?.label||'河川敷練習';
   ROOT.innerHTML='<main class="app"><header class="hero"><img class="hero-art" src="./assets/hero/riverbank.webp" alt="" onerror="this.onerror=null;this.src=\'./assets/hero.svg\'"><div class="hero-shade"></div><div class="brand"><span class="mini-tag">⚾ HAMANA YANKEES</span><h1>浜名ヤンキース<strong>道具チェック</strong></h1><div class="strap">みんなで準備、忘れ物ゼロ！</div></div></header><div class="intro"><i></i><span>今日も元気に、準備スタート！</span></div>'+
   (view==='check' || !master ? modeTabs()+seasonTabs():'')+
+  (view==='check' && master ? refreshButtonHTML():'')+
   (loadError?'<div class="status warn">'+esc(loadError)+' <button type="button" class="reset" data-action="retry">再読み込み</button></div>':!master?'<div class="status">持ち物リストを準備しています…</div>':view==='check'?checklist():adminPage())+
   '<footer class="footer">浜名ヤンキース｜'+esc(modeLabel)+'<br>道具リストは全員共通・チェックはこの端末だけで保存<br>※公開ページのため、個人情報は登録しないでください。</footer>'+shareHTML()+'</main>';
 }
@@ -367,6 +399,7 @@ ROOT.addEventListener('click',e=>{
   else if(a==='back'){view='check';render();window.scrollTo({top:0,behavior:'instant'})}
   else if(a==='reset'){if(confirm('この活動の今日のチェックをすべて外しますか？')){state.checks[checkKey()]=[];save();render()}}
   else if(a==='retry'){loadMaster().then(render)}
+  else if(a==='reload-latest'){reloadLatest()}
   else if(a==='share-toggle'){shareOpen=!shareOpen;shareMessage='';render();if(shareOpen)ROOT.querySelector('#share-qr-panel')?.scrollIntoView({behavior:'smooth',block:'nearest'})}
   else if(a==='share-copy'){copyShareURL()}
   else if(a==='share-native'){openNativeShare()}

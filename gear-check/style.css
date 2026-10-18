@@ -119,3 +119,9 @@ button{font:inherit;cursor:pointer}a{color:inherit}button:focus-visible,a:focus-
 .share-action.primary{background:#1c9372;color:white;border-color:#1c9372}
 .share-message{margin:13px 0 3px;padding:9px;background:#e5f7ec;border-radius:10px;font-size:12px;color:#146b4e}
 .share-hint{font-size:11px;color:#748b91;line-height:1.7;margin:13px 0 0}
+
+/* PWA reload control: iOS home-screen apps have no Safari refresh chrome. */
+.refresh-panel{display:flex;flex-direction:column;align-items:center;gap:6px;margin:-2px 0 15px}
+.refresh-button{border:1.5px solid #add6df;border-radius:999px;background:#eef8fc;color:#226884;font-size:13px;font-weight:900;padding:10px 19px;min-height:44px;max-width:100%;box-shadow:0 2px 0 #daedf0}
+.refresh-button:active{transform:translateY(1px)}
+.refresh-help{text-align:center;font-size:10px;color:#778c92;line-height:1.6}
