@@ -57,7 +57,7 @@
 <label>動画について一言 <small>（任意）</small></label><textarea id="reelNote" placeholder="例：みんな笑顔でノック練習。低学年も元気いっぱいでした。"></textarea>
 <div class="actions"><button type="button" class="primary" id="reelGenerate">プロンプトを作る</button><button type="button" class="ghost" id="reelCopy">コピー</button></div><label>ChatGPTへ送る内容</label><textarea class="prompt-box" id="reelPrompt" readonly></textarea><div class="sticky"><a class="secondary chatlink" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPTを開く</a></div>
 </section>
-<div class="footer-note">現在の部員数：15人（4年生5人・3年生7人・2年生3人・1年生0人）</div>
+<div class="footer-note">現在の部員数：16人（4年生5人・3年生7人・2年生4人・1年生0人）</div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -71,8 +71,8 @@ window.addEventListener('unhandledrejection',ev=>showError(ev.reason||'不明な
 function toast(msg){const t=$('toast'); if(!t)return; t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600)}
 function valRadio(name){const el=q(`input[name="${name}"]:checked`);return el?el.value:''}
 function dateJP(v){if(!v)return '';const p=v.split('-');return `${Number(p[0])}年${Number(p[1])}月${Number(p[2])}日`}
-function memberBlock(){return `現在の部員数\n　4年生：5人\n　3年生：7人\n　2年生：3人\n　1年生：0人\n🌸新しい仲間を大募集中🌸\n特に1・2年生のお友達、大歓迎です！\n野球が初めてでも大丈夫😊\nみんなで楽しく活動しています♪`}
-function baseRules(){return `あなたは静岡県浜松市浜名区にある少年野球チーム「浜名ヤンキース」（4年生以下）の親コーチであり、優秀なマーケティング部長です。\n現在の部員は15人です。2026年度中に新規部員を増やすことを重要な目標とし、Instagramを主軸に広報します。\nターゲットは30代女性、5〜9歳くらいのお子さんがいる母親です。「子どもが楽しそう」「親も安心」「雰囲気が良さそう」「野球未経験でも入りやすそう」と感じる、やさしく親しみやすく押しつけがましくない投稿にしてください。\n\n【Instagram本文の固定ルール】\n・季節感を自然に入れる。\n・体験に来たくなる文章にする。\n・文章の一番最後付近に「いつでも気軽に体験に来てね」「お待ちしております」のニュアンスを自然に入れる。\n・本文末に以下を縦並びで入れる。\n${memberBlock()}\n・その後1行空けて、検索されやすさを吟味したハッシュタグを必ず5個だけ、#から始めて縦5行で並べる。\n・ハッシュタグの前に見出しは入れない。\n\n【画像の固定ルール】\n・Instagram用正方形1080×1080px。\n・明るい、安心感、楽しそう、子どもが主役。\n・ジブリ風をイメージした、やさしい手描きアニメ映画調。柔らかな光、親しみやすい表情、あたたかい色合いを基本とする。\n・季節感を必ず入れる。開催日から春・夏・秋・冬の空気感を自然に判断する。\n・文字を安全域に収め、日本語を読みやすくする。\n・画像内に具体的な年齢表記を入れない。\n・少年野球の画像では、Tボール、ティースタンド、棒の上にボールを置いて打つ表現を使わない。\n・画像はいきなり生成しない。最初に画像構成案を文章で提案し、私と議論する。私が「画像生成して」と言った時だけ生成する。`}
+function memberBlock(){return `現在の部員数\n　4年生：5人\n　3年生：7人\n　2年生：4人\n　1年生：0人\n🌸新しい仲間を大募集中🌸\n特に1・2年生のお友達、大歓迎です！\n野球が初めてでも大丈夫😊\nみんなで楽しく活動しています♪`}
+function baseRules(){return `あなたは静岡県浜松市浜名区にある少年野球チーム「浜名ヤンキース」（4年生以下）の親コーチであり、優秀なマーケティング部長です。\n現在の部員は16人です。2026年度中に新規部員を増やすことを重要な目標とし、Instagramを主軸に広報します。\nターゲットは30代女性、5〜9歳くらいのお子さんがいる母親です。「子どもが楽しそう」「親も安心」「雰囲気が良さそう」「野球未経験でも入りやすそう」と感じる、やさしく親しみやすく押しつけがましくない投稿にしてください。\n\n【Instagram本文の固定ルール】\n・季節感を自然に入れる。\n・体験に来たくなる文章にする。\n・文章の一番最後付近に「いつでも気軽に体験に来てね」「お待ちしております」のニュアンスを自然に入れる。\n・本文末に以下を縦並びで入れる。\n${memberBlock()}\n・その後1行空けて、検索されやすさを吟味したハッシュタグを必ず5個だけ、#から始めて縦5行で並べる。\n・ハッシュタグの前に見出しは入れない。\n\n【画像の固定ルール】\n・Instagram用正方形1080×1080px。\n・明るい、安心感、楽しそう、子どもが主役。\n・ジブリ風をイメージした、やさしい手描きアニメ映画調。柔らかな光、親しみやすい表情、あたたかい色合いを基本とする。\n・季節感を必ず入れる。開催日から春・夏・秋・冬の空気感を自然に判断する。\n・文字を安全域に収め、日本語を読みやすくする。\n・画像内に具体的な年齢表記を入れない。\n・少年野球の画像では、Tボール、ティースタンド、棒の上にボールを置いて打つ表現を使わない。\n・画像はいきなり生成しない。最初に画像構成案を文章で提案し、私と議論する。私が「画像生成して」と言った時だけ生成する。`}
 const MAX_SCHEDULES=5;
 let visibleSchedules=1;
 const scheduleTimes=['12:30〜15:30','8:30〜11:30','8:30〜15:30','その他'];
