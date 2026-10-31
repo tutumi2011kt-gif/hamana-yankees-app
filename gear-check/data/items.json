@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-17-banner-v1",
+  "revision": "2026-10-31-helmethanger-v1",
   "items": [
     {
       "id": "ballbasket",
@@ -35,6 +35,13 @@
       "store": 1,
       "qty": "",
       "image": "./assets/items/helmet.webp"
+    },
+    {
+      "id": "helmethanger",
+      "name": "ヘルメット掛け",
+      "store": 1,
+      "qty": "",
+      "image": "./assets/items/helmethanger.svg"
     },
     {
       "id": "bluesheet",
