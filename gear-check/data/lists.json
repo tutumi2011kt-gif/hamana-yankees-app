@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-31-helmethanger-list-v2",
+  "revision": "2026-10-31-banner-poles-v1",
   "profiles": {
     "river-summer": [
       "ballbasket",
@@ -22,7 +22,8 @@
       "teabag",
       "bench",
       "coachchair",
-      "tballstand"
+      "tballstand",
+      "banner_poles"
     ],
     "river-winter": [
       "ballbasket",
@@ -45,7 +46,8 @@
       "teabag",
       "bench",
       "coachchair",
-      "tballstand"
+      "tballstand",
+      "banner_poles"
     ],
     "practice-summer": [],
     "practice-winter": [],
