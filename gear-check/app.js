@@ -22,6 +22,20 @@ const cloudStatusLabel=()=>({
   locked:'閲覧ルール未設定（現在はGitHubのリストを表示）',
   offline:'Firebaseに接続できません（現在はGitHubのリストを表示）'
 })[firebaseStatus]||'確認中';
+// Older Firebase configs predate the new helmet rack. Show it for river practice
+// until an admin next saves the profile, at which point regular editing takes over.
+const HELMET_RACK_ID='helmethanger';
+const HELMET_RACK_MIGRATION_PREFIX='hh1-';
+function migrateLegacyHelmetRackProfiles(profiles,revision){
+  if(String(revision||'').startsWith(HELMET_RACK_MIGRATION_PREFIX))return profiles;
+  const next={...profiles};
+  for(const key of ['river-summer','river-winter']){
+    if(Array.isArray(next[key])&&!next[key].includes(HELMET_RACK_ID)){
+      next[key]=[...next[key],HELMET_RACK_ID];
+    }
+  }
+  return next;
+}
 function receiveCloud(data){
   if(!master||!data||!Array.isArray(data.modes)||!data.modes.length||data.modes.length>40||
      !data.modes.every(m=>m&&/^[a-z0-9_-]{1,50}$/.test(m.id)&&typeof m.label==='string'&&m.label.length<=40)||
@@ -31,7 +45,8 @@ function receiveCloud(data){
     return;
   }
   MODES=data.modes.map(m=>({id:m.id,label:m.label,icon:typeof m.icon==='string'?m.icon.slice(0,4):'⚾'}));
-  master.lists={profiles:data.profiles,notes:data.notes||{},revision:data.revision||''};
+  const profiles=migrateLegacyHelmetRackProfiles(data.profiles,data.revision);
+  master.lists={profiles,notes:data.notes||{},revision:data.revision||''};
   saveCache(master);
   if(editor&&!editor.newMode&&!MODES.some(m=>m.id===editor.id))chooseEditor(MODES[0].id,editor.season,true);
   if(!MODES.some(m=>m.id===state.mode)){state.mode=MODES[0].id;save()}
@@ -262,7 +277,7 @@ async function saveEditor(seed=false){
   editorBusy=true;editorStatus='Firebaseに保存しています…';render();
   try{
     await firebaseBridge.save({modes,profiles,notes,
-      revision:'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)},expected);
+      revision:HELMET_RACK_MIGRATION_PREFIX+'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)},expected);
     if(newId){editor.id=newId;editor.newMode=false}
     editor.dirty=false;
     editorStatus=seed?'✅ 初期登録が完了しました。':'✅ 登録完了！保護者の画面に自動反映されます。';
