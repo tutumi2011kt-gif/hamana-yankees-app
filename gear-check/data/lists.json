@@ -1,11 +1,12 @@
 {
-  "revision": "2026-10-12-flagpole-1",
+  "revision": "2026-10-31-helmethanger-list-v2",
   "profiles": {
     "river-summer": [
       "ballbasket",
       "tballbasket",
       "foldbasket",
       "helmet",
+      "helmethanger",
       "bluesheet",
       "knockbat",
       "bso",
@@ -28,6 +29,7 @@
       "tballbasket",
       "foldbasket",
       "helmet",
+      "helmethanger",
       "bluesheet",
       "knockbat",
       "bso",
