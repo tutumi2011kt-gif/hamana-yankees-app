@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-31-helmethanger-v1",
+  "revision": "2026-10-31-banner-poles-v1",
   "items": [
     {
       "id": "ballbasket",
@@ -144,6 +144,13 @@
       "store": 1,
       "qty": "",
       "image": "./assets/items/banner.webp"
+    },
+    {
+      "id": "banner_poles",
+      "name": "横断幕を立てる棒",
+      "store": 1,
+      "qty": "4本",
+      "image": "./assets/items/banner_poles.svg"
     },
     {
       "id": "toolbox",
