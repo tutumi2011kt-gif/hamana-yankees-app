@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#e8f5fc">
+<title>🏀 管理者｜メンバー編集</title>
+<style>
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:#f3f7fb;color:#26394f;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+main{max-width:730px;margin:auto;padding:12px 11px 55px}header{background:linear-gradient(120deg,#e6f3ff,#fff7e8);border:1px solid #e4eaf0;border-radius:17px;padding:17px 15px}
+h1{font-size:21px;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}p{margin:6px 0}.muted{font-size:12px;color:#61778c}.panel{border:1px solid #dce5ed;background:white;border-radius:15px;padding:14px 12px;margin:11px 0}.warn{padding:10px 12px;background:#fff2df;border:1px solid #f2d9b2;border-radius:9px;font-size:12px}.ok{padding:10px 12px;background:#eaf8f0;border:1px solid #c1e4cf;border-radius:9px;color:#166946;font-size:13px}.error{padding:10px 12px;background:#fff0f2;border:1px solid #e9bec8;border-radius:9px;color:#a52f49;font-size:13px}
+button,select,input,textarea{font:inherit;color:inherit}button{border:1px solid #cbd8e4;background:white;border-radius:11px;min-height:44px;padding:10px 12px;cursor:pointer;font-weight:800}button.primary{background:#275681;border-color:#275681;color:white}button.good{background:#197456;border-color:#197456;color:#fff}button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:7px;flex-wrap:wrap}.row>*{flex:1 1 135px}.field{margin-top:11px}.field label.top{display:block;font-weight:800;font-size:12px;margin-bottom:4px}.input{width:100%;min-height:43px;border:1px solid #c9d8e3;border-radius:9px;padding:9px 10px;background:white}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.grid2 .field{min-width:0}
+.weekdays{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.weekdays label{min-height:45px;display:flex;justify-content:center;align-items:center;gap:6px;border:1px solid #d7e2eb;background:#f7fafd;border-radius:10px;font-weight:800}
+input[type=checkbox]{accent-color:#1b7a57;width:17px;height:17px}
+textarea{resize:vertical;min-height:76px}.hidden{display:none!important}
+#members-list{display:grid;gap:6px;margin-top:9px}.member{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #e1e9f0;border-radius:10px;padding:9px 10px}.member b{font-size:14px}.member small{display:block;color:#6a7a8e;font-size:11px}.member button{min-width:70px}
+.radio{display:flex;gap:12px;flex-wrap:wrap;margin:5px 0 7px}.radio label{display:flex;gap:5px;align-items:center;font-size:13px;font-weight:700}.radio input{accent-color:#1b7a57}
+details{border:1px solid #e1e8f0;border-radius:10px;padding:9px 10px;margin:9px 0}summary{font-weight:800}
+footer{font-size:11px;color:#718095}
+@media(max-width:360px){.panel{padding:11px 9px}.grid2{gap:6px}.weekdays{gap:4px}.weekdays label{font-size:12px}}
+</style></head><body><main>
+<header><h1>🏀 メンバー管理</h1><p>管理者専用｜Firebaseと連動</p><div class="warn"><b>この画面の「保存」は本番Firebaseのメンバー情報を変更します。</b> 当番表の確定済み担当日を自動で書き換えることはありません。変更後は当番表の再チェックが必要です。</div></header>
+<section class="panel"><h2>① 管理者ログイン</h2><p id="login-status" class="muted">Googleログインの状態を確認中…</p><button id="login" class="primary">Googleでログイン</button><p class="muted">初期登録時に使った管理者Googleアカウントを選択してください。</p></section>
+<section class="panel"><h2>② メンバーを選択</h2><p id="load-status" class="muted">管理者認証後に12人の情報を読み込みます。</p><div id="members-list"></div></section>
+<section class="panel hidden" id="editor"><h2 id="form-title">③ 登録内容を編集</h2>
+<form id="member-form">
+<div class="grid2">
+ <div class="field"><label class="top" for="name">お子さんの名前</label><input id="name" class="input" maxlength="50" required></div>
+ <div class="field"><label class="top" for="kana">よみがな（ひらがな）</label><input id="kana" class="input" maxlength="80" required></div>
+ <div class="field"><label class="top" for="grade">学年</label><select id="grade" class="input"><option value="1">1年</option><option value="2">2年</option><option value="3">3年</option><option value="4">4年</option><option value="5">5年</option><option value="6">6年</option></select></div>
+ <div class="field"><label class="top" for="status">在籍状態</label><select id="status" class="input"><option value="active">在籍中</option><option value="paused">当番休止中</option><option value="retired">退団済み</option></select></div>
+ <div class="field"><label class="top" for="startDate">当番開始日</label><input id="startDate" type="date" class="input" required></div>
+ <div class="field"><label class="top" for="endDate">終了日・退団日（任意）</label><input id="endDate" type="date" class="input"></div>
+</div>
+<div class="field"><label class="top">仮当番で自動割り当て可能な曜日</label>
+<div class="radio"><label><input type="radio" name="day-mode" value="unknown"> 未確認</label><label><input type="radio" name="day-mode" value="set"> 曜日を設定</label></div>
+<div class="weekdays" id="weekday-inputs"></div><p class="muted">この制限は仮当番の自動作成に適用します。本人が自発的に「○ 交代可能」を付ける曜日は制限しません。</p></div>
+<details><summary>個別の希望日・不可日（必要な場合）</summary>
+<div class="field"><label class="top" for="preferredDates">当番希望日</label><textarea id="preferredDates" class="input" placeholder="2027-01-06&#10;2027-01-13"></textarea></div>
+<div class="field"><label class="top" for="unavailableDates">当番不可日</label><textarea id="unavailableDates" class="input" placeholder="2027-01-10&#10;2027-01-17"></textarea></div>
+<p class="muted">1行に1日、YYYY-MM-DD形式。希望と不可が同じ日にならないようにしてください。この情報は今後の仮当番作成に使う予定です。現在公開済みの当番表には自動反映されません。</p>
+</details>
+<div id="form-feedback" aria-live="polite"></div>
+<div class="row" style="margin-top:12px"><button id="save" type="submit" class="good">確認して保存</button><button id="cancel" type="button">変更をやめる</button></div>
+</form></section>
+<footer>管理者以外はFirestoreのアクセスルールで保存を拒否します。削除ではなく退団処理を利用し、過去の当番履歴を維持します。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,getDoc,collection,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'mini-basket-admin-login'),auth=getAuth(app),db=getFirestore(app);
+const coll=collection(db,'teams',teamId,'members');
+const DAY_OPTIONS=[['日',0],['水',3],['金',5],['土',6]];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const goodDate=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const x=new Date(s+'T00:00:00');return !Number.isNaN(x.getTime())&&x.getFullYear()===Number(s.slice(0,4))&&x.getMonth()+1===Number(s.slice(5,7))&&x.getDate()===Number(s.slice(8));};
+const dateList=value=>[...new Set(value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean))].sort();
+let unsubscribe=null,members=[],selected=null,etag=null,working=false,admin=false;
+const displayStatus=(message,type='')=>{$('load-status').textContent=message;$('load-status').className=type||'muted';};
+const notify=(message,type='')=>{$('form-feedback').textContent=message;$('form-feedback').className=type;};
+const canEdit=()=>admin&&selected&&!working;
+function renderList(){
+ $('members-list').innerHTML=members.map(m=>{
+  const wd=m.days===null?'曜日未確認':m.days.map(x=>DAY_OPTIONS.find(d=>d[1]===x)?.[0]||'?').join('・');
+  const state=m.status==='active'?'在籍中':m.status==='paused'?'当番休止中':'退団済み';
+  return '<div class="member"><div><b>'+esc(m.name)+'</b><small>'+esc(state)+' ／ '+m.grade+'年 ／ '+esc(wd)+'</small></div><button type="button" data-id="'+esc(m.id)+'" '+(admin?'':'disabled')+'>編集</button></div>';
+ }).join('');
+}
+const updateMode=()=>{
+ const mode=document.querySelector('input[name=day-mode]:checked')?.value;
+ for(const item of document.querySelectorAll('#weekday-inputs input'))item.disabled=(mode!=='set');
+};
+function openMember(id){
+ const m=members.find(x=>x.id===id);
+ if(!m||!admin||working)return;
+ selected=m.id;etag=m.updatedAt?.toMillis?.()??null;
+ $('form-title').textContent='③ '+m.name+'さんの登録内容を編集';
+ for(const f of ['name','kana','grade','status'])$(f).value=String(m[f]??'');
+ $('startDate').value=m.startDate||'';
+ $('endDate').value=m.endDate||'';
+ $('preferredDates').value=(m.preferredDates||[]).join('\n');
+ $('unavailableDates').value=(m.unavailableDates||[]).join('\n');
+ document.querySelector('input[name=day-mode][value="'+(m.days===null?'unknown':'set')+'"]').checked=true;
+ $('weekday-inputs').innerHTML=DAY_OPTIONS.map(([label,value])=>'<label><input type="checkbox" value="'+value+'" '+(Array.isArray(m.days)&&m.days.includes(value)?'checked':'')+'> '+label+'曜</label>').join('');
+ updateMode();notify('');
+ $('editor').classList.remove('hidden');
+ $('editor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+const setAuthUser=async user=>{
+ admin=false;selected=null;$('editor').classList.add('hidden');
+ if(unsubscribe){unsubscribe();unsubscribe=null;}
+ if(!user){$('login').style.display='';$('login-status').textContent='Googleログインしてください。';members=[];renderList();displayStatus('管理者ログインを待っています。');return;}
+ $('login').style.display='none';$('login-status').textContent='管理者の権限を確認中…';displayStatus('管理者権限を確認中…');
+ try{
+  const check=await getDoc(doc(db,'admins',user.uid));
+  if(auth.currentUser?.uid!==user.uid)return;
+  if(!check.exists()||check.data().enabled!==true)throw Error('管理者登録が見つかりません');
+  admin=true;$('login-status').textContent='✅ 管理者ログイン確認済み';
+  unsubscribe=onSnapshot(coll,snapshot=>{
+   members=snapshot.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+   renderList();displayStatus('Firebaseから'+members.length+'人の情報を取得しました。');
+   if(selected&&!members.some(m=>m.id===selected)){$('editor').classList.add('hidden');selected=null;}
+  },err=>displayStatus('読込失敗：'+(err.code||err.message),'error'));
+ }catch(err){admin=false;$('login-status').textContent='権限確認に失敗しました：'+(err.code||err.message);displayStatus('管理者権限を確認できません。','error');}
+};
+onAuthStateChanged(auth,user=>{void setAuthUser(user)},err=>{$('login-status').textContent=err.code||err.message});
+$('login').addEventListener('click',()=>{const promise=signInWithPopup(auth,new GoogleAuthProvider());promise.catch(err=>{$('login-status').textContent='ログインに失敗：'+(err.code||err.message)});});
+$('members-list').addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(b)openMember(b.dataset.id)});
+document.querySelectorAll('input[name=day-mode]').forEach(e=>e.addEventListener('change',updateMode));
+$('cancel').addEventListener('click',()=>{selected=null;$('editor').classList.add('hidden')});
+$('member-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(!canEdit())return;
+ const id=selected,current=members.find(m=>m.id===id);
+ if(!current)return notify('メンバーの情報を再取得してください。','error');
+ const name=$('name').value.trim(),kana=$('kana').value.trim(),grade=Number($('grade').value),status=$('status').value;
+ const startDate=$('startDate').value,endDate=$('endDate').value||null,mode=document.querySelector('input[name=day-mode]:checked')?.value;
+ const days=mode==='unknown'?null:[...document.querySelectorAll('#weekday-inputs input:checked')].map(n=>Number(n.value));
+ const preferredDates=dateList($('preferredDates').value),unavailableDates=dateList($('unavailableDates').value);
+ if(!name||!kana||!/^[ぁ-ゖー\s]+$/.test(kana))return notify('名前とひらがなのよみがなを入力してください。','error');
+ if(![1,2,3,4,5,6].includes(grade)||!['active','paused','retired'].includes(status))return notify('学年または在籍状態を確認してください。','error');
+ if(!goodDate(startDate)||endDate&&(!goodDate(endDate)||endDate<startDate))return notify('開始日と終了日を確認してください。','error');
+ if(status==='retired'&&!endDate)return notify('退団済みの場合は終了日を設定してください。','error');
+ if(mode==='set'&&days.length===0)return notify('曜日を1つ以上選択するか「未確認」にしてください。','error');
+ if([...preferredDates,...unavailableDates].some(d=>!goodDate(d)))return notify('希望日・不可日はYYYY-MM-DD形式で入力してください。','error');
+ if(preferredDates.some(d=>unavailableDates.includes(d)))return notify('同じ日が希望日と当番不可日に登録されています。','error');
+ if(members.some(m=>m.id!==id&&m.name===name))return notify('同じ名前が登録されています。区別できる名前にしてください。','error');
+ const payload={name,kana,grade,status,startDate,endDate,days,preferredDates,unavailableDates,updatedAt:serverTimestamp()};
+ const preview='メンバー：'+name+'\n状態：'+status+'\n当番可能曜日：'+(days===null?'未確認':days.map(v=>DAY_OPTIONS.find(x=>x[1]===v)?.[0]).join('・'))+'\n開始：'+startDate+'\n終了：'+(endDate||'未設定')+'\n希望日：'+preferredDates.length+'件\n不可日：'+unavailableDates.length+'件\n\nこの内容を本番Firebaseに保存しますか？';
+ if(!confirm(preview))return;
+ working=true;$('save').disabled=true;notify('Firebaseに保存しています…');
+ try{
+  await runTransaction(db,async tx=>{
+   const ref=doc(db,'teams',teamId,'members',id);
+   const snapshot=await tx.get(ref);if(!snapshot.exists())throw Error('登録情報が見つかりません。');
+   const latest=snapshot.data().updatedAt?.toMillis?.()??null;
+   if(latest!==etag)throw Error('ほかの端末で情報が更新されています。一度編集画面を閉じて開き直してください。');
+   tx.update(ref,payload);
+  });
+  notify('✅ 本番Firebaseに保存しました。既存の確定当番表は変更していません。','ok');
+  selected=null;$('editor').classList.add('hidden');
+  window.scrollTo({top:0,behavior:'smooth'});
+ }catch(err){notify('保存に失敗しました：'+(err.code||err.message||String(err)),'error')}
+ finally{working=false;$('save').disabled=false}
+});
+</script></body></html>
