@@ -80,11 +80,11 @@ body{max-width:100%;overflow-x:clip}
 <div id="toast" class="toast" aria-live="polite"></div>
 <script>
 'use strict';
-const MEMBERS=['あん','大竹わかな','かほ','こはる','さやか','なぎさ','のどか','はるか','まい','みあ','村松さわ','ゆい'];
-const SHORT={'村松さわ':'さわ','大竹わかな':'わかな'};
+const MEMBERS=['あん','おおたけわかな','かほ','こはる','さやか','なぎさ','のどか','はるか','まい','みあ','村松さわ','ゆい'];
+const SHORT={'村松さわ':'さわ','おおたけわかな':'わかな'};
 const BASE={
- '2026-12':{2:'ゆい',4:'みあ',5:'あん',9:'まい',11:'のどか',12:'なぎさ',13:'さやか',16:'ゆい',18:'こはる',19:'大竹わかな',23:'かほ',26:'はるか',27:'みあ',30:'ゆい'},
- '2027-01':{2:'あん',3:'まい',6:'ゆい',8:'みあ',9:'なぎさ',13:'さやか',15:'こはる',16:'村松さわ',17:'大竹わかな',20:'かほ',22:'はるか',23:'みあ',27:'ゆい',29:'あん',30:'のどか',31:'まい'}
+ '2026-12':{2:'ゆい',4:'みあ',5:'あん',9:'まい',11:'のどか',12:'なぎさ',13:'さやか',16:'ゆい',18:'こはる',19:'おおたけわかな',23:'かほ',26:'はるか',27:'みあ',30:'ゆい'},
+ '2027-01':{2:'あん',3:'まい',6:'ゆい',8:'みあ',9:'なぎさ',13:'さやか',15:'こはる',16:'村松さわ',17:'おおたけわかな',20:'かほ',22:'はるか',23:'みあ',27:'ゆい',29:'あん',30:'のどか',31:'まい'}
 };
 const EXCEPTIONS={'2026-12':{6:'試合',20:'試合',25:'休み'},'2027-01':{1:'休み',10:'試合',24:'休み'}};
 const MONTHS=['2026-12','2027-01'];
@@ -92,7 +92,7 @@ const KEY='mini_basket_public_demo_20261109_v2_realnames';
 const initial=()=>({month:'2027-01',person:'みあ',mode:'bad',view:'parent',focus:8,calendarMode:'month',
  entries:[{m:'2026-12',d:4,p:'みあ',t:'bad'},{m:'2026-12',d:4,p:'かほ',t:'good'},{m:'2027-01',d:8,p:'みあ',t:'bad'}],
  activities:{},confirmed:{},logs:[],practiceDone:{}});
-let state=initial();try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&MONTHS.includes(s.month)&&MEMBERS.includes(s.person)){state={...initial(),...s};if(state.view==='admin')state.view='parent';}}catch(_e){}
+let state=initial();try{const s=JSON.parse((localStorage.getItem(KEY)||'null').replaceAll('大竹わかな','おおたけわかな'));if(s&&MONTHS.includes(s.month)&&MEMBERS.includes(s.person)){state={...initial(),...s};if(state.view==='admin')state.view='parent';}}catch(_e){}
 let currentChoice='';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const year=m=>Number(m.slice(0,4)),monthNum=m=>Number(m.slice(5));
