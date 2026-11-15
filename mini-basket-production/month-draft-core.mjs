@@ -1,4 +1,5 @@
 // Pure draft calendar checks. No automatic parent assignment and no inferred game dates.
+import {isDayAllowed,isPreferredWeekday} from './weekday-conditions.mjs';
 export const DRAFT_MONTH='2027-01';
 export const VALID_TYPES=['practice','game','rest'];
 export const DAY_NAMES=['日','月','火','水','木','金','土'];
@@ -19,7 +20,10 @@ export function emptyDraft(month=DRAFT_MONTH){
 }
 export function normalizeMember(m){
  return {id:m.id,name:m.name,kana:m.kana||m.name,days:Array.isArray(m.days)?m.days:null,
-  start:m.startDate||m.start||'9999-12-31',end:m.endDate??m.end??null,status:m.status};
+  start:m.startDate||m.start||'9999-12-31',end:m.endDate??m.end??null,status:m.status,
+  weekdayRule:m.weekdayRule||null,weekdayNote:m.weekdayNote||'',
+  preferredWeekdays:Array.isArray(m.preferredWeekdays)?m.preferredWeekdays:[],
+  approvedWeekendDates:Array.isArray(m.approvedWeekendDates)?m.approvedWeekendDates:[]};
 }
 export function eligibleManualOwner(member,date){
  return member?.status==='active'
@@ -45,8 +49,8 @@ export function auditDraft(month,rows,members){
     if(!owner)problems.push(row.date+' の担当者が名簿にいません');
     else{
      if(!eligibleManualOwner(owner,row.date))problems.push(row.date+' の担当者は当番対象外');
-     if(owner.days===null)warnings.push(row.date+'：'+owner.name+'の当番可能曜日が未確認');
-     else if(!owner.days.includes(row.weekday))warnings.push(row.date+'：'+owner.name+'の曜日条件を要確認');
+     if(!isDayAllowed(owner,row.date,row.weekday))problems.push(row.date+'：'+owner.name+'は曜日条件により担当できません（未確認・絶対不可・土日の事前承認不足を含む）');
+     else if(owner.preferredWeekdays.length&&!isPreferredWeekday(owner,row.weekday))warnings.push(row.date+'：'+owner.name+'は別曜日を希望しています（希望条件のみ）');
     }
    }
   }else if(row.ownerId)problems.push(row.date+' の試合・休みには担当者を設定できません');
