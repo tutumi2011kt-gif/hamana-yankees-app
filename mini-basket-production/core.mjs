@@ -12,7 +12,7 @@ export const ROSTER=[
  {id:'sayaka',name:'さやか',kana:'さやか',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
  {id:'koharu',name:'こはる',kana:'こはる',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
  {id:'sawa',name:'村松さわ',kana:'むらまつさわ',grade:4,start:'2027-01-01',end:null,days:null,status:'active'},
- {id:'wakana',name:'大竹わかな',kana:'おおたけわかな',grade:3,start:'2026-12-01',end:null,days:null,status:'active'},
+ {id:'wakana',name:'おおたけわかな',kana:'おおたけわかな',grade:3,start:'2026-12-01',end:null,days:null,status:'active'},
  {id:'kaho',name:'かほ',kana:'かほ',grade:3,start:'2026-12-01',end:null,days:null,status:'active'},
  {id:'haruka',name:'はるか',kana:'はるか',grade:2,start:'2026-12-01',end:null,days:[0,3,5,6],status:'active'}
 ];
