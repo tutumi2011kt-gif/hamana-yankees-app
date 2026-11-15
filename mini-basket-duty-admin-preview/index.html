@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f8fc"><meta name="robots" content="noindex,nofollow">
+<title>🏀 ミニバス｜メンバー管理の試作</title>
+<style>
+:root{--ink:#22324a;--muted:#667589;--line:#dce5ee;--blue:#3166a5;--green:#197755;--red:#b63d53}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:#f5f8fc;color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+.wrap{width:100%;max-width:780px;margin:auto;padding:13px 12px 72px}
+.hero{background:linear-gradient(110deg,#e5f3ff,#fff6e6);border:1px solid #e6eef3;border-radius:18px;padding:18px 16px;margin-bottom:12px}
+.eyebrow{font-size:11px;color:#5e7390;font-weight:800;letter-spacing:.07em}
+h1{margin:2px 0 4px;font-size:23px}h2{font-size:18px;margin:0 0 11px}h3{font-size:15px;margin:0 0 8px}
+p{margin:6px 0}.small{color:var(--muted);font-size:12px}
+.notice{background:#fff0de;padding:10px 11px;border:1px solid #f0d3a3;border-radius:10px;font-size:12px;margin-top:10px}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:15px 13px;margin:11px 0;min-width:0;box-shadow:0 5px 20px #1b385008}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.stat{background:#f3f7fc;border-radius:11px;padding:10px 6px;text-align:center}
+.stat b{font-size:23px;display:block}.stat span{font-size:11px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--line);border-radius:11px;background:white;color:var(--ink);padding:11px 12px;font-weight:800;text-align:center;min-height:44px}
+.btn.main{background:#284d80;border-color:#284d80;color:white}
+.btn.positive{background:#157657;border-color:#157657;color:white}
+.btn.danger{border-color:#e5b2be;color:#a8354b;background:#fff5f7}
+.btn.full{width:100%}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.list{display:grid;gap:7px}
+.member{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;border:1px solid #e1e8ee;border-radius:11px;padding:11px 10px;min-width:0}
+.member .name{font-size:15px;font-weight:850;overflow-wrap:anywhere}.member .descr{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.tag{display:inline-block;padding:2px 7px;border-radius:40px;background:#e9f6ef;color:#13684b;font-size:11px;font-weight:750}
+.tag.paused{background:#fff3dd;color:#98651b}.tag.retired{background:#ecedf0;color:#687181}
+.field{margin:11px 0}.field label{display:block;font-weight:800;font-size:13px;margin:0 0 5px}
+.input{width:100%;min-width:0;border:1px solid #cbd7e2;border-radius:10px;background:white;color:var(--ink);padding:10px 11px;min-height:44px}
+textarea.input{resize:vertical;min-height:90px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.choice-row{display:flex;gap:15px;flex-wrap:wrap;padding:6px 0}
+.choice-row label,.checkrow label{font-size:13px;font-weight:700;display:flex;gap:5px;align-items:center}
+.checkrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.checkrow label{border:1px solid #d4e0e8;border-radius:10px;min-height:45px;justify-content:center;background:#f9fbfd}
+.checkrow input{accent-color:var(--green);width:18px;height:18px}
+.help{background:#f2f6fa;padding:9px 10px;border-radius:9px;font-size:12px;color:var(--muted)}
+.warning{padding:12px;border-radius:10px;background:#fff1f4;color:#9d354c;border:1px solid #eac3cb;font-size:12px}
+.info{padding:12px;border-radius:10px;background:#eef7f2;color:#136847;border:1px solid #cce6d8;font-size:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{flex:1 1 130px}
+.hidden{display:none!important}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);max-width:92vw;background:#273950;color:white;border-radius:11px;padding:10px 16px;display:none;z-index:5;font-size:13px;text-align:center}
+#toast.show{display:block}
+@media(max-width:390px){.wrap{padding:9px 9px 65px}.hero{padding:15px 12px}h1{font-size:20px}.panel{padding:12px 10px}.member{padding:10px 8px}.btn{font-size:13px;padding:10px 8px}.stats{gap:5px}.grid2{gap:7px}}
+</style></head><body><div class="wrap">
+<header class="hero"><span class="eyebrow">🏀 MINI BASKET DUTY</span><h1>管理者｜メンバー管理</h1><p class="small">1年後の引き継ぎを想定したスマホ用の操作試作</p><div class="notice"><b>⚠️ 試作版です。</b>変更はこの端末だけに保存されます。実際の当番表、ほかの保護者の画面、Firebaseには反映されません。管理者認証も未接続です。</div></header>
+<section class="panel" id="roster-panel"><h2>👥 登録メンバー</h2><div class="stats"><div class="stat"><b id="count-active">0</b><span>在籍中</span></div><div class="stat"><b id="count-paused">0</b><span>当番休止</span></div><div class="stat"><b id="count-retired">0</b><span>退団済</span></div></div>
+<div class="toolbar"><button class="btn main" id="new-button">＋ メンバー追加</button><button class="btn" id="download-json">⬇ バックアップ</button><button class="btn" id="download-csv">⬇ Excel用CSV</button></div><div class="list" id="member-list"></div></section>
+<section class="panel" id="editor-section"><h2 id="editor-title">➕ 新しいメンバーの登録</h2>
+<form id="member-form" novalidate>
+<div class="field"><label for="member-name">お子さんの名前</label><input id="member-name" class="input" placeholder="例：田中はな" maxlength="50" required></div>
+<div class="grid2"><div class="field"><label for="member-grade">学年</label><select id="member-grade" class="input"><option value="1">1年生</option><option value="2">2年生</option><option value="3">3年生</option><option value="4">4年生</option><option value="5">5年生</option><option value="6">6年生</option></select></div><div class="field"><label for="member-start">当番開始日</label><input type="date" id="member-start" class="input" required></div></div>
+<div class="field"><label>当番を割り当ててよい曜日（仮当番表用）</label><div class="choice-row"><label><input type="radio" name="weekday-mode" value="set" checked> 曜日を指定する</label><label><input type="radio" name="weekday-mode" value="unknown"> 未確認</label></div><div class="checkrow" id="weekday-options"></div><p class="small">※この設定は仮当番の自動作成時だけに適用します。本人が自発的に「○ 交代可能」を申し出る曜日は制限しません。</p></div>
+<div class="field"><label for="member-blackouts">個別の当番不可日（任意）</label><textarea id="member-blackouts" class="input" placeholder="例：2027-02-06&#10;2027-02-13"></textarea><p class="small">1行に1日、YYYY-MM-DD形式。本人の希望として自動割当に反映します。</p></div>
+<div class="field"><label for="member-status">メンバーの状態</label><select class="input" id="member-status"><option value="active">在籍中</option><option value="paused">当番休止中</option><option value="retired">退団済み</option></select></div>
+<div class="field" id="end-field"><label for="member-end">終了日・退団日（休止・退団なら設定）</label><input id="member-end" type="date" class="input"><p class="small">過去の当番実施回数や担当履歴は消しません。</p></div>
+<div id="form-error" class="warning hidden" role="alert"></div>
+<div class="actions"><button type="submit" class="btn positive">✅ 入力内容を保存（試作）</button><button type="button" class="btn" id="cancel-button">やめる</button></div></form>
+<div class="info" style="margin-top:12px">確定済み当番表に影響する変更は、自動で書き換えず「再確認が必要」と表示する仕様にします。本番では管理者だけがこの操作を行えます。</div></section>
+<section class="panel"><h2>🔐 本番化する際の必須条件</h2><p class="small">メンバー管理は認証済み管理者だけが保存可能。保護者の×・○は別の権限で保存。退団処理後も過去の履歴を保持します。</p><div class="actions"><label class="btn" for="restore-file">↩ バックアップから復元</label><input id="restore-file" type="file" accept=".json,application/json" class="hidden"><button class="btn danger" id="reset-button">試作データを初期化</button></div><p class="small">復元・初期化は確認後に実行します。このブラウザ内の試作データのみが対象です。</p></section>
+<footer class="small">本画面は当番係の引き継ぎを検討するための試作です。公開URLに個人情報・本番の管理者権限を保存しないでください。</footer>
+</div><div id="toast" role="status"></div>
+<script>
+'use strict';
+const KEY='minibasket_member_admin_preview_v1';
+const DAYS=['水','金','土','日'];
+const PEOPLE=[
+ ['ゆい',6,['水'],'2026-12-01'],
+ ['みあ',6,null,'2026-12-01'],
+ ['あん',6,null,'2026-12-01'],
+ ['まい',6,null,'2026-12-01'],
+ ['のどか',6,null,'2026-12-01'],
+ ['なぎさ',6,null,'2026-12-01'],
+ ['さやか',6,null,'2026-12-01'],
+ ['こはる',6,null,'2026-12-01'],
+ ['村松さわ',4,null,'2027-01-01'],
+ ['大竹わかな',3,null,'2026-12-01'],
+ ['かほ',3,null,'2026-12-01'],
+ ['はるか',2,DAYS.slice(),'2026-12-01']
+];
+const initial=()=>PEOPLE.map((x,i)=>({id:'initial-'+i,name:x[0],grade:x[1],days:x[2],start:x[3],status:'active',end:'',blackouts:[],updated:''}));
+let people=initial(),editingId=null;
+const $=id=>document.getElementById(id);
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
+const validDate=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+'T00:00:00');return !Number.isNaN(d.getTime())&&d.getFullYear()===Number(s.slice(0,4))&&d.getMonth()+1===Number(s.slice(5,7))&&d.getDate()===Number(s.slice(8));};
+const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.toastTimeout);window.toastTimeout=setTimeout(()=>e.classList.remove('show'),3000)};
+try{const data=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(data)&&data.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'))people=data;}catch(_){}
+function save(){localStorage.setItem(KEY,JSON.stringify(people));}
+function nameSort(a,b){return a.name.localeCompare(b.name,'ja');}
+function summary(p){const d=p.days===null?'曜日：未確認':p.days.join('・')+'曜日';return p.grade+'年 ／ '+d+' ／ 開始：'+p.start+(p.end?' ／ 終了：'+p.end:'');}
+function showRoster(){
+ const totals={active:0,paused:0,retired:0};people.forEach(p=>{if(totals[p.status]!==undefined)totals[p.status]++});
+ $('count-active').textContent=totals.active;$('count-paused').textContent=totals.paused;$('count-retired').textContent=totals.retired;
+ $('member-list').innerHTML=people.slice().sort(nameSort).map(p=>{
+ const label=p.status==='active'?'在籍中':p.status==='paused'?'休止中':'退団済';
+ return '<div class="member"><div><div class="name">'+esc(p.name)+' <span class="tag '+esc(p.status)+'">'+label+'</span></div><div class="descr">'+esc(summary(p))+'</div></div><button class="btn" data-edit="'+esc(p.id)+'">編集</button></div>';
+ }).join('');
+}
+function weekdayMarkup(selected){return DAYS.map(d=>'<label><input type="checkbox" name="days" value="'+d+'" '+(selected.includes(d)?'checked':'')+'> '+d+'曜</label>').join('');}
+function updateMode(){const disabled=document.querySelector('input[name=weekday-mode]:checked')?.value==='unknown';document.querySelectorAll('input[name=days]').forEach(x=>x.disabled=disabled);}
+function newEditor(){editingId=null;$('editor-title').textContent='➕ 新しいメンバーの登録';$('member-form').reset();$('member-grade').value='3';$('member-start').value='2027-01-01';$('member-status').value='active';$('weekday-options').innerHTML=weekdayMarkup(DAYS);$('form-error').classList.add('hidden');updateMode();}
+function editPerson(id){const p=people.find(x=>x.id===id);if(!p)return;editingId=id;$('editor-title').textContent='✏️ '+p.name+'さんの情報を変更';$('member-name').value=p.name;$('member-grade').value=String(p.grade);$('member-start').value=p.start;$('member-status').value=p.status;$('member-end').value=p.end||'';$('member-blackouts').value=(p.blackouts||[]).join('\n');document.querySelector('input[name=weekday-mode][value="'+(p.days===null?'unknown':'set')+'"]').checked=true;$('weekday-options').innerHTML=weekdayMarkup(p.days||DAYS);$('form-error').classList.add('hidden');updateMode();$('editor-section').scrollIntoView({behavior:'smooth',block:'start'});}
+function fail(msg){$('form-error').textContent=msg;$('form-error').classList.remove('hidden');$('form-error').scrollIntoView({block:'nearest'});}
+function submit(e){e.preventDefault();const name=$('member-name').value.trim(),grade=Number($('member-grade').value),start=$('member-start').value,status=$('member-status').value,end=$('member-end').value;const mode=document.querySelector('input[name=weekday-mode]:checked')?.value;const days=mode==='unknown'?null:Array.from(document.querySelectorAll('input[name=days]:checked')).map(x=>x.value);
+ const blackouts=$('member-blackouts').value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean);
+ if(!name)return fail('名前を入力してください。');
+ if(people.some(p=>p.name===name&&p.id!==editingId))return fail('同じ名前が登録されています。姓などで区別してください。');
+ if(!validDate(start))return fail('当番開始日を正しく入力してください。');
+ if(days!==null&&days.length===0)return fail('曜日を選択するか、「未確認」にしてください。');
+ if(end&&!validDate(end))return fail('退団日・終了日が正しくありません。');
+ if(end&&end<start)return fail('終了日は開始日以降にしてください。');
+ if(status==='retired'&&!end)return fail('退団済みの場合は退団日を入力してください。');
+ if(blackouts.some(d=>!validDate(d)))return fail('個別の当番不可日はYYYY-MM-DD形式で入力してください。');
+ const unique=[...new Set(blackouts)].sort();const old=people.find(p=>p.id===editingId);
+ const record={id:editingId||('new-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)),name,grade,days,start,status,end,blackouts:unique,updated:new Date().toISOString()};
+ if(old){if(!confirm('「'+old.name+'」の登録条件を変更しますか？\n確定済みの当番表は自動で変更されません。'))return;people=people.map(p=>p.id===editingId?record:p);}else{if(!confirm('「'+name+'」をメンバーに追加しますか？'))return;people.push(record);}
+ save();showRoster();newEditor();toast('メンバー情報を保存しました（試作）');$('roster-panel').scrollIntoView({behavior:'smooth'});
+}
+function download(filename,contents,mime){const blob=new Blob(['\ufeff',contents],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);}
+const csvCell=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+$('download-json').addEventListener('click',()=>download('basket-members-backup.json',JSON.stringify({format:'minibasket-members-v1',exported:new Date().toISOString(),members:people},null,2),'application/json;charset=utf-8'));
+$('download-csv').addEventListener('click',()=>{const rows=[['名前','学年','状態','当番開始日','終了日','当番可能曜日','曜日確認','個別の当番不可日'],...people.slice().sort(nameSort).map(p=>[p.name,p.grade,p.status,p.start,p.end,p.days===null?'':p.days.join('・'),p.days===null?'未確認':'設定済',(p.blackouts||[]).join('・')])];download('basket-members-excel.csv',rows.map(row=>row.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8')});
+$('restore-file').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(d.format!=='minibasket-members-v1'||!Array.isArray(d.members)||d.members.length>500||d.members.some(p=>!p||typeof p.name!=='string'||!validDate(p.start)||!['active','paused','retired'].includes(p.status)||!(p.days===null||Array.isArray(p.days))||!Array.isArray(p.blackouts)))throw Error('形式が違います');if(confirm('バックアップの内容で、このスマホの試作データを上書きしますか？')){people=d.members;save();showRoster();newEditor();toast('バックアップを復元しました（試作）');}}catch(err){alert('復元できません：バックアップ形式を確認してください。')}e.target.value='';});
+$('reset-button').addEventListener('click',()=>{if(confirm('このブラウザの試作データをすべて初期状態に戻しますか？')){people=initial();save();showRoster();newEditor();toast('初期状態に戻しました');}});
+$('member-form').addEventListener('submit',submit);
+$('member-list').addEventListener('click',e=>{const button=e.target.closest('button[data-edit]');if(button)editPerson(button.dataset.edit)});
+$('new-button').addEventListener('click',()=>{newEditor();$('editor-section').scrollIntoView({behavior:'smooth'})});
+$('cancel-button').addEventListener('click',()=>{newEditor();$('roster-panel').scrollIntoView({behavior:'smooth'})});
+document.querySelectorAll('input[name=weekday-mode]').forEach(e=>e.addEventListener('change',updateMode));
+newEditor();showRoster();
+</script></body></html>
