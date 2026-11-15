@@ -23,7 +23,7 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #e5ebf0;
 <footer>管理者のFirestore認証でのみ読み込みます。12月の確定当番表は変更しません。公開前に保護者の希望入力締切も確認する必要があります。</footer></main>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
-import {DRAFT_MONTH,calendarDates,normalizeMember,auditDraft,DAY_NAMES} from './month-draft-core.mjs?v=review-jan-1';
+import {DRAFT_MONTH,calendarDates,normalizeMember,auditDraft,DAY_NAMES} from './month-draft-core.mjs?v=review-jan-3';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
