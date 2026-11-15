@@ -155,7 +155,7 @@ if(live){
  createCloudClient({
   onStatus:status=>{cloudMessage=status;updateStatus();if(status.kind==='error')render();},
   onRoster:members=>{cloudRoster=members;render();},
-  onMonth:data=>{cloudMonth=data;render();}
+  onMonth:data=>{cloudMonth=data;if(data.ready)cloudMessage={kind:'connected',detail:'最新データを受信しました'};render();}
  }).then(c=>{
    cloud=c;
    if(!c){cloudMessage={kind:'error',detail:'Firebaseに接続できませんでした'};render();return;}
