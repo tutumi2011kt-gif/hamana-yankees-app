@@ -76,18 +76,18 @@ const PEOPLE=[
  ['さやか',6,null,'2026-12-01'],
  ['こはる',6,null,'2026-12-01'],
  ['村松さわ',4,null,'2027-01-01'],
- ['大竹わかな',3,null,'2026-12-01'],
+ ['おおたけわかな',3,null,'2026-12-01'],
  ['かほ',3,null,'2026-12-01'],
  ['はるか',2,DAYS.slice(),'2026-12-01']
 ];
-const YOMI={'あん':'あん','大竹わかな':'おおたけわかな','かほ':'かほ','こはる':'こはる','さやか':'さやか','なぎさ':'なぎさ','のどか':'のどか','はるか':'はるか','まい':'まい','みあ':'みあ','村松さわ':'むらまつさわ','ゆい':'ゆい'};
+const YOMI={'あん':'あん','おおたけわかな':'おおたけわかな','かほ':'かほ','こはる':'こはる','さやか':'さやか','なぎさ':'なぎさ','のどか':'のどか','はるか':'はるか','まい':'まい','みあ':'みあ','村松さわ':'むらまつさわ','ゆい':'ゆい'};
 const initial=()=>PEOPLE.map((x,i)=>({id:'initial-'+i,name:x[0],reading:YOMI[x[0]]||x[0],grade:x[1],days:x[2],start:x[3],status:'active',end:'',preferred:[],blackouts:[],updated:''}));
 let people=initial(),editingId=null;
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const validDate=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+'T00:00:00');return !Number.isNaN(d.getTime())&&d.getFullYear()===Number(s.slice(0,4))&&d.getMonth()+1===Number(s.slice(5,7))&&d.getDate()===Number(s.slice(8));};
 const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.toastTimeout);window.toastTimeout=setTimeout(()=>e.classList.remove('show'),3000)};
-try{const data=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(data)&&data.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'))people=data.map(p=>({...p,reading:p.reading||YOMI[p.name]||p.name,preferred:p.preferred||[]}));}catch(_){}
+try{const data=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(data)&&data.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'))people=data.map(p=>({...p,name:p.name==='大竹わかな'?'おおたけわかな':p.name,reading:p.reading||'おおたけわかな',preferred:p.preferred||[]}));}catch(_){}
 function save(){localStorage.setItem(KEY,JSON.stringify(people));}
 function nameSort(a,b){return (a.reading||a.name).localeCompare(b.reading||b.name,'ja');}
 function summary(p){const d=p.days===null?'曜日：未確認':p.days.join('・')+'曜日';return p.grade+'年 ／ '+d+' ／ 開始：'+p.start+(p.end?' ／ 終了：'+p.end:'');}
