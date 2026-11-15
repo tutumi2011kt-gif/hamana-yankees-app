@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 1月下書きの確認｜管理者</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#273950;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:780px;margin:auto;padding:12px 11px 55px}header{background:linear-gradient(110deg,#e8f4ff,#fff1dd);border-radius:15px;border:1px solid #dbe6ef;padding:16px 14px}h1{font-size:21px;margin:0 0 5px}h2{font-size:17px;margin:0 0 8px}
+p{margin:5px 0}.card{background:#fff;border:1px solid #dce5ee;padding:13px;border-radius:14px;margin-top:12px}
+.note{background:#fff2dc;border:1px solid #efd4aa;border-radius:9px;padding:11px;font-size:12px}.ok{background:#e7f7ee;border:1px solid #c0e4d2;border-radius:9px;padding:11px;color:#126948}.error{background:#fff0f2;border:1px solid #e8bac4;border-radius:9px;padding:11px;color:#a1374d}.small{font-size:12px;color:#6c7c8f}
+button{font:inherit;cursor:pointer;min-height:44px;border:1px solid #ccd9e5;background:#fff;border-radius:10px;padding:10px 13px;font-weight:800}button.primary{background:#285983;border-color:#285983;color:#fff}button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 180px}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.stats>div{text-align:center;border-radius:11px;padding:8px 4px;background:#f5f9fc;border:1px solid #e0e8ef}.stats b{font-size:25px;display:block}.stats small{font-size:11px;color:#6e7d8e}
+.week,.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.week span{text-align:center;font-size:12px;font-weight:800}.week span:first-child{color:#b44356}.week span:last-child{color:#326ea9}.cal{margin-top:6px}
+.day{min-height:80px;border:1px solid #dfe7ef;border-radius:8px;padding:4px 2px;overflow-wrap:anywhere;background:#fff}.day.empty{border:0;background:transparent}.day.practice{background:#edf6ff}.day.game{background:#fff3e2}.day.rest{background:#f3f5f8}.day .num{display:block;font-size:12px;font-weight:900;padding-left:3px}.day .who{font-size:10px;font-weight:800;line-height:1.4;display:block;margin-top:5px}.day .hint{font-size:10px;color:#bd405a;font-weight:700;display:block;margin-top:4px}
+table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #e5ebf0;padding:8px 5px;text-align:left}th{font-size:12px;color:#627b90}.flag{color:#ba4058;font-weight:800}.goodflag{color:#16754f}.issues{white-space:pre-wrap;max-height:320px;overflow:auto;font-size:12px;line-height:1.65}a{color:#1e608e}footer{font-size:11px;color:#748499;margin-top:14px}
+</style></head><body><main>
+<header><h1>🏀 1月の下書き確認</h1><p>管理者専用｜Firebaseに保存した当番表を読み取って確認</p><div class="note"><b>確認専用ページです。</b> 当番表の保存・公開・変更は行いません。担当者未設定・曜日条件の未確認が残る場合は公開準備未完了と表示します。</div></header>
+<section class="card"><h2>① 管理者で確認</h2><p id="auth" class="small">Googleログインの状態を確認中…</p><div class="row"><button id="login" class="primary">Googleでログイン</button><button id="refresh">保存した1月の下書きを再確認</button></div><p id="connection" role="status" aria-live="polite" class="small">Firebaseの確認待ちです。</p></section>
+<section class="card"><h2>② Firebaseに保存された内容</h2><p id="meta" class="small">読み込み待ち</p>
+<div class="stats"><div><b id="practice">—</b><small>練習予定</small></div><div><b id="game">—</b><small>試合</small></div><div><b id="rest">—</b><small>休み</small></div></div>
+<div class="week" style="margin-top:12px" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal"></div>
+</section>
+<section class="card"><h2>③ 公開前のチェック結果</h2><p id="summary" role="status" aria-live="polite" class="note">保存済みの内容を読み込んでいます。</p><div id="issues" class="issues"></div>
+<p class="small">曜日条件を確認していない場合や、確定していない試合・休み・担当者が残る場合は、内容を修正してください。「練習予定」は実際に練習が確定した意味ではありません。</p>
+<div class="row"><button type="button" id="edit" class="primary">1月の下書きを編集する</button><button type="button" id="members">メンバーの曜日条件を確認</button></div></section>
+<footer>管理者のFirestore認証でのみ読み込みます。12月の確定当番表は変更しません。公開前に保護者の希望入力締切も確認する必要があります。</footer></main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {DRAFT_MONTH,calendarDates,normalizeMember,auditDraft,DAY_NAMES} from './month-draft-core.mjs?v=review-jan-1';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'mini-basket-admin-login'),auth=getAuth(app),db=getFirestore(app);
+const monthRef=doc(db,'teams',teamId,'months',DRAFT_MONTH),daysRef=collection(db,'teams',teamId,'months',DRAFT_MONTH,'days');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let loading=false,session=0;
+const status=(message,kind='small')=>{$('connection').textContent=message;$('connection').className=kind};
+const fmt=(value)=>value===undefined?'未設定':String(value);
+const draw=(rows,members,month)=>{
+ const names=Object.fromEntries(members.map(m=>[m.id,m.name]));
+ const lookup=Object.fromEntries(rows.map(r=>[r.date,r]));
+ let markup='';
+ for(const d of Array.from({length:31},(_,i)=>({n:i+1,date:DRAFT_MONTH+'-'+String(i+1).padStart(2,'0'),weekday:new Date(Date.UTC(2027,0,i+1)).getUTCDay()}))){
+  const row=lookup[d.date];
+  const cls=row?.type||'';
+  const label=row?.type==='game'?'試合・当番なし':row?.type==='rest'?'休み':row?.type==='practice'?(names[row.ownerId]||'担当未設定'):'';
+  markup+='<div class="day '+cls+'"><span class="num">'+d.n+'</span>'+(label?'<span class="who">'+esc(label)+'</span>':'')+
+   (row?.type==='practice'&&!row.ownerId?'<span class="hint">要設定</span>':'')+'</div>';
+ }
+ // January 2027 begins on Friday; add 5 placeholders for Sun–Thu.
+ $('calendar').innerHTML='<div class="day empty"></div>'.repeat(5)+markup;
+ const audit=auditDraft(DRAFT_MONTH,rows,members);
+ $('practice').textContent=audit.practice;
+ $('game').textContent=audit.game;
+ $('rest').textContent=audit.rest;
+ const unassigned=rows.filter(r=>r.type==='practice'&&!r.ownerId).length;
+ const unchecked=members.filter(m=>m.status==='active'&&m.days===null).length;
+ const hasIssues=audit.problems.length>0||audit.warnings.length>0;
+ let title=hasIssues?'⚠️ 公開準備は未完了です。':'✅ 登録上の不整合・未設定は見つかりませんでした。';
+ if(!month||month.publication!=='draft')title='⚠️ この月は下書き状態ではありません。';
+ $('summary').textContent=title+' 担当者未設定 '+unassigned+'日／曜日未確認 '+unchecked+'人／その他要確認 '+(audit.problems.length+audit.warnings.length)+'件';
+ $('summary').className=hasIssues||!month||month.publication!=='draft'?'note':'ok';
+ $('issues').textContent=[...audit.problems,...audit.warnings].map(x=>'・'+x).join('\n')||'登録済みの割当内容は整合しています。試合日・休み・日程の確定は別途確認してください。';
+ $('meta').textContent='保存済みの状態：'+fmt(month?.publication)+'／入力：'+fmt(month?.inputState)+'／バージョン：'+fmt(month?.version);
+};
+async function load(){
+ const user=auth.currentUser;
+ if(!user||loading)return;
+ const revision=++session;loading=true;
+ $('refresh').disabled=true;status('Firestoreから1月の下書きを確認中…');
+ try{
+  const admin=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限を確認できませんでした。');
+  const [month,dayDocs,memberDocs]=await Promise.all([
+   getDocFromServer(monthRef),getDocsFromServer(daysRef),
+   getDocsFromServer(collection(db,'teams',teamId,'members'))
+  ]);
+  if(revision!==session||auth.currentUser?.uid!==user.uid)return;
+  if(!month.exists())throw Error('1月の下書きがFirebaseにありません。下書き画面で保存したか確認してください。');
+  const expected=calendarDates(DRAFT_MONTH),expectedSet=new Set(expected.map(x=>x.date));
+  const found=dayDocs.docs.map(s=>({id:s.id,...s.data()}));
+  if(found.some(d=>!expectedSet.has(d.id)))throw Error('対象外の日付が存在します。管理者に確認してください。');
+  const byDate=Object.fromEntries(found.map(x=>[x.id,x]));
+  const rows=expected.map(d=>{
+   const x=byDate[d.date];
+   return x?{date:d.date,weekday:x.weekday,type:x.type,ownerId:x.ownerId||null}:d;
+  });
+  const members=memberDocs.docs.map(s=>normalizeMember({id:s.id,...s.data()}));
+  const missing=expected.filter(d=>!byDate[d.date]);
+  draw(rows,members,month.data());
+  if(missing.length){$('summary').textContent='⚠️ 下書きの日付が'+missing.length+'日不足しています。Firebaseへの登録内容を確認してください。';$('summary').className='error';}
+  $('auth').textContent='✅ 管理者Googleログイン済み';
+  status('✅ Firebaseから2027年1月の下書きデータを取得しました。','ok');
+ }catch(e){if(revision!==session)return;status('読込エラー：'+(e.code||e.message||String(e)),'error');$('summary').textContent='保存内容を確認できませんでした。'}
+ finally{loading=false;$('refresh').disabled=false;}
+}
+onAuthStateChanged(auth,user=>{
+ session++;
+ $('login').hidden=!!user;
+ $('auth').textContent=user?'Googleログイン済みです。保存内容を読み取ります。':'管理者Googleログインが必要です。';
+ if(user)void load();else status('管理者ログイン待ち');
+},e=>status('認証エラー：'+(e.code||e.message),'error'));
+$('login').addEventListener('click',()=>{signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>status('ログインに失敗しました：'+(e.code||e.message),'error'));});
+$('refresh').addEventListener('click',()=>{void load()});
+$('edit').addEventListener('click',()=>{window.location.href='./manage-january.html?v=1'});
+$('members').addEventListener('click',()=>{window.location.href='./manage-members.html?v=3'});
+</script></body></html>
