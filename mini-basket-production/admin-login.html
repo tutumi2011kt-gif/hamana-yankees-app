@@ -25,9 +25,10 @@ p{margin:7px 0}button{padding:12px 14px;border-radius:10px;border:1px solid #cbd
 <section id="account" class="card hide">
 <h2>② 管理者候補のUID</h2><p id="account-label" class="small"></p>
 <div class="uid" id="uid"></div>
-<div class="actions"><button id="copy">UIDをコピー</button><button id="logout">ログアウト</button></div><button id="verify" class="primary" style="margin-top:12px">管理者権限を確認する</button><div id="verify-result" class="small" role="status" aria-live="polite" style="margin-top:10px">まだFirestoreでの権限確認は行っていません。</div>
+<div class="actions"><button id="copy">UIDをコピー</button><button id="logout">ログアウト</button></div>
 <p class="small">このUIDをFirebase Consoleで管理者として登録すると、後に公開する管理者専用機能で利用できます。<strong>ログインしただけでは管理者権限は付きません。</strong></p>
 </section>
+<section class="card"><h2>③ 管理者権限を確認（v3）</h2><p class="small">Googleログイン済みのアカウントが管理者として登録されているか確認します。ログインしていなくても、このボタンは常に表示されます。</p><button id="verify" class="primary" style="margin-top:8px">管理者権限を確認する</button><div id="verify-result" class="small" role="status" aria-live="polite" style="margin-top:10px">Googleログイン後に、このボタンを押してください。</div></section>
 <section class="card"><h2>接続できない場合</h2>
 <p class="small"><strong>auth/unauthorized-domain</strong> が出た場合は、Firebase Console → Authentication → 設定 → 承認済みドメインに <code>tutumi2011kt-gif.github.io</code> を追加してください。</p>
 <p class="small">ブラウザのポップアップがブロックされたら、ポップアップを許可して再試行してください。設定や画面が不明な場合は、エラーコードのみ伝えてください。</p>
@@ -45,7 +46,7 @@ const db=getFirestore(app);
 const provider=new GoogleAuthProvider();
 const feedback=(text,error=false)=>{$('feedback').textContent=text;$('feedback').className=error?'error':'good';};
 onAuthStateChanged(auth,user=>{
- $('verify-result').textContent='管理者権限は未確認です。';
+ $('verify-result').textContent=user?'管理者権限は未確認です。下のボタンを押してください。':'先に上の「GoogleでログインしてUIDを確認」を押してください。';
  $('verify-result').className='small';
  $('login').classList.toggle('hide',!!user);
  $('account').classList.toggle('hide',!user);
