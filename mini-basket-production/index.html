@@ -2,68 +2,11 @@
 <style>
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:#f5f7fb;color:#29394f;font:14px/1.5 -apple-system,BlinkMacSystemFont,'Yu Gothic',sans-serif}button,select{font:inherit}.wrap{max-width:760px;padding:10px;margin:auto}.head,.panel{background:#fff;border:1px solid #dde5ed;border-radius:14px;padding:14px 12px;margin:10px 0}.head{background:linear-gradient(110deg,#eaf3fe,#fff3e1)}h1{font-size:21px;margin:0}h2{font-size:16px;margin:0 0 8px}.note{background:#fff0d7;border-radius:8px;padding:10px;font-size:12px;margin-top:8px}.small{font-size:12px;color:#647789}select{width:100%;padding:11px;border:1px solid #d6e1eb;border-radius:9px}.monthrow,.mode{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:9px 0}.mode{grid-template-columns:1fr 1fr}.month,.mark{min-height:44px;padding:9px 3px;border:1px solid #dae2e9;border-radius:10px;background:#fff;font-weight:800;color:#28394f}.month.chosen{background:#e7f2ff;border:2px solid #396c9e}.month small{display:block;color:#6e7f8b;font-size:10px}.mark.on-x{background:#fff0f3;border:2px solid #ca4961}.mark.on-o{background:#eaf8f0;border:2px solid #248660}.week,.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}.week>div{text-align:center;font-weight:800}.day{width:100%;min-width:0;min-height:79px;padding:4px 2px;border:1px solid #e2e9ef;border-radius:5px;text-align:left;background:#fff;color:#27374b;display:flex;flex-direction:column;gap:2px;overflow:hidden}.day:disabled{opacity:1}.day.empty{border:0;background:transparent}.day.active{border:2px solid #d14b61;padding:3px 1px}.day.active.o{border-color:#238961}.day .num{font-weight:900;font-size:12px}.day .owner{font-size:10px;font-weight:800;overflow-wrap:anywhere;line-height:1.2}.day .extra{font-size:9px;line-height:1.15;overflow-wrap:anywhere}.bad{color:#b83d55}.good{color:#167f59}.error{background:#fff0f2;border-radius:8px;padding:10px;color:#a0384d;font-size:12px}.status{background:#edf4fa;padding:9px;border-radius:8px;margin:8px 0;font-size:12px}.action{padding:12px;background:#28496c;border:0;border-radius:10px;color:#fff;font-weight:800;min-height:44px}.action:disabled{opacity:.45}.bottom{font-size:11px;color:#708195;padding-bottom:35px}
 </style></head><body><div class="wrap">
-<header class="head"><h1>🏀 ミニバス当番管理</h1><div class="small">本番準備版｜毎月の締切と希望チェック</div><div class="note">⚠️ 現在はスマホ用の操作試作です。入力はそのスマホ内だけに保存され、他の保護者にはまだ共有されません。</div></header>
+<header class="head"><h1>🏀 ミニバス当番管理</h1><div class="small">本番準備版｜毎月の締切と希望チェック</div><div class="note">⚠️ 本番準備中の画面です。Firebase接続が完了するまでは端末内試作です。正式な当番表ではありません。</div><div id="cloud-status" class="status" aria-live="polite">接続状態を確認中</div></header>
 <section class="panel"><h2>保護者の希望入力</h2><label class="small">① お子さんの名前</label><select id="person"></select><p class="small">② 月をタップ</p><div id="months" class="monthrow"></div><div id="status" class="status"></div><div class="mode"><button class="mark on-x" id="mode-x">❌ できない日</button><button class="mark" id="mode-o">⭕ 代われる日</button></div></section>
 <section class="panel"><h2 id="month-title">当番カレンダー</h2><div id="calendar"></div><p class="small">※未確認の曜日条件は推測せず、割当できない日を管理者へ知らせます。</p></section>
 <section class="panel"><h2>🛡️ 自動ファクトチェック</h2><div id="audit" class="error"></div><details><summary>チェック内容を詳しく見る</summary><div id="audit-list" class="small"></div></details></section>
 <section class="panel"><h2>管理者確認（試作）</h2><p class="small">「仮公開」はこの端末での動作再現です。本番では管理者本人のログインが必要です。</p><button class="action" id="approve">管理者が確認して仮公開（試作）</button></section>
-<section class="panel"><h2>月初の動きを試す</h2><select id="simulation"><option value="">現在の日本時間</option><option value="2026-12-01">2026年12月1日</option><option value="2027-01-01">2027年1月1日</option></select><p class="small">12月1日に1月ロック、2月入力可、3月は新規作成・承認待ちに切り替わります。</p></section>
+<section class="panel"><h2>月初の動きを試す</h2><select id="simulation"><option value="">現在の日本時間</option><option value="2026-12-01">2026年12月1日</option><option value="2027-01-01">2027年1月1日</option></select><p id="simulation-note" class="small">12月1日に1月ロック、2月入力可、3月は新規作成・承認待ちに切り替わります。</p></section>
 <div class="bottom">本番のクラウド同期・管理者認証・自動メール・画像生成はまだ未接続です。確定済みの実際の当番表ではありません。</div></div>
-<script type="module">
-import {ROSTER,DAY_NAMES,todayTokyo,rollingWindow,inputPermission,dayList,practices,buildDraft,auditSchedule,swapStatus} from './core.mjs';
-const KEY='basket_prod_preview_v1';
-const $=id=>document.getElementById(id);
-let ui={person:'haruka',month:'',mode:'x',date:'',marks:{},published:{}};
-try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)ui={...ui,...s}}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(ui))}catch(e){}};
-const current=()=>ui.date||todayTokyo();
-const name=id=>ROSTER.find(m=>m.id===id)?.name||'未割当';
-const esc=x=>String(x??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const publication=m=>ui.published[m]||m!==rollingWindow(current()).createMonth?'published':'awaiting-manager';
-const access=m=>inputPermission(m,current(),publication(m));
-const plan=m=>buildDraft({month:m});
-function render(){
- const win=rollingWindow(current()),months=[win.lockThrough,...win.inputMonths];
- if(!months.includes(ui.month))ui.month=months[1];
- $('person').innerHTML=ROSTER.slice().sort((a,b)=>a.kana.localeCompare(b.kana,'ja')).map(m=>'<option value="'+m.id+'">'+esc(m.name)+'</option>').join('');
- $('person').value=ui.person;
- $('months').innerHTML=months.map(m=>'<button class="month '+(ui.month===m?'chosen':'')+'" data-month="'+m+'">'+Number(m.slice(5))+'月<small>'+(access(m)==='locked'?'🔒変更不可':access(m)==='editable'?'入力可能':'承認待ち')+'</small></button>').join('');
- const permitted=access(ui.month)==='editable';
- $('status').textContent=access(ui.month)==='locked'?'🔒 締切済み：閲覧のみ':permitted?'✅ この月は×・○を入力できます。':'⏳ 管理者が承認するまで編集できません。';
- $('mode-x').className='mark '+(ui.mode==='x'?'on-x':'');$('mode-o').className='mark '+(ui.mode==='o'?'on-o':'');
- $('month-title').textContent=ui.month.replace('-','年')+'月 当番カレンダー';
- const list=dayList(ui.month),practice=new Set(practices(ui.month).map(d=>d.date)),draft=plan(ui.month);
- const marks=ui.marks[ui.month]||{};let html='<div class="week">'+DAY_NAMES.map(d=>'<div>'+d+'</div>').join('')+'</div><div class="cal">';
- for(let i=0;i<list[0].weekday;i++)html+='<div class="day empty"></div>';
- for(const d of list){
-  const owner=draft.assignments[d.date],actual=practice.has(d.date),entries=marks[d.date]||{};
-  const enabled=Boolean(permitted&&owner&&actual&&(ui.mode==='x'?owner===ui.person:owner!==ui.person));
-  const sw=swapStatus({date:d.date,ownerId:owner,submissions:marks});
-  let body='<span class="num">'+Number(d.date.slice(8))+'</span>';
-  if(actual){body+='<span class="owner">'+esc(name(owner))+'</span>';
-   for(const [id,k] of Object.entries(entries))body+='<span class="extra '+(k==='x'?'bad':'good')+'">'+esc(name(id))+' '+(k==='x'?'×':'○')+'</span>';
-   if(sw.status==='urgent')body+='<span class="extra bad">🙏募集中</span>';
-  }else body+='<span class="extra">当番なし</span>';
-  html+='<button class="day '+(enabled?'active ':'')+(enabled&&ui.mode==='o'?'o':'')+'" data-day="'+d.date+'" '+(enabled?'':'disabled')+'>'+body+'</button>';
- }
- $('calendar').innerHTML=html+'</div>';
- const checked=auditSchedule({month:ui.month,assignments:draft.assignments,submissions:marks});
- $('audit').textContent=checked.ok?'✅ 重大エラーなし':'⚠️ '+checked.blockers.length+'件の要確認事項があります（未確認曜日：'+checked.warnings.length+'人）';
- $('audit-list').innerHTML=[...checked.blockers,...checked.warnings].map(t=>'<p>'+esc(t)+'</p>').join('');
- $('approve').disabled=access(ui.month)!=='awaiting-manager';$('simulation').value=ui.date;save();
-}
-$('person').addEventListener('change',e=>{ui.person=e.target.value;render()});
-$('months').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b){ui.month=b.dataset.month;render()}});
-$('mode-x').addEventListener('click',()=>{ui.mode='x';render()});
-$('mode-o').addEventListener('click',()=>{ui.mode='o';render()});
-$('simulation').addEventListener('change',e=>{ui.date=e.target.value;ui.month='';render()});
-$('approve').addEventListener('click',()=>{if(access(ui.month)==='awaiting-manager'&&confirm('この端末内でのみ仮公開を再現しますか？')){ui.published[ui.month]=true;render()}});
-$('calendar').addEventListener('click',e=>{
- const b=e.target.closest('button[data-day]');if(!b||b.disabled)return;const date=b.dataset.day,owner=plan(ui.month).assignments[date];
- if(access(ui.month)!=='editable'||!(ui.mode==='x'?owner===ui.person:owner!==ui.person))return;
- ui.marks[ui.month]??={};ui.marks[ui.month][date]??={};const old=ui.marks[ui.month][date][ui.person];
- if(!confirm(name(ui.person)+'さんとして'+date+'に'+(ui.mode==='x'?'×':'○')+'を'+(old===ui.mode?'取り消しますか？':'登録しますか？')))return;
- if(old===ui.mode)delete ui.marks[ui.month][date][ui.person];else ui.marks[ui.month][date][ui.person]=ui.mode;render();
-});
-render();
-</script></body></html>
+<script type="module" src="./app.mjs"></script></body></html>
