@@ -24,7 +24,7 @@ code{font-size:12px}
 <section class="card"><h2>① 管理者アカウントを確認</h2><p id="auth-label">ログイン状態を確認中…</p>
 <div class="row"><button id="login" class="primary">Googleでログイン</button><button id="check">登録済みメンバーを確認する</button></div><p class="small">Googleで管理者権限を確認したアカウントを選んでください。ログインだけではメンバーは登録されません。</p></section>
 <section class="card"><h2>② 登録する12人の内容</h2><p class="small">既存のメンバー情報を基にした初期データです。よみがな順で表示します。</p><div id="members" class="member-list"></div>
-<div class="notice"><b>未確認の当番曜日</b>は「未確認」のまま登録します。勝手に全曜日可能とは扱いません。6年生の終了予定は2027年3月31日です。間違いがあれば登録前に修正してください。</div></section>
+<div class="notice"><b>未確認の当番曜日</b>は「未確認」のまま登録します。勝手に全曜日可能とは扱いません。6年生を含め、退団・当番終了日は未設定にしています。実際に退団が決まったら管理者画面から設定します。</div></section>
 <section class="card"><h2>③ 確認後、初期メンバーを登録</h2><label class="check"><input id="agree" type="checkbox"><span>12人の名前・学年・開始日・終了予定日・曜日条件を確認しました。既存データがある場合は上書きしないことを理解しています。</span></label>
 <div class="row" style="margin-top:11px"><button id="save" class="primary" disabled>12人をFirebaseに初期登録する</button></div>
 <p id="result" role="status" aria-live="polite">まず「登録済みメンバーを確認する」を押してください。</p></section>
