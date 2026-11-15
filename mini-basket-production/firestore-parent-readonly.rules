@@ -1,0 +1,55 @@
+// STAGE 1: 保護者向け「閲覧のみ」。×・○の書き込みはまだ禁止。
+// This deliberately exposes a MINIMAL public roster only to signed-in clients,
+// including anyone who can visit the link and sign in anonymously.
+// Do not publish before obtaining team consent to anonymous-viewer access.
+// Private members (grade, unavailable dates, etc.) remain admin-only.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+
+    function publishedMonth(monthId) {
+      return exists(/databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId))
+        && get(/databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId)).data.publication == 'published';
+    }
+
+    match /admins/{uid} {
+      allow get: if isAdmin() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // Management data: Google admin only, including private member constraints.
+    match /teams/{teamId}/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Share only minimal names and IDs, never the full private member documents.
+    match /teams/aritama-mini-basket/public/roster {
+      allow get: if signedIn();
+    }
+
+    // Only published months. No parent writes are permitted at this stage.
+    match /teams/aritama-mini-basket/months/{monthId} {
+      allow get: if signedIn() && resource.data.publication == 'published';
+
+      match /days/{dayId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+
+      match /answers/{answerId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+    }
+  }
+}
