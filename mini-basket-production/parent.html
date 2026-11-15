@@ -40,7 +40,7 @@ const app=initializeApp(firebaseConfig,'mini-basket-parent-share'),auth=getAuth(
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key='mini-basket-parent-name-1',today=todayTokyo();
 const options=[monthPlus(today.slice(0,7),1),monthPlus(today.slice(0,7),2),monthPlus(today.slice(0,7),3)];
-let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,ready={meta:false,days:false,answers:false};
+let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false};
 const caption=m=>Number(m.slice(0,4))+'年'+Number(m.slice(5,7))+'月';
 const mapNames=()=>Object.fromEntries(names.map(m=>[m.id,m.name]));
 function connection(text,type='notice'){$('connection').textContent=text;$('connection').className=type}
@@ -64,7 +64,7 @@ function resetMonthListeners(){
 }
 function setMonth(m){
  if(!options.includes(m))return;
- selectedMonth=m;resetMonthListeners();drawMonths();draw();
+ selectedMonth=m;lastSaveMessage='';resetMonthListeners();drawMonths();draw();
  if(!published.includes(m)){monthMessage('この月の当番表は、まだ管理者から公開されていません。');return;}
  const version=token;
  monthMessage('Firebaseから'+caption(m)+'の当番表を読み込み中…');
@@ -89,7 +89,7 @@ function draw(){
  if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
  const canWrite=canEditMonth(monthData)&&!writing;
- reply.textContent=writing?'Firebaseに保存中です…':canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。';
+ reply.textContent=writing?'Firebaseに保存中です…':lastSaveMessage|| (canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。');
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
  $('mark-o').className=selectedMode==='o'?'selected-o':'';
@@ -128,9 +128,9 @@ function draw(){
  $('calendar').innerHTML=calendar;$('detail').innerHTML=detail||'<p>当番日がありません。</p>';
  monthMessage(monthData.inputState==='closed'?'🔒 この月は確定済み・入力締切です。閲覧のみできます。':'🗓️ 当番表を表示中です。現在の画面は閲覧のみです。','info');
 }
-$('person').addEventListener('change',e=>{selectedPerson=e.target.value;localStorage.setItem(key,selectedPerson);draw()});
-$('mark-x').addEventListener('click',()=>{selectedMode='x';draw()});
-$('mark-o').addEventListener('click',()=>{selectedMode='o';draw()});
+$('person').addEventListener('change',e=>{selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
+$('mark-x').addEventListener('click',()=>{selectedMode='x';lastSaveMessage='';draw()});
+$('mark-o').addEventListener('click',()=>{selectedMode='o';lastSaveMessage='';draw()});
 $('months').addEventListener('click',e=>{const target=e.target.closest('button[data-month]');if(target)setMonth(target.dataset.month)});
 $('calendar').addEventListener('click',async event=>{
  const target=event.target.closest('button[data-day]');
@@ -167,9 +167,9 @@ $('calendar').addEventListener('click',async event=>{
    if(actualAction==='delete'){tx.delete(ref);}
    else tx.set(ref,{date,memberId:person,kind,updatedAt:serverTimestamp(),updatedBy:uid});
   });
-  $('reply-status').textContent='✅ Firebaseに保存しました。全員の画面に反映されます。';
-  $('reply-status').className='ok';
+  lastSaveMessage='✅ Firebaseに保存しました。全員の画面に反映されます。';
  }catch(err){
+  lastSaveMessage='';
   const msg=err?.code==='permission-denied'?'セキュリティルールにより書き込みが拒否されました。管理者へ連絡してください。':(err?.message||err?.code||String(err));
   alert('保存できませんでした：'+msg);
  }finally{writing=false;draw()}
