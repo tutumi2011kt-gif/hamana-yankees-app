@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 初期メンバー登録｜管理者</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f8fc;color:#273950;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:690px;margin:auto;padding:12px 12px 65px}
+header{padding:18px 15px;background:linear-gradient(120deg,#e6f2ff,#fff4e2);border-radius:17px;border:1px solid #e2eaf0}
+h1{font-size:21px;margin:0 0 5px}h2{font-size:16px;margin:0 0 8px}p{margin:6px 0}
+.card{background:white;border:1px solid #dde5ef;border-radius:14px;padding:14px;margin:12px 0}
+.notice{background:#fff3dc;border:1px solid #f1ddb1;padding:11px;border-radius:10px;font-size:12px;margin:10px 0}
+.small{font-size:12px;color:#687a8e}.foot{font-size:11px;color:#718195}
+button{font:inherit;font-weight:800;background:#fff;border:1px solid #ccd8e3;border-radius:10px;padding:11px 12px;min-height:44px;cursor:pointer;color:#283e57}button.primary{background:#275783;color:#fff;border-color:#275783}button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row button{flex:1 1 165px}
+#result{border-radius:9px;padding:12px;background:#eef3f8;overflow-wrap:anywhere}
+#result.ok{background:#ecf8f0;color:#166a4d}#result.err{background:#fff0f3;color:#9c3047}#result.warn{background:#fff3dd;color:#835c26}
+.member-list{border:1px solid #e1e8f0;border-radius:11px;overflow:hidden;margin:10px 0}
+.member{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:9px 10px;border-bottom:1px solid #e3eaf1}
+.member:last-child{border-bottom:0}.member b{font-size:14px}.meta{font-size:11px;color:#607287;text-align:right}
+.check{display:flex;align-items:flex-start;gap:8px;background:#f2f6fa;border-radius:9px;padding:12px;font-size:13px}
+.check input{margin-top:4px;width:17px;height:17px;accent-color:#1a7a5d}
+code{font-size:12px}
+</style></head><body><main>
+<header><h1>🏀 初期メンバー登録</h1><p>ミニバス当番管理・本番Firebaseへの安全な登録</p><div class="notice"><b>管理者限定の登録画面です。</b> 既存メンバーが1人でも登録されている場合は一括登録を行いません。登録前に12人の内容を確認してください。月別当番表・×・○はまだ登録しません。</div></header>
+<section class="card"><h2>① 管理者アカウントを確認</h2><p id="auth-label">ログイン状態を確認中…</p>
+<div class="row"><button id="login" class="primary">Googleでログイン</button><button id="check">登録済みメンバーを確認する</button></div><p class="small">Googleで管理者権限を確認したアカウントを選んでください。ログインだけではメンバーは登録されません。</p></section>
+<section class="card"><h2>② 登録する12人の内容</h2><p class="small">既存のメンバー情報を基にした初期データです。よみがな順で表示します。</p><div id="members" class="member-list"></div>
+<div class="notice"><b>未確認の当番曜日</b>は「未確認」のまま登録します。勝手に全曜日可能とは扱いません。6年生の終了予定は2027年3月31日です。間違いがあれば登録前に修正してください。</div></section>
+<section class="card"><h2>③ 確認後、初期メンバーを登録</h2><label class="check"><input id="agree" type="checkbox"><span>12人の名前・学年・開始日・終了予定日・曜日条件を確認しました。既存データがある場合は上書きしないことを理解しています。</span></label>
+<div class="row" style="margin-top:11px"><button id="save" class="primary" disabled>12人をFirebaseに初期登録する</button></div>
+<p id="result" role="status" aria-live="polite">まず「登録済みメンバーを確認する」を押してください。</p></section>
+<p class="foot">この画面は管理者Google認証とFirestoreのセキュリティルールで保護されています。確認せずにデータを自動投入する処理はありません。</p>
+</main><script type="module">
+import {ROSTER} from './core.mjs';
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDoc,getDocs,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'mini-basket-admin-login');
+const auth=getAuth(app),db=getFirestore(app);
+const membersRef=collection(db,'teams',teamId,'members');
+const sorted=ROSTER.slice().sort((a,b)=>a.kana.localeCompare(b.kana,'ja'));
+const fmt=day=>day?day.replace(/-/g,'/'):'設定なし';
+const weekdays=[['日',0],['水',3],['金',5],['土',6]];
+$('members').innerHTML=sorted.map(m=>'<div class="member"><b>'+m.name+'</b><span class="meta">'+m.grade+'年｜開始 '+fmt(m.start)+'<br>終了 '+fmt(m.end)+'｜曜日 '+(m.days===null?'未確認':weekdays.filter(x=>m.days.includes(x[1])).map(x=>x[0]).join('・'))+'</span></div>').join('');
+let preflight=false,busy=false;
+const result=(msg,cls='')=>{$('result').textContent=msg;$('result').className=cls};
+const syncButtons=()=>{
+ $('save').disabled=busy||!preflight||!$('agree').checked||!auth.currentUser;
+ $('check').disabled=busy||!auth.currentUser;
+ $('login').disabled=busy;
+ $('login').style.display=auth.currentUser?'none':'';
+};
+onAuthStateChanged(auth,user=>{
+ preflight=false;
+ $('auth-label').textContent=user?'Googleログイン済み。右の「登録済みメンバーを確認する」を押してください。':'未ログイン：先にGoogleでログインしてください。';
+ result(user?'ログイン済みです。既存メンバーの有無を確認できます。':'ログイン後に既存メンバーを確認してください。');
+ syncButtons();
+},err=>result('ログイン状態を取得できません：'+(err.code||err.message),'err'));
+$('login').addEventListener('click',()=>{
+ const task=signInWithPopup(auth,new GoogleAuthProvider());
+ task.catch(err=>result('Googleログイン失敗：'+(err.code||err.message),'err'));
+});
+$('agree').addEventListener('change',syncButtons);
+$('check').addEventListener('click',async()=>{
+ const user=auth.currentUser;
+ if(!user||busy)return;
+ preflight=false;busy=true;syncButtons();result('管理者権限と既存メンバーを確認しています…');
+ try{
+  const admin=await getDoc(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者登録が見つかりません。');
+  const snapshot=await getDocs(membersRef);
+  if(snapshot.size!==0){result('すでに'+snapshot.size+'人が登録されています。安全のため初期登録は停止しました。既存データは一切変更しません。','warn');return;}
+  preflight=true;
+  result('✅ 管理者権限OK。現在のメンバー登録数は0人です。内容を確認し、チェックを入れると初期登録できます。','ok');
+ }catch(err){result('確認に失敗しました：'+(err.code||err.message||String(err)),'err')}
+ finally{busy=false;syncButtons()}
+});
+$('save').addEventListener('click',async()=>{
+ const user=auth.currentUser;
+ if(!user||!preflight||!$('agree').checked||busy)return;
+ if(!confirm('12人のメンバーをFirebaseに初期登録します。既存メンバーを上書きしません。実行しますか？'))return;
+ busy=true;preflight=false;syncButtons();result('Firebaseに登録中です。二重実行しないでください。');
+ try{
+   // One transaction checks all targets before writing any member; never overwrite.
+   await runTransaction(db,async transaction=>{
+     const refs=ROSTER.map(m=>doc(db,'teams',teamId,'members',m.id));
+     const docs=[];
+     for(const ref of refs)docs.push(await transaction.get(ref));
+     if(docs.some(x=>x.exists()))throw Error('別の端末ですでにメンバー登録がありました。データは変更しません。');
+     for(let i=0;i<ROSTER.length;i++){
+       const m=ROSTER[i];
+       transaction.set(refs[i],{
+         name:m.name,kana:m.kana,grade:m.grade,
+         startDate:m.start,endDate:m.end,days:m.days,status:m.status,
+         createdAt:serverTimestamp(),updatedAt:serverTimestamp()
+       });
+     }
+   });
+   $('agree').checked=false;
+   result('✅ 12人の初期登録が完了しました。FirebaseのFirestoreで teams → '+teamId+' → members を確認できます。','ok');
+ }catch(err){result('登録できませんでした：'+(err.code||err.message||String(err))+'。必要なら再度「登録済みメンバーを確認する」を押してください。','err')}
+ finally{busy=false;syncButtons()}
+});
+syncButtons();
+</script></body></html>
