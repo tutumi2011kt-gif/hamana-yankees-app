@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 2026年12月の当番表を初期登録</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#253950;font:15px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif}
+main{max-width:690px;margin:auto;padding:12px 12px 55px}
+header{background:linear-gradient(120deg,#e9f4ff,#fff3e4);border:1px solid #dce5ef;padding:17px;border-radius:17px}h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:0 0 9px}
+p{margin:6px 0}.sub{font-size:12px;color:#63768d}.panel{border:1px solid #dfe7ef;background:#fff;border-radius:14px;padding:13px;margin:12px 0}
+.warning{border:1px solid #ebd3a8;background:#fff3dd;border-radius:10px;padding:11px;font-size:12px}
+.ok{background:#eaf8f1;border:1px solid #c5e5d4;padding:11px;border-radius:10px;color:#126e4b}
+.fail{background:#fff0f2;border:1px solid #e9bfc8;padding:11px;border-radius:10px;color:#a3324a}
+button{border:1px solid #cdd9e4;background:white;border-radius:11px;min-height:44px;padding:10px 13px;font:inherit;font-weight:800;cursor:pointer;color:#233950}button.primary{background:#285b8b;border-color:#285b8b;color:white}button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 145px}
+.items{border:1px solid #e3e9ef;border-radius:11px;overflow:hidden}.item{display:grid;grid-template-columns:65px minmax(0,1fr);align-items:center;padding:9px 11px;gap:6px;border-bottom:1px solid #e3e9ef;font-size:14px}.item:last-child{border-bottom:0}.item.game{background:#f2f5f8}.name{font-weight:800}.extra{font-size:12px;color:#6a7b91}
+.checkbox{display:flex;gap:10px;align-items:start;border:1px solid #e2eaf0;background:#f4f8fa;border-radius:9px;padding:10px 11px;font-size:13px}.checkbox input{width:18px;height:18px;accent-color:#198061;margin-top:3px}
+footer{font-size:11px;color:#708197;margin-top:12px}
+</style></head><body><main>
+<header><h1>🏀 12月当番表の初期登録</h1><p>2026年12月の確定済み当番と試合日をFirebaseに登録</p><div class="warning"><b>本番データを書き込む画面です。</b>日付・担当者を確認するまで「登録」を押さないでください。現在のデータが1件でも存在する場合は上書きせず停止します。</div></header>
+<section class="panel"><h2>① 管理者ログイン</h2><p id="auth" class="sub">Googleアカウント確認中…</p><div class="row"><button id="login" class="primary">Googleでログイン</button><button id="check">Firebaseの登録状況を確認</button></div><p class="sub">管理者本人のGoogleアカウントで操作してください。</p></section>
+<section class="panel"><h2>② 今回登録する当番表</h2><p class="sub">15回の練習当番＋2日間の試合。当番教習の村松さわは12月9日の補助扱いで、当番実施回数に含めません。</p><div class="items" id="day-list"></div><p class="warning">この画面は、以前に確定した12月の当番表を初期登録するためのものです。新たな希望や曜日制限を推測して割り当てることはありません。以降の月の当番表は別途管理者が確認します。</p></section>
+<section class="panel"><h2>③ 内容確認後、初期登録</h2><label class="checkbox"><input type="checkbox" id="agree"><span>12月2日～30日の担当者、12月26日・27日の試合、12月9日の当番教習を確認しました。登録済みの月データは上書きしないことを理解しています。</span></label>
+<div class="row" style="margin-top:11px"><button class="primary" id="save" disabled>2026年12月をFirebaseに登録</button></div>
+<p id="result" role="status" aria-live="polite" class="sub">最初に「Firebaseの登録状況を確認」を押してください。</p><p class="sub">登録する12月は「確定済み・入力締切」の状態です。保護者がこの月を変更することはできません。</p></section>
+<footer>これまで使用したデモ用の架空の割当は取り込みません。登録は管理者権限・確認操作・Firestoreトランザクションで保護しています。</footer>
+</main>
+<script type="module">
+import {ROSTER} from './core.mjs';
+import {buildDecember2026} from './december-2026.mjs';
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDoc,getDocs,runTransaction,Timestamp,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'mini-basket-admin-login'),auth=getAuth(app),db=getFirestore(app);
+const month='2026-12',days=buildDecember2026();
+const lookup=Object.fromEntries(ROSTER.map(x=>[x.id,x.name]));
+const jpDay=['日','月','火','水','木','金','土'];
+$('day-list').innerHTML=days.map(d=>'<div class="item '+(d.type==='game'?'game':'')+'"><b>'+Number(d.date.slice(-2))+'日('+jpDay[d.weekday]+')</b><span><span class="name">'+(d.type==='game'?'🏀 試合・当番なし':lookup[d.ownerId])+'</span>'+(d.traineeIds.length?'<span class="extra"> ＋村松さわ（当番教習・回数対象外）</span>':'')+(d.type==='game'?'<span class="extra">／'+d.eventLocation+'</span>':'')+'</span></div>').join('');
+let ready=false,busy=false;
+const status=(msg,type='sub')=>{$('result').textContent=msg;$('result').className=type};
+const ui=()=>{$('login').style.display=auth.currentUser?'none':'';$('login').disabled=busy;$('check').disabled=busy||!auth.currentUser;$('save').disabled=busy||!ready||!$('agree').checked||!auth.currentUser};
+onAuthStateChanged(auth,user=>{
+ ready=false;
+ $('auth').textContent=user?'Googleログイン済み。登録状態の確認に進めます。':'管理者のGoogleログインが必要です。';
+ status(user?'「Firebaseの登録状況を確認」を押してください。':'Googleログインしてから確認してください。');
+ ui();
+},e=>status('認証の読み込みに失敗しました：'+(e.code||e.message),'fail'));
+$('login').addEventListener('click',()=>{const p=signInWithPopup(auth,new GoogleAuthProvider());p.catch(e=>status('Googleログイン失敗：'+(e.code||e.message),'fail'));});
+$('agree').addEventListener('change',ui);
+$('check').addEventListener('click',async()=>{
+ const user=auth.currentUser;if(!user||busy)return;
+ busy=true;ready=false;ui();status('Firebaseを確認中…');
+ try{
+  const admin=await getDoc(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('登録済み管理者として確認できませんでした');
+  const snapshot=await getDoc(doc(db,'teams',teamId,'months',month));
+  const existing=await getDocs(collection(db,'teams',teamId,'months',month,'days'));
+  if(snapshot.exists()||!existing.empty){status('12月の月情報または練習日がすでに登録されています。二重登録防止のため停止しました。変更はありません。','fail');return;}
+  const roster=await getDocs(collection(db,'teams',teamId,'members'));
+  const found=Object.fromEntries(roster.docs.map(x=>[x.id,x.data()]));
+  if(roster.size!==12||ROSTER.some(m=>!found[m.id]||found[m.id].name!==m.name))throw Error('登録済みメンバーが12人の予定と一致しません。メンバー情報を確認してください。');
+  ready=true;status('✅ 既存の12月当番表はありません。管理者権限・メンバー12人とも確認済み。内容が正しければチェックして登録できます。','ok');
+ }catch(e){status('登録前の確認に失敗：'+(e.code||e.message||String(e)),'fail');}
+ finally{busy=false;ui()}
+});
+$('save').addEventListener('click',async()=>{
+ if(!ready||busy||!auth.currentUser||!$('agree').checked)return;
+ if(!confirm('2026年12月の確定当番15日と試合2日を、本番Firebaseへ初期登録します。既存データは上書きしません。登録しますか？'))return;
+ busy=true;ready=false;ui();status('12月当番表をFirebaseへ登録中…');
+ try{
+  const ref=doc(db,'teams',teamId,'months',month);
+  const refs=days.map(d=>doc(db,'teams',teamId,'months',month,'days',d.date));
+  await runTransaction(db,async tx=>{
+   const monthSnap=await tx.get(ref);
+   const existing=[];
+   for(const dref of refs)existing.push(await tx.get(dref));
+   if(monthSnap.exists()||existing.some(x=>x.exists()))throw Error('登録済みの12月データが見つかりました。上書きしません。');
+   tx.set(ref,{
+    publication:'published',inputState:'closed',scheduleStatus:'confirmed',
+    openAt:Timestamp.fromDate(new Date('2026-10-01T00:00:00+09:00')),
+    cutoffAt:Timestamp.fromDate(new Date('2026-11-01T00:00:00+09:00')),
+    originalSource:'agreed-roster-2026-11-12',
+    createdBy:auth.currentUser.uid,createdAt:serverTimestamp(),version:1
+   });
+   for(let i=0;i<days.length;i++){
+    const d=days[i];
+    const data={date:d.date,weekday:d.weekday,type:d.type,ownerId:d.ownerId,
+      traineeIds:d.traineeIds,version:1,createdAt:serverTimestamp()};
+    if(d.type==='game')data.eventLocation=d.eventLocation;
+    tx.set(refs[i],data);
+   }
+  });
+  $('agree').checked=false;status('✅ 2026年12月：当番15日・試合2日をFirebaseに登録しました。月は確定済み・編集不可です。','ok');
+ }catch(e){status('登録できませんでした：'+(e.code||e.message||String(e))+'。再確認してください。','fail');}
+ finally{busy=false;ui()}
+});
+ui();
+</script></body></html>
