@@ -1,4 +1,5 @@
-// Mini-basket duty: pure scheduling rules (version 0.1).
+// Mini-basket duty: pure scheduling rules (version 0.2).
+import {WEEKDAY_UPDATES,isDayAllowed,isPreferredWeekday} from './weekday-conditions.mjs';
 // No Firebase or browser APIs. All dates are YYYY-MM-DD / YYYY-MM.
 export const WEEKDAYS=[0,3,5,6]; // Sun, Wed, Fri, Sat
 export const DAY_NAMES=['日','月','火','水','木','金','土'];
@@ -15,7 +16,7 @@ export const ROSTER=[
  {id:'wakana',name:'おおたけわかな',kana:'おおたけわかな',grade:3,start:'2026-12-01',end:null,days:null,status:'active'},
  {id:'kaho',name:'かほ',kana:'かほ',grade:3,start:'2026-12-01',end:null,days:null,status:'active'},
  {id:'haruka',name:'はるか',kana:'はるか',grade:2,start:'2026-12-01',end:null,days:[0,3,5,6],status:'active'}
-];
+].map(m=>WEEKDAY_UPDATES[m.id]?{...m,...WEEKDAY_UPDATES[m.id]}:m);
 export function monthPlus(month,offset){
  const [y,m]=month.split('-').map(Number);
  const d=new Date(Date.UTC(y,m-1+offset,1));
@@ -48,9 +49,7 @@ export function practices(month,exceptions={}){
  return dayList(month).filter(x=>WEEKDAYS.includes(x.weekday)&&!['試合','休み'].includes(exceptions[x.date]));
 }
 export function isEligibleForDraft(member,date,weekday,preferences={}){
- if(!activeOn(member,date))return false;
- // null means UNCONFIRMED, not unrestricted; do not silently assign.
- if(!Array.isArray(member.days)||!member.days.includes(weekday))return false;
+ if(!isDayAllowed(member,date,weekday))return false;
  const x=preferences[member.id]?.unavailable||[];
  return !x.includes(date);
 }
@@ -67,9 +66,13 @@ export function buildDraft({month,members=ROSTER,preferences={},counts={},except
    continue;
   }
   eligible.sort((a,b)=>{
+   // Explicit date preference and confirmed member weekday preference come first.
    const ap=preferences[a.id]?.preferred||[],bp=preferences[b.id]?.preferred||[];
    const aa=ap.includes(d.date)?0:1,bb=bp.includes(d.date)?0:1;
    if(aa!==bb)return aa-bb;
+   const pa=Array.isArray(a.preferredWeekdays)&&a.preferredWeekdays.length?(isPreferredWeekday(a,d.weekday)?0:1):0;
+   const pb=Array.isArray(b.preferredWeekdays)&&b.preferredWeekdays.length?(isPreferredWeekday(b,d.weekday)?0:1):0;
+   if(pa!==pb)return pa-pb;
    const ca=(counts[a.id]||0)+(allocated[a.id]||0),cb=(counts[b.id]||0)+(allocated[b.id]||0);
    if(ca!==cb)return ca-cb;
    return a.kana.localeCompare(b.kana,'ja');
@@ -100,7 +103,7 @@ export function auditSchedule({month,assignments={},members=ROSTER,preferences={
   if(!m){blockers.push(d.date+'：登録外の担当者');continue}
   if(!activeOn(m,d.date))blockers.push(d.date+'：当番対象期間外 '+m.name);
   if(!Array.isArray(m.days))blockers.push(d.date+'：曜日条件未確認 '+m.name);
-  else if(!m.days.includes(d.weekday))blockers.push(d.date+'：曜日条件違反 '+m.name);
+  else if(!isDayAllowed(m,d.date,d.weekday))blockers.push(d.date+'：曜日条件違反・要事前確認 '+m.name);
   if((preferences[m.id]?.unavailable||[]).includes(d.date))blockers.push(d.date+'：登録済みの×と衝突 '+m.name);
   const swap=swapStatus({date:d.date,ownerId:value,submissions,members});
   if(swap.status==='urgent')blockers.push(d.date+'：交代募集中（○候補0人）');
