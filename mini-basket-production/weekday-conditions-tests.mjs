@@ -1,0 +1,74 @@
+// Run from this directory with Node: node weekday-conditions-tests.mjs
+import assert from 'node:assert/strict';
+import {WEEKDAY_UPDATES,PROFILE_IDS,UNCONFIRMED_MEMBER_ID,isDayAllowed,weekdayOf,isPreferredWeekday} from './weekday-conditions.mjs';
+import {ROSTER,buildDraft} from './core.mjs';
+import {normalizeMember,emptyDraft,auditDraft} from './month-draft-core.mjs';
+let n=0;
+function test(label,work){work();n++;console.log('✅ '+label)}
+const byId=Object.fromEntries(ROSTER.map(x=>[x.id,x]));
+const dates={wed:'2027-01-06',fri:'2027-01-08',sat:'2027-01-09',sun:'2027-01-10'};
+const w={wed:3,fri:5,sat:6,sun:0};
+test('11 confirmed profiles',()=>assert.equal(PROFILE_IDS.length,11));
+test('Sawa is excluded',()=>assert.equal(WEEKDAY_UPDATES[UNCONFIRMED_MEMBER_ID],undefined));
+for(const [id,allowed] of [
+ ['wakana',['wed','fri','sat','sun']],
+ ['mia',['sat']],['yui',['wed']],['an',['sat','sun']],
+ ['mai',['wed','fri','sat','sun']],['koharu',['wed']],
+ ['nagisa',['wed','fri']],['nodoka',['wed','fri','sun']],
+ ['sayaka',['wed','fri','sat','sun']],['haruka',['wed','fri','sat','sun']],
+ ['kaho',['wed','fri']]
+ ]){
+ test(id+' absolute/regular allowed weekdays',()=>{
+  for(const [key,date] of Object.entries(dates)){
+   assert.equal(isDayAllowed(byId[id],date,w[key]),allowed.includes(key),id+' '+key);
+  }
+ });
+}
+test('Sawa cannot be assigned while unconfirmed',()=>{
+ assert.equal(byId.sawa.days,null);
+ assert.equal(isDayAllowed(byId.sawa,dates.wed,3),false);
+});
+test('Mai prefers Wednesday but can do weekends',()=>{
+ assert.equal(isPreferredWeekday(byId.mai,3),true);
+ assert.equal(isPreferredWeekday(byId.mai,6),false);
+ assert.equal(isDayAllowed(byId.mai,dates.sat,6),true);
+});
+test('Nagisa is NOT auto-assigned on weekend',()=>{
+ assert.equal(isDayAllowed(byId.nagisa,dates.sat,6),false);
+ assert.equal(isDayAllowed(byId.nagisa,dates.sun,0),false);
+});
+test('Only Nagisa can use advance explicit weekend approval',()=>{
+ const approved={...byId.nagisa,approvedWeekendDates:[dates.sat]};
+ assert.equal(isDayAllowed(approved,dates.sat,6),true);
+ assert.equal(isDayAllowed(approved,dates.sun,0),false);
+ assert.equal(isDayAllowed({...byId.yui,approvedWeekendDates:[dates.sat]},dates.sat,6),false);
+});
+test('February non-existent date rejected',()=>assert.equal(weekdayOf('2027-02-29'),null));
+test('Missing start date rejected',()=>assert.equal(isDayAllowed({...byId.mia,start:null},dates.sat,6),false));
+test('Retired member rejected',()=>assert.equal(isDayAllowed({...byId.mia,status:'retired'},dates.sat,6),false));
+test('Jan draft checks Sat-only Mia',()=>{
+ const rows=emptyDraft(),day=rows.find(x=>x.date===dates.wed);day.ownerId='mia';
+ const audit=auditDraft('2027-01',rows,[normalizeMember(byId.mia)]);
+ assert.equal(audit.ok,false);assert.ok(audit.problems.some(x=>x.includes('曜日条件')));
+});
+test('Jan draft rejects unconfirmed Sawa even if start date valid',()=>{
+ const rows=emptyDraft(),day=rows.find(x=>x.date===dates.wed);day.ownerId='sawa';
+ const audit=auditDraft('2027-01',rows,[normalizeMember(byId.sawa)]);
+ assert.equal(audit.ok,false);
+});
+test('Jan draft allows Mai weekend but warns preference',()=>{
+ const rows=emptyDraft(),day=rows.find(x=>x.date===dates.sat);day.ownerId='mai';
+ const audit=auditDraft('2027-01',rows,[normalizeMember(byId.mai)]);
+ assert.equal(audit.ok,true);assert.ok(audit.warnings.some(x=>x.includes('別曜日を希望')));
+});
+test('Auto draft never assigns anyone on banned weekday',()=>{
+ const draft=buildDraft({month:'2027-01',members:ROSTER});
+ for(const [date,id] of Object.entries(draft.assignments)){
+  if(id)assert.equal(isDayAllowed(byId[id],date),true,date+' '+id);
+ }
+});
+test('Auto draft does not assign Sawa',()=>{
+ const draft=buildDraft({month:'2027-01',members:ROSTER});
+ assert.ok(Object.values(draft.assignments).every(id=>id!=='sawa'));
+});
+console.log('PASS '+n+' weekday rule tests');
