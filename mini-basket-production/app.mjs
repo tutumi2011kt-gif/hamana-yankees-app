@@ -12,7 +12,7 @@ const windowNow=()=>rollingWindow(now());
 let ui={member:'haruka',month:'',mode:'x',simulatedDate:'',marks:{},published:{}};
 try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&typeof s==='object')ui={...ui,...s};}catch(_e){}
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(ui));}catch(_e){}};
-let cloud=null,cloudMonth=null,cloudRoster=null,cloudMessage={kind:live?'connecting':'unconfigured',detail:live?'接続準備中':'端末内だけの試作です'};
+let cloud=null,cloudMonth=null,cloudRoster=null,subscribedMonth=null,cloudMessage={kind:live?'connecting':'unconfigured',detail:live?'接続準備中':'端末内だけの試作です'};
 let writing=false;
 const roster=()=>live?(cloudRoster||[]):ROSTER;
 const name=id=>roster().find(m=>m.id===id)?.name||'未割当';
@@ -64,7 +64,7 @@ function updateStatus(){
 function render(){
  const win=windowNow(),months=[win.lockThrough,...win.inputMonths];
  if(!months.includes(ui.month))ui.month=months[1];
- if(live&&cloud&&(!cloudMonth||cloudMonth.month!==ui.month))cloud.subscribe(ui.month);
+ if(live&&cloud&&subscribedMonth!==ui.month){subscribedMonth=ui.month;cloudMonth=null;cloud.subscribe(ui.month);}
  const members=roster().slice().sort((a,b)=>(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja'));
  $('person').innerHTML=members.length?members.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>').join(''):'<option value="">メンバーを読み込み中</option>';
  if(members.length&&!members.some(m=>m.id===ui.member))ui.member=members[0].id;
@@ -160,6 +160,6 @@ if(live){
  }).then(c=>{
    cloud=c;
    if(!c){cloudMessage={kind:'error',detail:'Firebaseに接続できませんでした'};render();return;}
-   c.subscribe(ui.month);
+   subscribedMonth=ui.month;c.subscribe(ui.month);
  });
 }
