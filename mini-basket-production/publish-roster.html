@@ -43,6 +43,8 @@ $('check').addEventListener('click',async()=>{
  try{
   const admin=await getDocFromServer(doc(db,'admins',uid));
   if(!admin.exists()||admin.data().enabled!==true)throw Error('登録済み管理者ではありません');
+  const december=await getDocFromServer(doc(db,'teams',teamId,'months','2026-12'));
+  if(!december.exists()||december.data().publication!=='published')throw Error('12月当番表が公開済みではありません。先に当番表を確認してください');
   const source=await getDocsFromServer(collection(db,'teams',teamId,'members'));
   if(source.size!==12)throw Error('登録メンバーが12人ではありません。登録内容を確認してください。');
   const names=source.docs.map(d=>({id:d.id,...d.data()})).map(m=>({id:m.id,name:m.name,kana:m.kana,status:m.status}))
@@ -67,13 +69,16 @@ $('save').addEventListener('click',async()=>{
    const snaps=[];
    for(const ref of memberRefs)snaps.push(await tx.get(ref));
    const prior=await tx.get(publicRef);
+   const december=await tx.get(doc(db,'teams',teamId,'months','2026-12'));
+   if(!december.exists()||december.data().publication!=='published')throw Error('2026年12月の公開情報が確認できません');
    if(snaps.some(x=>!x.exists()))throw Error('現在の登録メンバー情報が不足しています');
    const list=snaps.map((snap,i)=>({id:memberRefs[i].id,...snap.data()}))
      .map(m=>({id:m.id,name:m.name,kana:m.kana,status:m.status}))
      .sort((a,b)=>a.kana.localeCompare(b.kana,'ja'));
    if(list.find(m=>m.id==='wakana')?.name!=='おおたけわかな')throw Error('名前の変更が確認できないため保存を中止します');
    if(prior.exists()&&!Array.isArray(prior.data().members))throw Error('公開用名簿の形式が一致しないため更新しません');
-   tx.set(publicRef,{members:list,updatedAt:serverTimestamp(),version:1});
+   const publishedMonths=[...new Set([...(Array.isArray(prior.data()?.publishedMonths)?prior.data().publishedMonths:[]),'2026-12'])].sort();
+   tx.set(publicRef,{members:list,publishedMonths,updatedAt:serverTimestamp(),version:1});
   });
   $('agree').checked=false;$('list-status').textContent='保存完了';
   status('✅ 12人の保護者用名簿を本番Firebaseに保存しました。次にセキュリティルールを切り替えると、保護者が閲覧できるようになります。','ok');
