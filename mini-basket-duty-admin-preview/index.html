@@ -50,10 +50,10 @@ textarea.input{resize:vertical;min-height:90px}
 <div class="toolbar"><button class="btn main" id="new-button">＋ メンバー追加</button><button class="btn" id="download-json">⬇ バックアップ</button><button class="btn" id="download-csv">⬇ Excel用CSV</button></div><div class="list" id="member-list"></div></section>
 <section class="panel" id="editor-section"><h2 id="editor-title">➕ 新しいメンバーの登録</h2>
 <form id="member-form" novalidate>
-<div class="field"><label for="member-name">お子さんの名前</label><input id="member-name" class="input" placeholder="例：田中はな" maxlength="50" required></div>
+<div class="grid2"><div class="field"><label for="member-name">お子さんの名前</label><input id="member-name" class="input" placeholder="例：田中はな" maxlength="50" required></div><div class="field"><label for="member-reading">よみがな（ひらがな）</label><input id="member-reading" class="input" placeholder="たなかはな" maxlength="80" required></div></div>
 <div class="grid2"><div class="field"><label for="member-grade">学年</label><select id="member-grade" class="input"><option value="1">1年生</option><option value="2">2年生</option><option value="3">3年生</option><option value="4">4年生</option><option value="5">5年生</option><option value="6">6年生</option></select></div><div class="field"><label for="member-start">当番開始日</label><input type="date" id="member-start" class="input" required></div></div>
 <div class="field"><label>当番を割り当ててよい曜日（仮当番表用）</label><div class="choice-row"><label><input type="radio" name="weekday-mode" value="set" checked> 曜日を指定する</label><label><input type="radio" name="weekday-mode" value="unknown"> 未確認</label></div><div class="checkrow" id="weekday-options"></div><p class="small">※この設定は仮当番の自動作成時だけに適用します。本人が自発的に「○ 交代可能」を申し出る曜日は制限しません。</p></div>
-<div class="field"><label for="member-blackouts">個別の当番不可日（任意）</label><textarea id="member-blackouts" class="input" placeholder="例：2027-02-06&#10;2027-02-13"></textarea><p class="small">1行に1日、YYYY-MM-DD形式。本人の希望として自動割当に反映します。</p></div>
+<div class="field"><label for="member-preferred">当番希望日（任意）</label><textarea id="member-preferred" class="input" placeholder="例：2027-02-03&#10;2027-02-10"></textarea><p class="small">1行に1日、YYYY-MM-DD形式。この希望は優先して検討しますが、×不可日と重なる場合は不可日を最優先します。</p></div><div class="field"><label for="member-blackouts">個別の当番不可日（任意）</label><textarea id="member-blackouts" class="input" placeholder="例：2027-02-06&#10;2027-02-13"></textarea><p class="small">1行に1日、YYYY-MM-DD形式。本人の希望として自動割当に反映します。</p></div>
 <div class="field"><label for="member-status">メンバーの状態</label><select class="input" id="member-status"><option value="active">在籍中</option><option value="paused">当番休止中</option><option value="retired">退団済み</option></select></div>
 <div class="field" id="end-field"><label for="member-end">終了日・退団日（休止・退団なら設定）</label><input id="member-end" type="date" class="input"><p class="small">過去の当番実施回数や担当履歴は消しません。</p></div>
 <div id="form-error" class="warning hidden" role="alert"></div>
@@ -80,15 +80,16 @@ const PEOPLE=[
  ['かほ',3,null,'2026-12-01'],
  ['はるか',2,DAYS.slice(),'2026-12-01']
 ];
-const initial=()=>PEOPLE.map((x,i)=>({id:'initial-'+i,name:x[0],grade:x[1],days:x[2],start:x[3],status:'active',end:'',blackouts:[],updated:''}));
+const YOMI={'あん':'あん','大竹わかな':'おおたけわかな','かほ':'かほ','こはる':'こはる','さやか':'さやか','なぎさ':'なぎさ','のどか':'のどか','はるか':'はるか','まい':'まい','みあ':'みあ','村松さわ':'むらまつさわ','ゆい':'ゆい'};
+const initial=()=>PEOPLE.map((x,i)=>({id:'initial-'+i,name:x[0],reading:YOMI[x[0]]||x[0],grade:x[1],days:x[2],start:x[3],status:'active',end:'',preferred:[],blackouts:[],updated:''}));
 let people=initial(),editingId=null;
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const validDate=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+'T00:00:00');return !Number.isNaN(d.getTime())&&d.getFullYear()===Number(s.slice(0,4))&&d.getMonth()+1===Number(s.slice(5,7))&&d.getDate()===Number(s.slice(8));};
 const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.toastTimeout);window.toastTimeout=setTimeout(()=>e.classList.remove('show'),3000)};
-try{const data=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(data)&&data.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'))people=data;}catch(_){}
+try{const data=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(data)&&data.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'))people=data.map(p=>({...p,reading:p.reading||YOMI[p.name]||p.name,preferred:p.preferred||[]}));}catch(_){}
 function save(){localStorage.setItem(KEY,JSON.stringify(people));}
-function nameSort(a,b){return a.name.localeCompare(b.name,'ja');}
+function nameSort(a,b){return (a.reading||a.name).localeCompare(b.reading||b.name,'ja');}
 function summary(p){const d=p.days===null?'曜日：未確認':p.days.join('・')+'曜日';return p.grade+'年 ／ '+d+' ／ 開始：'+p.start+(p.end?' ／ 終了：'+p.end:'');}
 function showRoster(){
  const totals={active:0,paused:0,retired:0};people.forEach(p=>{if(totals[p.status]!==undefined)totals[p.status]++});
@@ -101,11 +102,12 @@ function showRoster(){
 function weekdayMarkup(selected){return DAYS.map(d=>'<label><input type="checkbox" name="days" value="'+d+'" '+(selected.includes(d)?'checked':'')+'> '+d+'曜</label>').join('');}
 function updateMode(){const disabled=document.querySelector('input[name=weekday-mode]:checked')?.value==='unknown';document.querySelectorAll('input[name=days]').forEach(x=>x.disabled=disabled);}
 function newEditor(){editingId=null;$('editor-title').textContent='➕ 新しいメンバーの登録';$('member-form').reset();$('member-grade').value='3';$('member-start').value='2027-01-01';$('member-status').value='active';$('weekday-options').innerHTML=weekdayMarkup(DAYS);$('form-error').classList.add('hidden');updateMode();}
-function editPerson(id){const p=people.find(x=>x.id===id);if(!p)return;editingId=id;$('editor-title').textContent='✏️ '+p.name+'さんの情報を変更';$('member-name').value=p.name;$('member-grade').value=String(p.grade);$('member-start').value=p.start;$('member-status').value=p.status;$('member-end').value=p.end||'';$('member-blackouts').value=(p.blackouts||[]).join('\n');document.querySelector('input[name=weekday-mode][value="'+(p.days===null?'unknown':'set')+'"]').checked=true;$('weekday-options').innerHTML=weekdayMarkup(p.days||DAYS);$('form-error').classList.add('hidden');updateMode();$('editor-section').scrollIntoView({behavior:'smooth',block:'start'});}
+function editPerson(id){const p=people.find(x=>x.id===id);if(!p)return;editingId=id;$('editor-title').textContent='✏️ '+p.name+'さんの情報を変更';$('member-name').value=p.name;$('member-reading').value=p.reading||YOMI[p.name]||'';$('member-preferred').value=(p.preferred||[]).join('\n');$('member-grade').value=String(p.grade);$('member-start').value=p.start;$('member-status').value=p.status;$('member-end').value=p.end||'';$('member-blackouts').value=(p.blackouts||[]).join('\n');document.querySelector('input[name=weekday-mode][value="'+(p.days===null?'unknown':'set')+'"]').checked=true;$('weekday-options').innerHTML=weekdayMarkup(p.days||DAYS);$('form-error').classList.add('hidden');updateMode();$('editor-section').scrollIntoView({behavior:'smooth',block:'start'});}
 function fail(msg){$('form-error').textContent=msg;$('form-error').classList.remove('hidden');$('form-error').scrollIntoView({block:'nearest'});}
-function submit(e){e.preventDefault();const name=$('member-name').value.trim(),grade=Number($('member-grade').value),start=$('member-start').value,status=$('member-status').value,end=$('member-end').value;const mode=document.querySelector('input[name=weekday-mode]:checked')?.value;const days=mode==='unknown'?null:Array.from(document.querySelectorAll('input[name=days]:checked')).map(x=>x.value);
- const blackouts=$('member-blackouts').value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean);
+function submit(e){e.preventDefault();const name=$('member-name').value.trim(),reading=$('member-reading').value.trim(),grade=Number($('member-grade').value),start=$('member-start').value,status=$('member-status').value,end=$('member-end').value;const mode=document.querySelector('input[name=weekday-mode]:checked')?.value;const days=mode==='unknown'?null:Array.from(document.querySelectorAll('input[name=days]:checked')).map(x=>x.value);
+ const preferred=$('member-preferred').value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean);const blackouts=$('member-blackouts').value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean);
  if(!name)return fail('名前を入力してください。');
+ if(!reading||!/^[ぁ-ゖー\s]+$/.test(reading))return fail('よみがなをひらがなで入力してください。');
  if(people.some(p=>p.name===name&&p.id!==editingId))return fail('同じ名前が登録されています。姓などで区別してください。');
  if(!validDate(start))return fail('当番開始日を正しく入力してください。');
  if(days!==null&&days.length===0)return fail('曜日を選択するか、「未確認」にしてください。');
@@ -113,16 +115,17 @@ function submit(e){e.preventDefault();const name=$('member-name').value.trim(),g
  if(end&&end<start)return fail('終了日は開始日以降にしてください。');
  if(status==='retired'&&!end)return fail('退団済みの場合は退団日を入力してください。');
  if(blackouts.some(d=>!validDate(d)))return fail('個別の当番不可日はYYYY-MM-DD形式で入力してください。');
- const unique=[...new Set(blackouts)].sort();const old=people.find(p=>p.id===editingId);
- const record={id:editingId||('new-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)),name,grade,days,start,status,end,blackouts:unique,updated:new Date().toISOString()};
+ if(preferred.some(d=>!validDate(d)))return fail('当番希望日はYYYY-MM-DD形式で入力してください。');
+ const unique=[...new Set(blackouts)].sort(),wanted=[...new Set(preferred)].sort();const old=people.find(p=>p.id===editingId);
+ const record={id:editingId||('new-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)),name,reading,grade,days,start,status,end,preferred:wanted,blackouts:unique,updated:new Date().toISOString()};
  if(old){if(!confirm('「'+old.name+'」の登録条件を変更しますか？\n確定済みの当番表は自動で変更されません。'))return;people=people.map(p=>p.id===editingId?record:p);}else{if(!confirm('「'+name+'」をメンバーに追加しますか？'))return;people.push(record);}
  save();showRoster();newEditor();toast('メンバー情報を保存しました（試作）');$('roster-panel').scrollIntoView({behavior:'smooth'});
 }
 function download(filename,contents,mime){const blob=new Blob(['\ufeff',contents],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);}
 const csvCell=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
 $('download-json').addEventListener('click',()=>download('basket-members-backup.json',JSON.stringify({format:'minibasket-members-v1',exported:new Date().toISOString(),members:people},null,2),'application/json;charset=utf-8'));
-$('download-csv').addEventListener('click',()=>{const rows=[['名前','学年','状態','当番開始日','終了日','当番可能曜日','曜日確認','個別の当番不可日'],...people.slice().sort(nameSort).map(p=>[p.name,p.grade,p.status,p.start,p.end,p.days===null?'':p.days.join('・'),p.days===null?'未確認':'設定済',(p.blackouts||[]).join('・')])];download('basket-members-excel.csv',rows.map(row=>row.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8')});
-$('restore-file').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(d.format!=='minibasket-members-v1'||!Array.isArray(d.members)||d.members.length>500||d.members.some(p=>!p||typeof p.name!=='string'||!validDate(p.start)||!['active','paused','retired'].includes(p.status)||!(p.days===null||Array.isArray(p.days))||!Array.isArray(p.blackouts)))throw Error('形式が違います');if(confirm('バックアップの内容で、このスマホの試作データを上書きしますか？')){people=d.members;save();showRoster();newEditor();toast('バックアップを復元しました（試作）');}}catch(err){alert('復元できません：バックアップ形式を確認してください。')}e.target.value='';});
+$('download-csv').addEventListener('click',()=>{const rows=[['名前','よみがな','学年','状態','当番開始日','終了日','当番可能曜日','曜日確認','当番希望日','個別の当番不可日'],...people.slice().sort(nameSort).map(p=>[p.name,p.reading||'',p.grade,p.status,p.start,p.end,p.days===null?'':p.days.join('・'),p.days===null?'未確認':'設定済',(p.preferred||[]).join('・'),(p.blackouts||[]).join('・')])];download('basket-members-excel.csv',rows.map(row=>row.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8')});
+$('restore-file').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(d.format!=='minibasket-members-v1'||!Array.isArray(d.members)||d.members.length>500||d.members.some(p=>!p||typeof p.name!=='string'||!validDate(p.start)||!['active','paused','retired'].includes(p.status)||!(p.days===null||Array.isArray(p.days))||!Array.isArray(p.blackouts)))throw Error('形式が違います');if(confirm('バックアップの内容で、このスマホの試作データを上書きしますか？')){people=d.members.map(p=>({...p,reading:p.reading||YOMI[p.name]||p.name,preferred:p.preferred||[]}));save();showRoster();newEditor();toast('バックアップを復元しました（試作）');}}catch(err){alert('復元できません：バックアップ形式を確認してください。')}e.target.value='';});
 $('reset-button').addEventListener('click',()=>{if(confirm('このブラウザの試作データをすべて初期状態に戻しますか？')){people=initial();save();showRoster();newEditor();toast('初期状態に戻しました');}});
 $('member-form').addEventListener('submit',submit);
 $('member-list').addEventListener('click',e=>{const button=e.target.closest('button[data-edit]');if(button)editPerson(button.dataset.edit)});
