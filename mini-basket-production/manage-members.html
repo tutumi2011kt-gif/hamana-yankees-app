@@ -132,9 +132,19 @@ $('member-form').addEventListener('submit',async e=>{
  try{
   await runTransaction(db,async tx=>{
    const ref=doc(db,'teams',teamId,'members',id);
+   const publicRef=doc(db,'teams',teamId,'public','roster');
    const snapshot=await tx.get(ref);if(!snapshot.exists())throw Error('登録情報が見つかりません。');
+   const publicSnapshot=await tx.get(publicRef);
    const latest=snapshot.data().updatedAt?.toMillis?.()??null;
    if(latest!==etag)throw Error('ほかの端末で情報が更新されています。一度編集画面を閉じて開き直してください。');
+   if(publicSnapshot.exists()){
+     const roster=publicSnapshot.data().members;
+     if(!Array.isArray(roster))throw Error('公開用名簿の形式が正しくありません。管理者へ連絡してください。');
+     const minimal=roster.filter(m=>m&&m.id!==id);
+     minimal.push({id,name,kana,status});
+     minimal.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+     tx.update(publicRef,{members:minimal,updatedAt:serverTimestamp()});
+   }
    tx.update(ref,payload);
   });
   notify('✅ 本番Firebaseに保存しました。既存の確定当番表は変更していません。','ok');
