@@ -25,7 +25,7 @@ p{margin:7px 0}button{padding:12px 14px;border-radius:10px;border:1px solid #cbd
 <section id="account" class="card hide">
 <h2>② 管理者候補のUID</h2><p id="account-label" class="small"></p>
 <div class="uid" id="uid"></div>
-<div class="actions"><button id="copy">UIDをコピー</button><button id="logout">ログアウト</button></div>
+<div class="actions"><button id="copy">UIDをコピー</button><button id="logout">ログアウト</button></div><button id="verify" class="primary" style="margin-top:12px">管理者権限を確認する</button><div id="verify-result" class="small" role="status" aria-live="polite" style="margin-top:10px">まだFirestoreでの権限確認は行っていません。</div>
 <p class="small">このUIDをFirebase Consoleで管理者として登録すると、後に公開する管理者専用機能で利用できます。<strong>ログインしただけでは管理者権限は付きません。</strong></p>
 </section>
 <section class="card"><h2>接続できない場合</h2>
@@ -37,12 +37,16 @@ p{margin:7px 0}button{padding:12px 14px;border-radius:10px;border:1px solid #cbd
 import {firebaseConfig} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,getDoc} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'mini-basket-admin-login');
 const auth=getAuth(app);
+const db=getFirestore(app);
 const provider=new GoogleAuthProvider();
 const feedback=(text,error=false)=>{$('feedback').textContent=text;$('feedback').className=error?'error':'good';};
 onAuthStateChanged(auth,user=>{
+ $('verify-result').textContent='管理者権限は未確認です。';
+ $('verify-result').className='small';
  $('login').classList.toggle('hide',!!user);
  $('account').classList.toggle('hide',!user);
  if(user){
@@ -71,4 +75,27 @@ $('copy').addEventListener('click',async()=>{
  catch(_){feedback('コピーできない場合はUIDを長押しして選択してください。',true);}
 });
 $('logout').addEventListener('click',async()=>{try{await signOut(auth);}catch(err){feedback('ログアウトに失敗しました：'+(err.code||err.message),true)}});
+
+$('verify').addEventListener('click',async()=>{
+ const current=auth.currentUser;
+ const output=$('verify-result');
+ if(!current){output.textContent='先にGoogleログインしてください。';output.className='error';return;}
+ $('verify').disabled=true;output.textContent='Firestoreの管理者権限を読み取り確認中…';output.className='small';
+ try{
+   const snap=await getDoc(doc(db,'admins',current.uid));
+   if(auth.currentUser?.uid!==current.uid)return;
+   if(snap.exists()&&snap.data().enabled===true){
+     output.textContent='✅ 管理者権限の確認成功。GoogleアカウントのUIDとadminsの登録が一致し、Firestoreの読み取りが許可されました。';
+     output.className='good';
+   }else{
+     output.textContent='管理者権限を確認できませんでした。Firestoreのadminsコレクションで、ドキュメントIDと enabled = true を確認してください。';
+     output.className='error';
+   }
+ }catch(e){
+   const code=e?.code||e?.message||String(e);
+   output.textContent='管理者権限の確認に失敗しました：'+code+'\npermission-denied の場合は、adminsのドキュメントID（ログインUID）・enabledの型（boolean）・Firestoreルールの公開状態を確認してください。';
+   output.className='error';
+ }finally{$('verify').disabled=false;}
+});
+
 </script></body></html>
