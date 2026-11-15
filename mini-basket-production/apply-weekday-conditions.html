@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 当番曜日の一括設定｜管理者</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#273c56;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:775px;margin:auto;padding:12px 10px 60px}header{background:linear-gradient(110deg,#e6f4ff,#fff0dd);border:1px solid #dae8f1;border-radius:15px;padding:17px 14px}h1{font-size:21px;margin:0 0 6px}h2{font-size:17px;margin:0 0 8px}p{margin:6px 0}
+.card{background:white;border:1px solid #dbe6ee;border-radius:14px;padding:13px;margin-top:12px}.note{background:#fff2dc;border:1px solid #eed4ac;border-radius:9px;padding:10px;font-size:12px}.ok{background:#e9f9ef;color:#146f4a;border:1px solid #c1e6d1;border-radius:9px;padding:11px;font-size:13px}.error{background:#fff0f2;color:#a5374f;border:1px solid #edc5d0;border-radius:9px;padding:11px;white-space:pre-wrap}.small{font-size:12px;color:#677b90}
+button{font:inherit;cursor:pointer;min-height:44px;border:1px solid #ccdae6;border-radius:10px;background:white;padding:10px 12px;font-weight:800}button.primary{background:#295b84;color:white;border-color:#295b84}button:disabled{opacity:.48;cursor:default}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions>*{flex:1 1 170px}
+.list{border:1px solid #e1eaf0;border-radius:10px;overflow:hidden;margin-top:9px}.member{display:grid;grid-template-columns:minmax(88px,1fr) minmax(170px,2fr);gap:9px;padding:11px 9px;border-bottom:1px solid #e4eaf0;align-items:center}.member:last-child{border-bottom:0}.member:nth-child(odd){background:#fafcfe}.member .name{font-weight:800}.member .detail{font-size:12px}.member small{display:block;color:#67798b;font-size:11px}.member b.flag{color:#ac5e27}
+.check{display:flex;align-items:flex-start;gap:9px;padding:11px;background:#f2f7fb;border-radius:9px;font-size:12px}.check input{accent-color:#167b55;width:18px;height:18px;margin-top:3px}footer{font-size:11px;color:#71849a;margin-top:15px}
+</style></head><body><main>
+<header><h1>🏀 当番可能曜日を一括設定</h1><p>有玉女子ミニバス｜管理者専用</p>
+<div class="note">この画面は、確認済み11人の<strong>曜日条件・希望曜日だけ</strong>を本番Firebaseへ保存します。<b>村松さわさんは確認中のため変更しません。</b> 既存の12月確定当番表と1月下書きの日付・担当者は変更しません。</div></header>
+<section class="card"><h2>① 管理者として現在のメンバーを確認</h2><p id="auth" class="small">管理者認証の状態を確認中…</p><div class="actions"><button id="login" class="primary">Googleでログイン</button><button id="load">Firebaseの12人を読み込む</button></div><p id="load-status" class="small">ログイン後に読み込んでください。</p></section>
+<section class="card"><h2>② 今回保存する曜日条件</h2><div class="list" id="members"><div class="small" style="padding:13px">Firebaseに接続して名前と条件を照合します。</div></div>
+<div class="note" style="margin-top:10px"><b>なぎささん：</b>平日（水・金）を通常の割当可能曜日として設定します。<b>土日を自動割当しません。</b> 2〜3か月前に日程を伝え、個別に承認を得た日だけ特例で設定する方式です。</div></section>
+<section class="card"><h2>③ 条件だけを本番Firebaseに保存</h2>
+<label class="check"><input id="agree" type="checkbox"><span><b>確認済み11人の曜日条件と希望を保存</b>し、村松さわさんの「未確認」は変更しないことを確認しました。12月・1月の当番表は書き換えません。</span></label>
+<div class="actions" style="margin-top:11px"><button id="save" class="primary" disabled>11人の曜日条件を保存</button></div>
+<p id="result" role="status" aria-live="polite" class="small">まだ保存していません。</p></section>
+<footer>保存後は1月の管理者チェック画面で、既存の仮割当に曜日条件違反がないか再確認してください。条件は今後の仮当番作成に使用します。個別の希望日・不可日は変更しません。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {WEEKDAY_UPDATES,PROFILE_IDS,UNCONFIRMED_MEMBER_ID,WEEKDAY_LABELS,profileMatches} from './weekday-conditions.mjs?v=2';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,getDocFromServer,collection,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const app=initializeApp(firebaseConfig,'mini-basket-admin-login'),auth=getAuth(app),db=getFirestore(app);
+const memberRef=id=>doc(db,'teams',teamId,'members',id);
+let loaded=false,busy=false,snapshots=new Map(),currentUserUid=null;
+function update(){ $('login').hidden=!!auth.currentUser; $('load').disabled=!auth.currentUser||busy; $('save').disabled=!loaded||busy||!$('agree').checked||!auth.currentUser; }
+function status(msg,style='small'){$('result').textContent=msg;$('result').className=style}
+const dateStamp=s=>s?.updatedAt?.toMillis?.()??null;
+const sameArray=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const currentDigest=x=>JSON.stringify({
+ name:x.name,kana:x.kana,status:x.status,startDate:x.startDate,endDate:x.endDate,
+ days:x.days,preferredWeekdays:x.preferredWeekdays,weekdayRule:x.weekdayRule,weekdayNote:x.weekdayNote,
+ approvedWeekendDates:x.approvedWeekendDates,updatedAt:dateStamp(x)
+});
+function previewMember(m){
+ const p=WEEKDAY_UPDATES[m.id],days=dayArr=>dayArr===null?'未確認':dayArr.map(d=>WEEKDAY_LABELS[d]+'曜').join('・');
+ const row='<div class="member"><div><span class="name">'+esc(m.name)+'</span>'+
+   '<small>'+esc(m.id)+'</small></div><div class="detail">';
+ if(!p)return row+'<b class="flag">確認中・今回は変更しません</b><small>現在：'+esc(days(m.days))+'</small></div></div>';
+ const ok=profileMatches(m,p);
+ return row+'<b>'+esc(days(p.days))+'</b>'+
+   (p.preferredWeekdays.length?'<small>希望：'+esc(days(p.preferredWeekdays))+'</small>':'')+
+   '<small>'+esc(p.weekdayNote)+'</small>'+
+   '<small>'+(ok?'✅ 条件設定済み':'◯ 保存するとこの条件に更新')+'</small></div></div>';
+}
+onAuthStateChanged(auth,user=>{
+ currentUserUid=user?.uid||null;loaded=false;snapshots.clear();$('agree').checked=false;
+ $('auth').textContent=user?'ログイン済み。メンバーの取得が必要です。':'Googleの管理者アカウントでログインしてください。';
+ $('load-status').textContent='Firebaseの読み込み待ちです。';
+ status('まだ保存していません。');update();
+},err=>{$('auth').textContent='認証エラー：'+(err.code||err.message)});
+$('login').addEventListener('click',()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(err=>{$('auth').textContent='ログインエラー：'+(err.code||err.message)}));
+$('agree').addEventListener('change',update);
+$('load').addEventListener('click',async()=>{
+ const user=auth.currentUser;if(!user||busy)return;
+ busy=true;loaded=false;$('agree').checked=false;update();$('load-status').textContent='管理者資格と12人を確認中…';
+ try{
+  const admin=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限が確認できませんでした。');
+  const rows=await getDocsFromServer(collection(db,'teams',teamId,'members'));
+  if(auth.currentUser?.uid!==user.uid)throw Error('ログインの状態が変わりました。');
+  if(rows.size!==12)throw Error('メンバーが12人ではありません。現在 '+rows.size+'人です。');
+  const members=rows.docs.map(d=>({id:d.id,...d.data()})),ids=new Set(members.map(x=>x.id));
+  for(const id of [...PROFILE_IDS,UNCONFIRMED_MEMBER_ID])if(!ids.has(id))throw Error('メンバー '+id+' が見つかりません。');
+  const sawa=members.find(x=>x.id===UNCONFIRMED_MEMBER_ID);
+  if(sawa.days!==null)throw Error('村松さわさんの曜日が既に設定されています。確認中に戻すか、管理者に相談してください。既存データは変更しません。');
+  const wakana=members.find(x=>x.id==='wakana');
+  if(wakana.name!=='おおたけわかな')throw Error('わかなさんの名前が以前の表記と異なります。メンバー管理で確認してください。');
+  snapshots=new Map(members.map(m=>[m.id,m]));
+  $('members').innerHTML=members.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja')).map(previewMember).join('');
+  loaded=true;
+  $('load-status').textContent='✅ 12人を確認しました。11人の条件を更新対象とし、村松さわさんは未確認のままにします。';
+  status('内容が正しければ確認チェックを入れて保存してください。');
+ }catch(err){loaded=false;snapshots.clear();$('members').textContent='データを読み込めませんでした。';$('load-status').textContent='エラー：'+(err.code||err.message);status('保存していません。','error');}
+ finally{busy=false;update();}
+});
+$('save').addEventListener('click',async()=>{
+ const user=auth.currentUser;
+ if(!user||!loaded||busy||!$('agree').checked)return;
+ if(!confirm('確認済み11人の曜日条件をFirebaseに保存します。\n村松さわさんと既存の当番表は変更しません。\n続けますか？'))return;
+ busy=true;loaded=false;update();status('Firebaseへ条件だけを保存しています…');
+ try{
+  const uid=user.uid,existing=new Map(snapshots);
+  await runTransaction(db,async tx=>{
+   // All reads occur before any write. The same transaction updates 11 profiles atomically.
+   const refs=[...PROFILE_IDS,UNCONFIRMED_MEMBER_ID].map(memberRef);
+   const docs=[];for(const ref of refs)docs.push(await tx.get(ref));
+   const memberMap=new Map(docs.map((d,i)=>[[...PROFILE_IDS,UNCONFIRMED_MEMBER_ID][i],d]));
+   for(const id of PROFILE_IDS){
+    const d=memberMap.get(id);if(!d.exists())throw Error('対象者 '+id+' が消えています。');
+    if(currentDigest(d.data())!==currentDigest(existing.get(id)))throw Error(id+' のデータが他の端末で変更されました。再読み込みしてください。');
+   }
+   const sawa=memberMap.get(UNCONFIRMED_MEMBER_ID);
+   if(!sawa.exists()||sawa.data().days!==null)throw Error('村松さわさんの状態が変わりました。再確認してください。');
+   for(const id of PROFILE_IDS){
+    const profile=WEEKDAY_UPDATES[id];
+    const fields={days:[...profile.days],preferredWeekdays:[...profile.preferredWeekdays],
+      weekdayRule:profile.weekdayRule,weekdayNote:profile.weekdayNote,updatedAt:serverTimestamp()};
+    // Preserve any previously approved specific dates instead of erasing them.
+    if(id==='nagisa'&&!Array.isArray(memberMap.get(id).data().approvedWeekendDates))fields.approvedWeekendDates=[];
+    tx.update(memberRef(id),fields);
+   }
+  });
+  $('agree').checked=false;
+  status('✅ 確認済み11人の曜日条件をFirebaseに保存しました。村松さわさん、12月確定表、1月下書きは変更していません。','ok');
+  $('load-status').textContent='保存後の最新情報を確認する場合は「Firebaseの12人を読み込む」を押してください。';
+ }catch(err){status('保存できませんでした：'+(err.code||err.message||String(err))+'\n保存状況を確認するため、もう一度メンバーを読み込んでください。','error');}
+ finally{busy=false;update();}
+});
+update();
+</script></body></html>
