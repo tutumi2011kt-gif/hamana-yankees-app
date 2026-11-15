@@ -1,0 +1,109 @@
+// CANDIDATE — DO NOT PUBLISH UNTIL TESTED IN FIRESTORE EMULATOR.
+// Keep current read-only rules published until admin has prepared and tested a future month.
+// Parent name selection is NOT proof of identity. Anyone who has the URL can select a member.
+// Anonymous Firebase UID can only edit an answer made by the same anonymous UID.
+// Manager can always resolve corrections. Server clock (request.time) enforces cutoff.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+    function anonymousParent() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+    function monthPath(monthId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId);
+    }
+    function dayPath(monthId, dayId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId)/days/$(dayId);
+    }
+    function memberPath(memberId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/members/$(memberId);
+    }
+    function isPublished(monthId) {
+      return exists(monthPath(monthId)) &&
+        get(monthPath(monthId)).data.publication == 'published';
+    }
+    function isOpen(monthId) {
+      return isPublished(monthId)
+        && get(monthPath(monthId)).data.inputState == 'open'
+        && request.time >= get(monthPath(monthId)).data.openAt
+        && request.time < get(monthPath(monthId)).data.cutoffAt;
+    }
+    function activeMember(memberId, dateId) {
+      return exists(memberPath(memberId))
+        && get(memberPath(memberId)).data.status == 'active'
+        && get(memberPath(memberId)).data.startDate <= dateId
+        && (get(memberPath(memberId)).data.endDate == null
+          || get(memberPath(memberId)).data.endDate >= dateId);
+    }
+    function practiceOwner(monthId, dateId) {
+      return exists(dayPath(monthId, dateId))
+        && get(dayPath(monthId, dateId)).data.type == 'practice'
+        && get(dayPath(monthId, dateId)).data.ownerId is string;
+    }
+    function validAnswer(monthId, answerId) {
+      let d = request.resource.data;
+      let owner = get(dayPath(monthId, d.date)).data.ownerId;
+      return anonymousParent()
+        && d.keys().hasOnly(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
+        && d.keys().hasAll(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
+        && d.date is string
+        && d.memberId is string
+        && d.updatedBy == request.auth.uid
+        && d.updatedAt == request.time
+        && d.date.matches('^' + monthId + '-(0[1-9]|[12][0-9]|3[01])$')
+        && answerId == d.date + '_' + d.memberId
+        && d.kind in ['x', 'o']
+        && isOpen(monthId)
+        && activeMember(d.memberId, d.date)
+        && practiceOwner(monthId, d.date)
+        && ((d.kind == 'x' && owner == d.memberId)
+         || (d.kind == 'o' && owner != d.memberId));
+    }
+    match /admins/{uid} {
+      allow get: if isAdmin() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /teams/{teamId}/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    match /teams/aritama-mini-basket/public/roster {
+      allow get: if signedIn();
+    }
+    match /teams/aritama-mini-basket/months/{monthId} {
+      allow get: if signedIn() && resource.data.publication == 'published';
+      match /days/{dateId} {
+        allow get, list: if signedIn() && isPublished(monthId);
+      }
+      match /answers/{answerId} {
+        allow get, list: if signedIn() && isPublished(monthId);
+        allow create: if validAnswer(monthId,answerId);
+        allow update: if resource.data.updatedBy == request.auth.uid
+          && resource.data.memberId == request.resource.data.memberId
+          && resource.data.date == request.resource.data.date
+          && validAnswer(monthId,answerId);
+        allow delete: if anonymousParent()
+          && resource.data.updatedBy == request.auth.uid
+          && resource.data.date is string
+          && resource.data.memberId is string
+          && answerId == resource.data.date + '_' + resource.data.memberId
+          && isOpen(monthId)
+          && activeMember(resource.data.memberId, resource.data.date)
+          && practiceOwner(monthId, resource.data.date)
+          && ((resource.data.kind == 'x'
+                && get(dayPath(monthId, resource.data.date)).data.ownerId == resource.data.memberId)
+            || (resource.data.kind == 'o'
+                && get(dayPath(monthId, resource.data.date)).data.ownerId != resource.data.memberId));
+      }
+    }
+  }
+}
