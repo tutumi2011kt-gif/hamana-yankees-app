@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#e9f3fc"><title>🏀 有玉女子ミニバス 当番表</title>
+<style>
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{background:#f3f7fb;color:#26394f;margin:0;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:690px;padding:11px 10px 60px;margin:auto}header{background:linear-gradient(115deg,#e7f3ff,#fff1dc);border:1px solid #e2e8ed;border-radius:17px;padding:18px 14px}
+h1{font-size:21px;margin:0 0 6px}h2{font-size:17px;margin:0 0 8px}p{margin:6px 0}
+.card{background:#fff;border:1px solid #dce6ee;padding:13px 11px;margin:11px 0;border-radius:14px}.small{font-size:12px;color:#61778b}.tiny{font-size:11px;color:#748598}
+.info{background:#e9f4ff;padding:10px 11px;border-radius:10px;font-size:12px}.notice{background:#fff3df;padding:10px 11px;border-radius:10px;border:1px solid #ebd4aa;font-size:12px}.ok{background:#e9f8f0;color:#15704c;padding:10px 11px;border-radius:10px}.err{background:#fff0f2;color:#a33b4f;padding:10px 11px;border-radius:10px}
+select{font:inherit;background:white;border:1px solid #c7d5e3;border-radius:9px;width:100%;padding:11px;min-height:44px}
+button{color:inherit;font:inherit;border:1px solid #cad9e6;border-radius:10px;background:white;cursor:pointer;min-height:44px}
+button:disabled{opacity:1;cursor:default}.months{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:12px 0}
+.month{font-weight:800;padding:7px 2px;font-size:14px}.month.chosen{background:#e6f2fe;border:2px solid #30739f}.month small{display:block;color:#6a7c8d;font-size:10px;font-weight:500}
+.week,.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.week span{font-size:12px;font-weight:800;text-align:center;margin-bottom:5px}.week span:first-child{color:#b94655}.week span:last-child{color:#3d77b5}
+.day{border:1px solid #e0e8ef;border-radius:7px;background:#fff;min-width:0;min-height:81px;padding:5px 2px;overflow-wrap:anywhere}
+.day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
+.day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
+.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}
+.rowday{display:grid;grid-template-columns:78px minmax(0,1fr);gap:9px;align-items:center;padding:11px 9px;border-bottom:1px solid #e2eaf1}.rowday:last-child{border-bottom:0}.rowday.game{background:#fffbf5}.rowday b{font-size:14px}.rowday small{font-size:11px;color:#708195;display:block}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
+footer{font-size:11px;color:#76889b}.not-available{display:none}
+</style></head><body><main>
+<header><h1>🏀 有玉女子ミニバス 当番表</h1><p>みんなで確認する当番カレンダー</p><p id="connection" class="notice" role="status" aria-live="polite">Firebaseに接続中です…</p></header>
+<section class="card"><h2>① お子さんの名前を選ぶ</h2><select id="person" aria-label="お子さんの名前"><option value="">メンバーを読み込み中…</option></select><p class="small">名前を選ぶだけでカレンダーを見られます。選択した名前はこの端末に保存されます。</p></section>
+<section class="card"><h2>② 月を選ぶ</h2><div id="months" class="months"></div><p id="month-status" class="info">当番表を読み込んでいます。</p></section>
+<section class="card"><h2 id="calendar-title">当番カレンダー</h2><div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal" aria-label="当番カレンダー"></div><div class="legend"><span>水色：練習日</span><span>薄橙：試合・当番なし</span></div></section>
+<section class="card"><h2>日付ごとの詳しい当番</h2><div id="detail" class="small">読み込み中です。</div></section>
+<section class="card"><h2>❌・⭕の希望入力について</h2><div class="notice">現在は<strong>閲覧テスト段階</strong>です。×・○の入力はまだ開始していません。今後、管理者が公開した入力対象月だけ操作できるようにします。12月は確定済み・締切済みのため変更できません。</div></section>
+<footer>この画面では学年・当番可能曜日・個別の不可日などの管理情報は公開しません。共通URLを知る人が閲覧できる形式のため、URLの共有先にはご注意ください。接続エラー時は当番表を推測して表示しません。</footer>
+</main>
+<script type="module">
+import {todayTokyo,monthPlus,DAY_NAMES,dayList} from './core.mjs?v=parent-view-1';
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,signInAnonymously,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'mini-basket-parent-share'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const key='mini-basket-parent-name-1',today=todayTokyo();
+const options=[monthPlus(today.slice(0,7),1),monthPlus(today.slice(0,7),2),monthPlus(today.slice(0,7),3)];
+let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,ready={meta:false,days:false,answers:false};
+const caption=m=>Number(m.slice(0,4))+'年'+Number(m.slice(5,7))+'月';
+const mapNames=()=>Object.fromEntries(names.map(m=>[m.id,m.name]));
+function connection(text,type='notice'){$('connection').textContent=text;$('connection').className=type}
+function monthMessage(text,type='info'){$('month-status').textContent=text;$('month-status').className=type}
+function drawNames(){
+ const order=names.slice().sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+ $('person').innerHTML='<option value="">名前を選択してください</option>'+order.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>').join('');
+ if(!names.some(m=>m.id===selectedPerson)){selectedPerson='';}
+ $('person').value=selectedPerson;
+}
+function drawMonths(){
+ $('months').innerHTML=options.map(m=>{
+  const active=selectedMonth===m,available=published.includes(m);
+  return '<button type="button" class="month '+(active?'chosen':'')+'" data-month="'+m+'">'+Number(m.slice(5,7))+'月<small>'+(available?'当番表あり':'公開待ち')+'</small></button>';
+ }).join('');
+}
+const rosterRef=doc(db,'teams',teamId,'public','roster');
+function resetMonthListeners(){
+ token++;unsubscribeMonth.forEach(f=>f());unsubscribeMonth=[];
+ monthData=null;days=[];answers=[];ready={meta:false,days:false,answers:false};
+}
+function setMonth(m){
+ if(!options.includes(m))return;
+ selectedMonth=m;resetMonthListeners();drawMonths();draw();
+ if(!published.includes(m)){monthMessage('この月の当番表は、まだ管理者から公開されていません。');return;}
+ const version=token;
+ monthMessage('Firebaseから'+caption(m)+'の当番表を読み込み中…');
+ const monthRef=doc(db,'teams',teamId,'months',m);
+ const refs=[
+  [monthRef,'meta',s=>monthData=s.exists()?s.data():null],
+  [collection(db,'teams',teamId,'months',m,'days'),'days',s=>days=s.docs.map(d=>({date:d.id,...d.data()}))],
+  [collection(db,'teams',teamId,'months',m,'answers'),'answers',s=>answers=s.docs.map(d=>({id:d.id,...d.data()}))]
+ ];
+ for(const [ref,field,handler] of refs)unsubscribeMonth.push(onSnapshot(ref,s=>{
+  if(version!==token)return;
+  handler(s);ready[field]=true;draw();
+ },e=>{
+  if(version!==token)return;monthMessage('当番表を読み込めません：'+(e.code||e.message),'err');$('detail').textContent='データを取得できませんでした。';
+ }));
+}
+function draw(){
+ $('calendar-title').textContent=caption(selectedMonth)+' 当番カレンダー';
+ const publishedNow=published.includes(selectedMonth);
+ if(!publishedNow){$('calendar').textContent='';$('detail').textContent='管理者の公開待ちです。';return;}
+ if(!Object.values(ready).every(Boolean)){monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
+ if(!monthData||monthData.publication!=='published'){monthMessage('当番表の公開状態を確認できません。','err');return;}
+ const dayMap=Object.fromEntries(days.map(x=>[x.date,x])),people=mapNames();
+ const markMap={};
+ for(const a of answers)if(a.date&&a.memberId&&['x','o'].includes(a.kind))(markMap[a.date]??=[]).push(a);
+ let calendar='',detail='';
+ const first=dayList(selectedMonth)[0].weekday;
+ for(let x=0;x<first;x++)calendar+='<div class="day empty"></div>';
+ for(const day of dayList(selectedMonth)){
+  const date=day.date,n=Number(date.slice(-2)),d=dayMap[date],marks=markMap[date]||[];
+  const isPractice=d?.type==='practice',isGame=d?.type==='game';
+  const owner=isPractice?(people[d.ownerId]||'担当未登録'):'';
+  const label=isGame?'🏀 試合':owner;
+  const extras=marks.filter(a=>a.kind==='x'&&a.memberId===d?.ownerId).map(a=>'<span class="bad">'+esc(people[a.memberId]||'')+' ×</span>').join('')+
+    marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId).slice(0,1).map(a=>'<span class="good">'+esc(people[a.memberId]||'')+' ○</span>').join('');
+  calendar+='<div class="day '+(isPractice?'practice':isGame?'game':'')+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+(label?'<span class="owner">'+esc(label)+'</span>':'')+(d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+extras+'</div>';
+  if(!isPractice&&!isGame)continue;
+  const dlabel=isGame?'試合・当番なし':owner;
+  const extra=d?.traineeIds?.length?'＋'+d.traineeIds.map(id=>people[id]||id).join('・')+'（教習）':'';
+  const volunteers=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId).map(a=>people[a.memberId]||a.memberId);
+  const needSwap=marks.some(a=>a.kind==='x'&&a.memberId===d?.ownerId);
+  detail+='<div class="rowday '+(isGame?'game':'')+'"><b>'+n+'日<small>('+DAY_NAMES[day.weekday]+')</small></b><div><b>'+esc(dlabel)+'</b>'+
+    (extra?'<small>'+esc(extra)+'</small>':'')+(isGame&&d.eventLocation?'<small>'+esc(d.eventLocation)+'</small>':'')+
+    (needSwap?'<small style="color:#b54456">担当者 × ／ '+(volunteers.length?'交代可：'+esc(volunteers.join('・')):'交代募集中')+'</small>':'')+'</div></div>';
+ }
+ $('calendar').innerHTML=calendar;$('detail').innerHTML=detail||'<p>当番日がありません。</p>';
+ monthMessage(monthData.inputState==='closed'?'🔒 この月は確定済み・入力締切です。閲覧のみできます。':'🗓️ 当番表を表示中です。現在の画面は閲覧のみです。','info');
+}
+$('person').addEventListener('change',e=>{selectedPerson=e.target.value;localStorage.setItem(key,selectedPerson)});
+$('months').addEventListener('click',e=>{const target=e.target.closest('button[data-month]');if(target)setMonth(target.dataset.month)});
+drawMonths();
+async function start(){
+ connection('Firebaseに匿名で接続中…');
+ try{
+  await signInAnonymously(auth);
+  unsubscribeRoster=onSnapshot(rosterRef,s=>{
+   if(!s.exists()){connection('公開用名簿がまだ準備されていません。管理者に確認してください。','notice');return}
+   const d=s.data();
+   if(!Array.isArray(d.members)||!Array.isArray(d.publishedMonths)){connection('公開用名簿の形式が正しくありません。','err');return}
+   const old=published.join(',');
+   names=d.members.filter(m=>m&&typeof m.id==='string'&&typeof m.name==='string');
+   published=d.publishedMonths.filter(m=>/^\d{4}-\d{2}$/.test(m));
+   drawNames();drawMonths();connection('☁️ Firebaseと接続済み。公開された当番表を自動更新しています。','ok');
+   if(old!==published.join(',')||!monthData)setMonth(selectedMonth);else draw();
+  },e=>connection('読み込みに失敗：'+(e.code||e.message)+'。Firestoreの公開ルールを確認してください。','err'));
+ }catch(e){connection('Firebaseに接続できませんでした：'+(e.code||e.message),'err')}
+}
+void start();
+</script></body></html>
