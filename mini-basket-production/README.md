@@ -4,9 +4,19 @@
 - index.html と app.mjs：スマホ用の名前選択・月選択・×／○入力画面
 - core.mjs：月初ロック、曜日条件、希望禁止、7日経過通知判定、ファクトチェック
 - firebase-client.mjs：Firestoreのリアルタイム監視と回答1件単位の保存（接続後に有効）
-- firebase-config.mjs：null。現時点でFirebaseには未接続
-- firestore.rules：未デプロイのアクセス制御案。エミュレータテストが必要
+- firebase-config.mjs：専用Firebase Webアプリ接続設定を反映済み。Authentication（匿名＋Google）、Firestoreを管理者が有効化済み
+- firestore-bootstrap.rules：現在の管理者限定ルールの初期版（ユーザーによる公開済み）。Firestore Rulesの実際の公開履歴も確認すること
+- firestore.rules：保護者向け×・○のアクセス制御案。**未公開・エミュレータテスト前につき使用禁止**
 - core-tests.mjs：割当・締切・交代候補の単体テスト
+
+## 2026年12月の確定当番表（初期登録の準備）
+
+- december-2026.mjs：当番15日、試合2日（12/26・12/27）、12/9村松さわは当番教習（回数除外）
+- setup-december.html：管理者本人が全日付を確認し、既存データがない場合だけFirestoreへ一括保存する専用画面
+- 本番Firestoreへの保存は**画面で本人が確認して「登録」した場合だけ**行われる。GitHubにファイルを作るだけではFirestoreには反映されない
+- 入力は confirmed/published/closed（12月は締切済み）。保護者用の匿名書き込みは現在の管理者限定ルールで禁止されている
+- 以前の別デモにある架空の日付割当を絶対に初期登録しない
+- 2027年1月・2月などは確定日付・個別の曜日希望が未確認のため勝手に本番登録しない
 
 ## Firebaseのデータ構造
 - teams/aritama-mini-basket/members/{memberId}：name, kana, grade, days, startDate, endDate, status
