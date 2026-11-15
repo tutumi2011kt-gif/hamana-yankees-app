@@ -1,41 +1,60 @@
+// DRAFT: DO NOT DEPLOY WITHOUT FIRESTORE EMULATOR TESTS.
+// Parent login uses anonymous Firebase Authentication; name selection is NOT proof of identity.
+// Admin UID documents must be created with privileged Firebase Admin SDK / Firebase Console.
+// Only published months allow parent edits. Actual cutoff uses request.time, not device clock.
 rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
   function signedIn() { return request.auth != null; }
-  // This placeholder is deliberately not a real UID. Configure before deployment.
   function isAdmin() {
     return signedIn()
-      && request.auth.uid in ['REPLACE_WITH_GOOGLE_ADMIN_UID']
-      && request.auth.token.firebase.sign_in_provider == 'google.com';
+      && request.auth.token.firebase.sign_in_provider == 'google.com'
+      && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
   }
-  function monthRef(t,m) {
-    return /databases/$(database)/documents/teams/$(t)/months/$(m);
+  function monthPath(teamId, monthId) {
+    return /databases/$(database)/documents/teams/$(teamId)/months/$(monthId);
   }
-  function memberRef(t,p) {
-    return /databases/$(database)/documents/teams/$(t)/members/$(p);
+  function dayPath(teamId, monthId, dateId) {
+    return /databases/$(database)/documents/teams/$(teamId)/months/$(monthId)/days/$(dateId);
   }
-  function dayRef(t,m,d) {
-    return /databases/$(database)/documents/teams/$(t)/months/$(m)/days/$(d);
+  function memberPath(teamId, memberId) {
+    return /databases/$(database)/documents/teams/$(teamId)/members/$(memberId);
   }
-  function openForParents(t,m) {
-    return exists(monthRef(t,m))
-      && get(monthRef(t,m)).data.inputState == 'open'
-      && get(monthRef(t,m)).data.publication == 'published'
-      && request.time >= get(monthRef(t,m)).data.openAt
-      && request.time < get(monthRef(t,m)).data.cutoffAt;
+  function openForAnswers(teamId,monthId) {
+    return exists(monthPath(teamId,monthId))
+      && get(monthPath(teamId,monthId)).data.publication == 'published'
+      && get(monthPath(teamId,monthId)).data.inputState == 'open'
+      && request.time >= get(monthPath(teamId,monthId)).data.openAt
+      && request.time < get(monthPath(teamId,monthId)).data.cutoffAt;
   }
-  function activeMember(t,p) {
-    return exists(memberRef(t,p))
-      && get(memberRef(t,p)).data.status == 'active';
+  function eligibleMember(teamId,memberId,dateId) {
+    return exists(memberPath(teamId,memberId))
+      && get(memberPath(teamId,memberId)).data.status == 'active'
+      && get(memberPath(teamId,memberId)).data.startDate <= dateId
+      && (get(memberPath(teamId,memberId)).data.endDate == null
+        || get(memberPath(teamId,memberId)).data.endDate >= dateId);
   }
-  function validMark(t,m,p,d) {
-    return exists(dayRef(t,m,d))
-      && get(dayRef(t,m,d)).data.type == 'practice'
-      && get(dayRef(t,m,d)).data.ownerId is string
-      && (
-        (request.resource.data.kind == 'x' && get(dayRef(t,m,d)).data.ownerId == p)
-        || (request.resource.data.kind == 'o' && get(dayRef(t,m,d)).data.ownerId != p)
-      );
+  function validAnswerWrite(teamId,monthId,answerId) {
+    let d=request.resource.data;
+    return signedIn()
+      && d.keys().hasOnly(['date','memberId','kind','updatedAt','updatedBy'])
+      && d.keys().hasAll(['date','memberId','kind','updatedAt','updatedBy'])
+      && d.date is string && d.memberId is string
+      && answerId == d.date + '_' + d.memberId
+      && d.kind in ['x','o']
+      && d.updatedBy == request.auth.uid
+      && d.updatedAt == request.time
+      && openForAnswers(teamId,monthId)
+      && eligibleMember(teamId,d.memberId,d.date)
+      && exists(dayPath(teamId,monthId,d.date))
+      && get(dayPath(teamId,monthId,d.date)).data.type == 'practice'
+      && get(dayPath(teamId,monthId,d.date)).data.ownerId is string
+      && ( (d.kind == 'x' && get(dayPath(teamId,monthId,d.date)).data.ownerId == d.memberId)
+        || (d.kind == 'o' && get(dayPath(teamId,monthId,d.date)).data.ownerId != d.memberId));
+  }
+  match /admins/{uid} {
+    allow get: if isAdmin() && request.auth.uid == uid;
+    allow list,write: if false; // Only Admin SDK may grant administrator status
   }
   match /teams/{teamId} {
     allow read: if signedIn();
@@ -51,36 +70,22 @@ service cloud.firestore {
         allow read: if signedIn();
         allow write: if isAdmin();
       }
-      match /responses/{memberId}/days/{dateId} {
+      match /answers/{answerId} {
         allow read: if signedIn();
-        allow create, update: if isAdmin() || (
-          signedIn()
-          && openForParents(teamId,monthId)
-          && activeMember(teamId,memberId)
-          && request.resource.data.keys().hasOnly(['kind','updatedBy','updatedAt'])
-          && request.resource.data.keys().hasAll(['kind','updatedBy','updatedAt'])
-          && request.resource.data.kind in ['x','o']
-          && request.resource.data.updatedBy == request.auth.uid
-          && request.resource.data.updatedAt == request.time
-          && validMark(teamId,monthId,memberId,dateId)
-        );
+        allow create,update: if isAdmin() || validAnswerWrite(teamId,monthId,answerId);
         allow delete: if isAdmin() || (
-          signedIn() && openForParents(teamId,monthId)
-          && activeMember(teamId,memberId)
+          signedIn()
+          && openForAnswers(teamId,monthId)
+          && resource.data.memberId is string
+          && resource.data.date is string
+          && answerId == resource.data.date + '_' + resource.data.memberId
+          && eligibleMember(teamId,resource.data.memberId,resource.data.date)
         );
       }
     }
-    match /audit/{eventId} {
-      allow read: if isAdmin();
-      allow write: if false; // Server-side Admin SDK only
-    }
-    match /alerts/{alertId} {
-      allow read: if isAdmin();
-      allow write: if false; // Server-side Admin SDK only
-    }
-    match /private/{privateId} {
-      allow read,write: if isAdmin();
-    }
+    match /private/{id} { allow read,write: if isAdmin(); }
+    match /audit/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /alerts/{id} { allow read: if isAdmin(); allow write: if false; }
   }
  }
 }
