@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#e9f3fc"><title>🏀 管理者｜2027年1月の仮当番表作成</title>
+<style>
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#f3f7fb;color:#26394f;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:790px;margin:auto;padding:11px 10px 54px}header{background:linear-gradient(115deg,#e8f3ff,#fff2de);border:1px solid #dfebf2;border-radius:15px;padding:16px}
+h1{font-size:21px;margin:0 0 5px}h2{font-size:17px;margin:0 0 7px}p{margin:6px 0}.card{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:13px;margin-top:12px}
+.note{background:#fff3df;padding:10px 11px;border:1px solid #eed5b0;border-radius:9px;font-size:12px}.small{font-size:12px;color:#697e91}.good{background:#ecf9f0;color:#166d4a;border:1px solid #c2e5d1;padding:10px;border-radius:9px}.error{background:#fff0f3;border:1px solid #e8bfca;color:#a23853;padding:10px;border-radius:9px;white-space:pre-wrap}
+button,select,input{font:inherit;color:inherit}button{min-height:44px;font-weight:800;background:#fff;border:1px solid #cad8e5;border-radius:10px;padding:10px 13px;cursor:pointer}button.primary{background:#275982;color:white;border-color:#275982}button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;flex-wrap:wrap;gap:8px}.actions button{flex:1 1 160px}
+.rows{border:1px solid #e1e8ef;border-radius:10px;overflow:hidden;margin-top:10px}
+.r{display:grid;grid-template-columns:90px minmax(106px,1fr) minmax(142px,1.4fr);gap:7px;align-items:center;padding:8px 7px;border-bottom:1px solid #e5ebf0}
+.r:last-child{border-bottom:0}.r:nth-child(odd){background:#fafcfe}.r .date{font-weight:800}.r .date small{font-size:10px;color:#748498;display:block}
+.r select{width:100%;border:1px solid #cbdbe7;border-radius:8px;background:white;padding:8px 5px;min-height:42px;min-width:0;font-size:13px}
+.counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.counts>div{border-radius:10px;background:#f5f8fb;border:1px solid #e1e9f1;text-align:center;padding:7px 4px}.counts b{display:block;font-size:23px}
+.checkbox{display:flex;gap:8px;align-items:start;background:#f5f8fb;border-radius:9px;padding:11px;font-size:12px}.checkbox input{width:17px;height:17px;accent-color:#1d7d5c;margin-top:3px}
+#review-list{max-height:210px;overflow:auto;white-space:pre-wrap;font-size:12px}
+@media(max-width:370px){.r{grid-template-columns:70px minmax(93px,1fr) minmax(119px,1.3fr);gap:4px;padding:8px 4px}.r select{padding:7px 2px;font-size:12px}.card{padding:11px 8px}}
+footer{font-size:11px;color:#718296;margin:14px 0 0}
+</style></head><body><main>
+<header><h1>🏀 2027年1月・仮当番表作成</h1><p>管理者専用｜練習日・試合日・担当者の確認</p>
+<div class="note"><b>試合日・休み・担当者はまだ未確定です。</b> 水・金・土・日は「練習予定」として並べていますが、実際の活動を確認して変更してください。<b>この画面では保護者に公開せず、下書きだけを保存します。</b></div></header>
+<section class="card"><h2>① 管理者ログイン・既存データを確認</h2><p id="auth" class="small">Google認証を確認中…</p><div class="actions"><button id="login" class="primary">Googleでログイン</button><button id="load">Firebaseから下書きを読み込む</button></div><p id="load-status" class="small">管理者としてログインしてください。</p></section>
+<section class="card"><h2>② 1月の活動予定と担当者を編集</h2><p class="small">「練習」「試合」「休み」を日ごとに変更できます。試合・休みを選ぶと当番なしになります。担当者は自動で決めず、管理者が一人ずつ選択してください。</p>
+<div class="counts"><div><b id="practice-count">—</b><small>練習予定</small></div><div><b id="game-count">—</b><small>試合</small></div><div><b id="rest-count">—</b><small>休み</small></div></div>
+<div id="days" class="rows"><div class="small" style="padding:12px">Firebaseからの読み込み後に表示します。</div></div></section>
+<section class="card"><h2>③ 内容の確認と下書き保存</h2><p class="small">担当者未設定や曜日条件の未確認は、警告として表示します。未完成の状態でも「下書き」として保存できますが、保護者には見えません。</p>
+<div id="review-status" class="small">未確認</div><div id="review-list"></div>
+<label class="checkbox" style="margin-top:10px"><input type="checkbox" id="agree"><span>これは2027年1月の仮当番表で、試合日・休み・担当者を確認したうえで<strong>管理者限定の下書き</strong>としてFirebaseに保存することを理解しました。保護者への公開はしません。</span></label>
+<div class="actions" style="margin-top:10px"><button id="save" class="primary" disabled>1月の仮当番表を保存する</button></div>
+<p id="save-status" role="status" aria-live="polite" class="small">保存はまだ行っていません。</p></section>
+<footer>2026年12月の確定済み当番表には変更を加えません。下書きを保存しても、保護者用画面では「公開待ち」のままです。入力受付を開放するには、別の管理者承認とセキュリティテストが必要です。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {DRAFT_MONTH,calendarDates,emptyDraft,normalizeMember,eligibleManualOwner,auditDraft,DAY_NAMES} from './month-draft-core.mjs?v=1';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'mini-basket-admin-login'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const monthRef=doc(db,'teams',teamId,'months',DRAFT_MONTH),base=collection(db,'teams',teamId,'months',DRAFT_MONTH,'days');
+const validTypes=['practice','game','rest'];
+let rows=[],members=[],loaded=false,working=false,loadedVersion=null,memberVersion=0;
+const update=()=>{$('login').hidden=!!auth.currentUser;$('load').disabled=!auth.currentUser||working;$('save').disabled=!auth.currentUser||working||!loaded||!$('agree').checked};
+const status=(msg,cls='small')=>{$('save-status').textContent=msg;$('save-status').className=cls};
+function render(){
+ const byId=Object.fromEntries(members.map(m=>[m.id,m]));
+ $('days').innerHTML=rows.map(row=>{
+  const allowed=members.filter(m=>eligibleManualOwner(m,row.date)).sort((a,b)=>a.kana.localeCompare(b.kana,'ja'));
+  const who='<option value="">— 担当者未選択 —</option>'+allowed.map(m=>'<option value="'+esc(m.id)+'" '+(row.ownerId===m.id?'selected':'')+'>'+esc(m.name)+'</option>').join('');
+  const choices=validTypes.map((x,i)=>'<option value="'+x+'" '+(row.type===x?'selected':'')+'>'+['練習予定','試合','休み'][i]+'</option>').join('');
+  return '<div class="r" data-date="'+row.date+'"><div class="date">'+Number(row.date.slice(-2))+'日 <small>('+DAY_NAMES[row.weekday]+')</small></div>'+
+    '<select data-field="type" aria-label="'+row.date+' 予定区分">'+choices+'</select>'+
+    '<select data-field="ownerId" aria-label="'+row.date+' 当番担当者" '+(row.type==='practice'?'':'disabled')+'>'+who+'</select></div>';
+ }).join('');
+ const audit=auditDraft(DRAFT_MONTH,rows,members);
+ $('practice-count').textContent=audit.practice;$('game-count').textContent=audit.game;$('rest-count').textContent=audit.rest;
+ $('review-status').textContent=audit.problems.length?'⚠️ 保存前に修正が必要な問題 '+audit.problems.length+'件':
+  '下書き保存可能／未設定・要確認 '+audit.warnings.length+'件';
+ $('review-status').className=audit.problems.length?'error':audit.warnings.length?'note':'good';
+ $('review-list').textContent=[...audit.problems,...audit.warnings].slice(0,26).map(x=>'・'+x).join('\n')+
+   (audit.problems.length+audit.warnings.length>26?'\n（続きは一覧で確認してください）':'');
+ return audit;
+}
+onAuthStateChanged(auth,user=>{
+ loaded=false;loadedVersion=null;rows=[];members=[];$('days').innerHTML='<p class="small">読み込み待ちです。</p>';
+ $('auth').textContent=user?'管理者Googleログイン済み。Firebaseから読み込んでください。':'Googleで管理者ログインしてください。';
+ $('load-status').textContent='管理者の確認を待っています。';$('agree').checked=false;update();
+},e=>{$('auth').textContent='認証エラー：'+(e.code||e.message)});
+$('login').addEventListener('click',()=>{signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>{$('auth').textContent='ログインエラー：'+(e.code||e.message)})});
+$('agree').addEventListener('change',update);
+$('load').addEventListener('click',async()=>{
+ const user=auth.currentUser;if(working||!user)return;
+ working=true;loaded=false;update();$('load-status').textContent='管理者権限と1月のデータを確認中…';status('読み込み中…');
+ try{
+  const admin=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限が確認できません。');
+  const [monthSnap,daySnaps,memberSnaps]=await Promise.all([
+   getDocFromServer(monthRef),getDocsFromServer(base),getDocsFromServer(collection(db,'teams',teamId,'members'))
+  ]);
+  if(auth.currentUser?.uid!==user.uid)throw Error('ログインアカウントが切り替わりました。');
+  if(monthSnap.exists()&&monthSnap.data().publication!=='draft')throw Error('この月は下書きではありません。確定済みの当番表を変更しないため編集を停止しました。');
+  if(!monthSnap.exists()&&!daySnaps.empty)throw Error('月情報のない既存の日付データがあります。上書きを防止するため停止しました。');
+  const dateList=calendarDates();
+  if(monthSnap.exists()&&dateList.some(d=>!daySnaps.docs.some(s=>s.id===d.date)))throw Error('下書きの日付が不足しています。変更前に管理者が確認してください。');
+  if(daySnaps.docs.some(s=>!dateList.some(d=>d.date===s.id)))throw Error('水・金・土・日以外の日付データがあります。上書きしません。');
+  if(memberSnaps.size!==12)throw Error('メンバーが12人ではありません。名簿を確認してください。');
+  members=memberSnaps.docs.map(s=>normalizeMember({id:s.id,...s.data()}));
+  rows=monthSnap.exists()?dateList.map(d=>{
+   const found=daySnaps.docs.find(s=>s.id===d.date)?.data();
+   return {date:d.date,weekday:d.weekday,type:found?.type||'practice',
+    ownerId:found?.ownerId||null,eventLocation:found?.eventLocation||'',traineeIds:Array.isArray(found?.traineeIds)?found.traineeIds:[]};
+  }):emptyDraft();
+  loadedVersion=monthSnap.exists()?Number(monthSnap.data().version??0):null;
+  $('agree').checked=false;loaded=true;render();
+  $('load-status').textContent=monthSnap.exists()?
+   '✅ 既存の管理者用下書きを読み込みました。保存済みバージョン：'+loadedVersion:
+   '✅ 新規下書きを準備しました（未保存）。全日を練習予定・担当者未選択として表示しています。';
+  status('修正後、内容確認のチェックを入れて下書きを保存できます。');
+ }catch(e){loaded=false;rows=[];members=[];$('days').textContent='読み込めませんでした。';$('load-status').textContent='確認失敗：'+(e.code||e.message);status('Firebaseへの変更はありません。','error')}
+ finally{working=false;update()}
+});
+$('days').addEventListener('change',event=>{
+ if(!loaded||working)return;
+ const selector=event.target.closest('select[data-field]'),rowElement=event.target.closest('[data-date]');
+ if(!selector||!rowElement)return;
+ const row=rows.find(x=>x.date===rowElement.dataset.date),key=selector.dataset.field;
+ if(!row||!['type','ownerId'].includes(key))return;
+ if(key==='type'){
+  row.type=selector.value;
+  if(row.type!=='practice')row.ownerId=null;
+ }else row.ownerId=selector.value||null;
+ $('agree').checked=false;render();update();
+});
+$('save').addEventListener('click',async()=>{
+ if(!loaded||working||!auth.currentUser||!$('agree').checked)return;
+ const audit=auditDraft(DRAFT_MONTH,rows,members);
+ if(!audit.ok)return status('日付・担当者の不整合があるため、保存できません。','error');
+ const summary='2027年1月の下書きを保存します。\n練習予定：'+audit.practice+'日\n試合：'+audit.game+'日\n休み：'+audit.rest+
+  '日\n当番未設定・要確認：'+audit.warnings.length+'件\n\n保護者には公開されません。保存しますか？';
+ if(!confirm(summary))return;
+ const user=auth.currentUser,uid=user.uid,expectedVersion=loadedVersion,chosen=rows.map(x=>({...x}));
+ working=true;loaded=false;update();status('管理者用の下書きを保存中…');
+ try{
+  await runTransaction(db,async tx=>{
+   const dates=calendarDates();
+   const dayRefs=dates.map(x=>doc(db,'teams',teamId,'months',DRAFT_MONTH,'days',x.date));
+   const allSnaps=[await tx.get(monthRef)];
+   for(const ref of dayRefs)allSnaps.push(await tx.get(ref));
+   const mSnap=allSnaps[0],oldVersion=mSnap.exists()?Number(mSnap.data().version??0):null;
+   if(mSnap.exists()&&mSnap.data().publication!=='draft')throw Error('すでに公開済みの月のため変更できません。');
+   if(oldVersion!==expectedVersion)throw Error('別の端末で下書きが更新されています。もう一度読み込んで確認してください。');
+   if(mSnap.exists()&&allSnaps.slice(1).some(x=>!x.exists()))throw Error('既存の下書きの一部が欠けています。上書きを中止しました。');
+   if(!mSnap.exists()&&allSnaps.slice(1).some(x=>x.exists()))throw Error('既存のデータを検出しました。上書きを中止しました。');
+   const uniqueIds=[...new Set(chosen.filter(x=>x.type==='practice'&&x.ownerId).map(x=>x.ownerId))];
+   const ownerDocs=[];
+   for(const ownerId of uniqueIds)ownerDocs.push(await tx.get(doc(db,'teams',teamId,'members',ownerId)));
+   const activeOwners=ownerDocs.map((snap,i)=>snap.exists()?normalizeMember({id:uniqueIds[i],...snap.data()}):null);
+   const serverAudit=auditDraft(DRAFT_MONTH,chosen,activeOwners.length===uniqueIds.length?activeOwners:[]);
+   if(!serverAudit.ok)throw Error('担当者が現在の名簿では対象外です。再読み込みしてください。');
+   const now=serverTimestamp();
+   const monthData={publication:'draft',scheduleStatus:'awaiting-manager',inputState:'closed',
+     version:(oldVersion||0)+1,updatedBy:uid,updatedAt:now};
+   if(mSnap.exists())tx.update(monthRef,monthData);
+   else tx.set(monthRef,{...monthData,createdBy:uid,createdAt:now});
+   for(let i=0;i<dayRefs.length;i++){
+    const row=chosen[i];tx.set(dayRefs[i],{
+     date:row.date,weekday:row.weekday,type:row.type,ownerId:row.type==='practice'?row.ownerId:null,
+     eventLocation:row.eventLocation||'',traineeIds:row.traineeIds||[],updatedAt:now
+    },{merge:true});
+   }
+  });
+  $('agree').checked=false;loadedVersion=(expectedVersion||0)+1;loaded=true;
+  status('✅ 2027年1月の仮当番表をFirebaseへ下書き保存しました。保護者にはまだ公開されません。','good');
+  $('load-status').textContent='✅ 下書き保存済み。バージョン：'+loadedVersion+'。必要なら編集・再保存できます。';
+ }catch(e){loaded=true;status('保存できませんでした：'+(e.code||e.message||String(e))+'\n二重書き込みを避けるため、一度再読み込みして確認してください。','error')}
+ finally{working=false;update()}
+});
+update();
+</script></body></html>
