@@ -87,7 +87,7 @@ const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const validDate=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+'T00:00:00');return !Number.isNaN(d.getTime())&&d.getFullYear()===Number(s.slice(0,4))&&d.getMonth()+1===Number(s.slice(5,7))&&d.getDate()===Number(s.slice(8));};
 const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.toastTimeout);window.toastTimeout=setTimeout(()=>e.classList.remove('show'),3000)};
-try{const data=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(data)&&data.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'))people=data.map(p=>({...p,name:p.name==='大竹わかな'?'おおたけわかな':p.name,reading:p.reading||'おおたけわかな',preferred:p.preferred||[]}));}catch(_){}
+try{const data=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(data)&&data.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'))people=data.map(p=>({...p,name:p.name==='大竹わかな'?'おおたけわかな':p.name,reading:p.reading||YOMI[p.name==='大竹わかな'?'おおたけわかな':p.name]||p.name,preferred:p.preferred||[]}));}catch(_){}
 function save(){localStorage.setItem(KEY,JSON.stringify(people));}
 function nameSort(a,b){return (a.reading||a.name).localeCompare(b.reading||b.name,'ja');}
 function summary(p){const d=p.days===null?'曜日：未確認':p.days.join('・')+'曜日';return p.grade+'年 ／ '+d+' ／ 開始：'+p.start+(p.end?' ／ 終了：'+p.end:'');}
