@@ -3,7 +3,18 @@
 // No permission bypass, server-only finalization, or administrative writes here.
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 let connector=null;
-const shortError=e=>e?.code||e?.message||String(e);
+const shortError=e=>{
+ const code=e?.code||'';
+ const help={
+  'auth/operation-not-allowed':'Firebase Authenticationで「匿名」を有効にしてください',
+  'auth/configuration-not-found':'Firebase Authenticationの設定を確認してください',
+  'permission-denied':'Firestoreの安全ルール・メンバー・当番データの設定待ちです',
+  'failed-precondition':'Firestoreデータベースの作成状況を確認してください',
+  'auth/invalid-api-key':'FirebaseのWebアプリ設定（apiKey）を再確認してください',
+  'auth/unauthorized-domain':'Firebaseの承認済みドメインにGitHub Pagesのドメインを追加してください'
+ };
+ return help[code]||code||e?.message||String(e);
+};
 export const cloudConfigured=()=>Boolean(firebaseConfig?.apiKey&&firebaseConfig?.projectId&&firebaseConfig?.appId);
 export async function createCloudClient({onStatus=()=>{},onMonth=()=>{},onRoster=()=>{}}={}){
  if(!cloudConfigured()){
