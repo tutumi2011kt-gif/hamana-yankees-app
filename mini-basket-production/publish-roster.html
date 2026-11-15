@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 保護者向け公開名簿の準備</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;color:#273951;background:#f5f8fc;font:14px/1.65 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+main{max-width:700px;margin:auto;padding:12px 12px 55px}header{padding:16px;background:linear-gradient(110deg,#e9f4ff,#fff3e0);border-radius:16px}
+h1{font-size:21px;margin:0}h2{font-size:17px;margin:0 0 9px}.card{border:1px solid #dfe6ef;background:#fff;border-radius:13px;padding:13px;margin:11px 0}
+button{font:inherit;font-weight:800;min-height:44px;padding:10px 13px;border:1px solid #c9d8e4;background:#fff;border-radius:9px;cursor:pointer}button.primary{background:#295782;border-color:#295782;color:white}button:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:7px}.row>*{flex:1 1 170px}
+.note{background:#fff2df;border:1px solid #edd3ab;border-radius:10px;padding:11px;font-size:12px;margin-top:10px}
+.small{font-size:12px;color:#6c7c91}.ok{background:#e9f8ef;border:1px solid #b7e0c9;padding:11px;border-radius:9px;color:#176748}.err{background:#fff0f2;border:1px solid #ecc5cb;padding:11px;border-radius:9px;color:#a5324a}
+.people{border:1px solid #e0e8ef;border-radius:11px;overflow:hidden;margin-top:8px}.people>div{padding:7px 12px;border-bottom:1px solid #e5e9ee;display:flex;justify-content:space-between}.people>div:last-child{border-bottom:0}
+label.check{display:flex;gap:9px;align-items:start;background:#f5f8fa;padding:10px;border-radius:10px;margin:11px 0;font-size:13px}
+label.check input{width:17px;height:17px;margin-top:4px;accent-color:#20815d}footer{font-size:11px;color:#738194;margin-top:18px}
+</style></head><body><main>
+<header><h1>🏀 保護者用の名簿を準備</h1><p>管理者専用｜必要最小限の情報だけを共有</p><div class="note">この操作では、保護者向けの「名前とよみがな・在籍状態」だけを別の公開用データにコピーします。学年・当番曜日・不可日・希望日はコピーしません。<b>この操作だけでは保護者へのアクセスは開放されません。</b> Firestoreルールの切り替えは別工程です。</div></header>
+<section class="card"><h2>① 管理者でログイン</h2><p id="auth" class="small">ログイン状態を確認中…</p><div class="row"><button id="login" class="primary">Googleでログイン</button><button id="check">最新のメンバーを読み込む</button></div></section>
+<section class="card"><h2>② 保護者向けに表示する名前</h2><p id="list-status" class="small">読み込み待ち</p><div id="people" class="people"></div><p class="small">過去の当番の表示に必要なため、退団済みメンバーの名前も表示対象になります。</p></section>
+<section class="card"><h2>③ 内容を確認して保存</h2><label class="check"><input type="checkbox" id="agree"><span>保護者の共通URLでは、匿名ログインした人がこの名前一覧と公開済みの当番日を閲覧できることを理解しました。内容を確認し、最小限の公開用名簿をFirebaseに保存します。</span></label><button id="save" class="primary" disabled>保護者用名簿をFirebaseに保存</button><p id="feedback" class="small" aria-live="polite">まだ保存していません。</p></section>
+<footer>Firebaseの管理者権限を利用します。現在のメンバー原本は変更せず、別の公開用名簿のみを作成・更新します。</footer></main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'mini-basket-admin-login'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const publicRef=doc(db,'teams',teamId,'public','roster');
+let loaded=false,busy=false;
+const status=(s,cls='small')=>{$('feedback').textContent=s;$('feedback').className=cls};
+const update=()=>{$('login').hidden=!!auth.currentUser;$('check').disabled=busy||!auth.currentUser;$('save').disabled=busy||!loaded||!$('agree').checked||!auth.currentUser};
+const render=names=>{$('people').innerHTML=names.map(m=>'<div><b>'+esc(m.name)+'</b><span class="small">'+esc(m.kana)+'</span></div>').join('')};
+onAuthStateChanged(auth,user=>{
+ loaded=false;$('people').textContent='';
+ $('auth').textContent=user?'Googleログイン済み。下のボタンで名簿を読み込んでください。':'管理者でGoogleログインしてください。';
+ $('list-status').textContent='未確認';status('まだ保存していません。');update();
+},err=>status('ログイン状態の確認に失敗しました：'+(err.code||err.message),'err'));
+$('login').addEventListener('click',()=>{signInWithPopup(auth,new GoogleAuthProvider()).catch(err=>status('ログイン失敗：'+(err.code||err.message),'err'))});
+$('agree').addEventListener('change',update);
+$('check').addEventListener('click',async()=>{
+ if(busy||!auth.currentUser)return;const uid=auth.currentUser.uid;
+ busy=true;loaded=false;update();status('Firestoreのメンバー情報を読み込み中…');
+ try{
+  const admin=await getDocFromServer(doc(db,'admins',uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('登録済み管理者ではありません');
+  const source=await getDocsFromServer(collection(db,'teams',teamId,'members'));
+  if(source.size!==12)throw Error('登録メンバーが12人ではありません。登録内容を確認してください。');
+  const names=source.docs.map(d=>({id:d.id,...d.data()})).map(m=>({id:m.id,name:m.name,kana:m.kana,status:m.status}))
+    .sort((a,b)=>a.kana.localeCompare(b.kana,'ja'));
+  if(names.some(x=>!x.id||!x.name||!x.kana))throw Error('メンバー名またはよみがなが未登録です');
+  if(names.find(m=>m.id==='wakana')?.name!=='おおたけわかな')throw Error('「おおたけわかな」の名前変更が保存されていません。管理者画面で確認してください');
+  render(names);loaded=true;
+  $('list-status').textContent=names.length+'人の名前を確認しました。';
+  status('✅ メンバー12人の公開用名簿を準備できました。内容確認後に保存できます。','ok');
+ }catch(err){$('list-status').textContent='取得失敗';status('確認失敗：'+(err.code||err.message||String(err)),'err');}
+ finally{busy=false;update()}
+});
+$('save').addEventListener('click',async()=>{
+ if(!loaded||busy||!$('agree').checked||!auth.currentUser)return;
+ if(!confirm('保護者向け公開用名簿（名前・よみがな・在籍状態）を本番Firebaseに保存します。既存のメンバー原本や当番表は変更しません。よろしいですか？'))return;
+ busy=true;loaded=false;update();status('Firebaseへ保存中…');
+ try{
+  // Re-read all authoritative members within one transaction to avoid stale names.
+  await runTransaction(db,async tx=>{
+   const memberRefs=['an','wakana','kaho','koharu','sayaka','nagisa','nodoka','haruka','mai','mia','sawa','yui']
+     .map(id=>doc(db,'teams',teamId,'members',id));
+   const snaps=[];
+   for(const ref of memberRefs)snaps.push(await tx.get(ref));
+   const prior=await tx.get(publicRef);
+   if(snaps.some(x=>!x.exists()))throw Error('現在の登録メンバー情報が不足しています');
+   const list=snaps.map((snap,i)=>({id:memberRefs[i].id,...snap.data()}))
+     .map(m=>({id:m.id,name:m.name,kana:m.kana,status:m.status}))
+     .sort((a,b)=>a.kana.localeCompare(b.kana,'ja'));
+   if(list.find(m=>m.id==='wakana')?.name!=='おおたけわかな')throw Error('名前の変更が確認できないため保存を中止します');
+   if(prior.exists()&&!Array.isArray(prior.data().members))throw Error('公開用名簿の形式が一致しないため更新しません');
+   tx.set(publicRef,{members:list,updatedAt:serverTimestamp(),version:1});
+  });
+  $('agree').checked=false;$('list-status').textContent='保存完了';
+  status('✅ 12人の保護者用名簿を本番Firebaseに保存しました。次にセキュリティルールを切り替えると、保護者が閲覧できるようになります。','ok');
+ }catch(err){status('保存失敗：'+(err.code||err.message||String(err)),'err')}
+ finally{busy=false;update()}
+});
+update();
+</script></body></html>
