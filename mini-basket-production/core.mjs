@@ -111,7 +111,7 @@ export function auditSchedule({month,assignments={},members=ROSTER,preferences={
  }
  for(const m of members){
   if(m.status!=='active')continue;
-  if(m.days===null)warnings.push(m.name+'：当番可能曜日が未確認');
+  if(m.days===null){warnings.push(m.name+'：当番可能曜日が未確認');blockers.push(m.name+'：曜日条件未確認のため確定不可');}
   if(requireResponses&&responses[m.id]!==true)blockers.push(m.name+'：希望の回答・確認が未完了');
  }
  if(blockers.length===0)info.push('登録済みの禁止条件と割当の整合性はOK');
