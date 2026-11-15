@@ -3,14 +3,14 @@
 export const WEEKDAYS=[0,3,5,6]; // Sun, Wed, Fri, Sat
 export const DAY_NAMES=['日','月','火','水','木','金','土'];
 export const ROSTER=[
- {id:'yui',name:'ゆい',kana:'ゆい',grade:6,start:'2026-12-01',end:null,days:[3],status:'active'},
- {id:'mia',name:'みあ',kana:'みあ',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
- {id:'an',name:'あん',kana:'あん',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
- {id:'mai',name:'まい',kana:'まい',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
- {id:'nodoka',name:'のどか',kana:'のどか',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
- {id:'nagisa',name:'なぎさ',kana:'なぎさ',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
- {id:'sayaka',name:'さやか',kana:'さやか',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
- {id:'koharu',name:'こはる',kana:'こはる',grade:6,start:'2026-12-01',end:null,days:null,status:'active'},
+ {id:'yui',name:'ゆい',kana:'ゆい',grade:6,start:'2026-12-01',end:'2027-03-31',days:[3],status:'active'},
+ {id:'mia',name:'みあ',kana:'みあ',grade:6,start:'2026-12-01',end:'2027-03-31',days:null,status:'active'},
+ {id:'an',name:'あん',kana:'あん',grade:6,start:'2026-12-01',end:'2027-03-31',days:null,status:'active'},
+ {id:'mai',name:'まい',kana:'まい',grade:6,start:'2026-12-01',end:'2027-03-31',days:null,status:'active'},
+ {id:'nodoka',name:'のどか',kana:'のどか',grade:6,start:'2026-12-01',end:'2027-03-31',days:null,status:'active'},
+ {id:'nagisa',name:'なぎさ',kana:'なぎさ',grade:6,start:'2026-12-01',end:'2027-03-31',days:null,status:'active'},
+ {id:'sayaka',name:'さやか',kana:'さやか',grade:6,start:'2026-12-01',end:'2027-03-31',days:null,status:'active'},
+ {id:'koharu',name:'こはる',kana:'こはる',grade:6,start:'2026-12-01',end:'2027-03-31',days:null,status:'active'},
  {id:'sawa',name:'村松さわ',kana:'むらまつさわ',grade:4,start:'2027-01-01',end:null,days:null,status:'active'},
  {id:'wakana',name:'大竹わかな',kana:'おおたけわかな',grade:3,start:'2026-12-01',end:null,days:null,status:'active'},
  {id:'kaho',name:'かほ',kana:'かほ',grade:3,start:'2026-12-01',end:null,days:null,status:'active'},
