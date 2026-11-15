@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><title>🏀 12月当番表｜Firebase保存確認</title>
+<style>
+*{box-sizing:border-box}body{background:#f4f7fb;color:#263950;font:14px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;margin:0}
+main{max-width:740px;margin:auto;padding:12px 12px 48px}header{background:linear-gradient(115deg,#eaf5ff,#fff2df);border-radius:16px;padding:16px}
+h1{font-size:21px;margin:0 0 5px}h2{font-size:17px;margin:0 0 8px}p{margin:6px 0}
+.card{background:white;border:1px solid #dce5ec;border-radius:13px;padding:13px;margin:12px 0}
+button{background:#285984;border:1px solid #285984;border-radius:10px;color:white;cursor:pointer;font:inherit;font-weight:800;min-height:44px;padding:9px 14px}
+button:disabled{opacity:.5} .muted{font-size:12px;color:#67788e}.notice{background:#fff3df;border:1px solid #edd4ae;border-radius:9px;padding:10px 11px;font-size:12px}.ok{color:#136d4d;background:#eaf8f0;border:1px solid #c5e4d3;border-radius:9px;padding:10px 11px}.bad{color:#a4324e;background:#fff0f2;border:1px solid #ecc4cc;border-radius:9px;padding:10px 11px}
+.stat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.stat>div{border:1px solid #e2e9ef;border-radius:10px;padding:10px 5px;text-align:center;background:#f9fbfd}.stat b{font-size:23px;display:block}.stat small{font-size:11px;color:#6a7a8c}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:8px 0 5px}.week>span{text-align:center;font-size:12px;font-weight:800}.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.day{min-height:80px;border:1px solid #dfe7ef;border-radius:8px;padding:6px 3px;text-align:center;overflow-wrap:anywhere}.day.empty{border:0}.day.practice{background:#edf6ff}.day.game{background:#fdf0e2}.day .num{font-weight:800;font-size:13px;display:block;text-align:left;margin-left:3px}.day .owner{font-size:11px;font-weight:800;display:block;line-height:1.4;margin-top:6px}.day .minor{font-size:10px;display:block;line-height:1.4;margin-top:3px;color:#64748b}
+.rows{margin-top:10px;border:1px solid #e0e8ef;border-radius:10px;overflow:hidden}.rows>div{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;padding:8px 11px;border-bottom:1px solid #e4eaf1}.rows>div:last-child{border-bottom:0}
+footer{font-size:11px;color:#6c8092}
+</style></head><body><main>
+<header><h1>🏀 2026年12月 当番カレンダー</h1><p>本番Firebaseに保存されたデータの確認（管理者専用・読み取りのみ）</p><div class="notice">この画面から当番表は編集できません。保護者用の×・○入力も、現時点ではまだ公開していません。</div></header>
+<section class="card"><h2>① 管理者でログイン</h2><p id="auth-status" class="muted">ログイン状態を確認しています…</p><button id="login">Googleでログイン</button></section>
+<section class="card"><h2>② Firebaseの保存内容</h2><p id="status" role="status" aria-live="polite" class="muted">読み込み待ち</p><div class="stat" id="stat" hidden><div><b id="practice-count">—</b><small>練習当番</small></div><div><b id="game-count">—</b><small>試合・当番なし</small></div><div><b id="trainee-count">—</b><small>当番教習</small></div></div><p id="month-meta" class="muted"></p>
+<div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="calendar" aria-label="2026年12月のカレンダー"></div></section>
+<section class="card"><h2>③ 登録内容の照合</h2><div id="audit" role="status" aria-live="polite" class="muted">Firebaseの読み込み後、登録した当番と照合します。</div><div id="detail" class="rows" hidden></div></section>
+<footer>このページは、Google管理者認証・Firestoreセキュリティルールで保護されています。データは本番Firestoreから読み取ります。キャッシュの代わりにサーバーのデータを取得します。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {decemberAssignments,decemberGames} from './december-2026.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'mini-basket-admin-login'),auth=getAuth(app),db=getFirestore(app);
+const month='2026-12',daysInMonth=31,dayLabels=['日','月','火','水','木','金','土'];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let loadVersion=0;
+const updateStatus=(message,type='muted')=>{$('status').textContent=message;$('status').className=type};
+const checkStatus=(message,type='muted')=>{$('audit').textContent=message;$('audit').className=type};
+const render=({members,days,metadata})=>{
+ const lookup=Object.fromEntries(members.map(x=>[x.id,x.name]));
+ const byDate=Object.fromEntries(days.map(x=>[x.date,x]));
+ const first=new Date(Date.UTC(2026,11,1)).getUTCDay();
+ let html=Array.from({length:first},()=>'<div class="day empty"></div>').join('');
+ for(let n=1;n<=daysInMonth;n++){
+  const date='2026-12-'+String(n).padStart(2,'0'),d=byDate[date],weekday=new Date(Date.UTC(2026,11,n)).getUTCDay();
+  const practice=d?.type==='practice',game=d?.type==='game';
+  const type=practice?'practice':game?'game':'';
+  const title=practice?(lookup[d.ownerId]||'担当者未登録'):game?'試合・当番なし':'';
+  const trainee=practice&&(d.traineeIds||[]).length?'教習：'+d.traineeIds.map(id=>lookup[id]||id).join('・'):'';
+  const location=game?d.eventLocation||'':'';
+  html+='<div class="day '+type+'"><span class="num">'+n+'</span>'+(title?'<span class="owner">'+esc(title)+'</span>':'')+(trainee||location?'<span class="minor">'+esc(trainee||location)+'</span>':'')+'</div>';
+ }
+ $('calendar').innerHTML=html;
+ const practices=days.filter(x=>x.type==='practice'),games=days.filter(x=>x.type==='game'),trainees=days.filter(x=>Array.isArray(x.traineeIds)&&x.traineeIds.length>0);
+ $('practice-count').textContent=practices.length;
+ $('game-count').textContent=games.length;
+ $('trainee-count').textContent=trainees.length;
+ $('stat').hidden=false;
+ $('month-meta').textContent='登録状態：'+(metadata?.scheduleStatus==='confirmed'?'確定済み':metadata?.scheduleStatus||'未確認')+' ／ 入力状態：'+(metadata?.inputState==='closed'?'締切済み':metadata?.inputState||'未確認');
+ $('detail').hidden=false;
+ $('detail').innerHTML=days.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(d=>'<div><b>'+Number(d.date.slice(8))+'日('+dayLabels[d.weekday]+')</b><span>'+esc(d.type==='practice'?lookup[d.ownerId]||'担当者未登録':'🏀 試合・当番なし')+(d.traineeIds?.length?' ＋'+d.traineeIds.map(id=>esc(lookup[id]||id)).join('・')+'（教習）':'')+(d.eventLocation?'／'+esc(d.eventLocation):'')+'</span></div>').join('');
+ const mismatches=[];
+ if(practices.length!==15)mismatches.push('練習当番が15日ではありません');
+ if(games.length!==2)mismatches.push('試合が2日ではありません');
+ if(trainees.length!==1||trainees[0]?.date!=='2026-12-09'||!(trainees[0]?.traineeIds||[]).includes('sawa'))mismatches.push('12月9日の当番教習を確認してください');
+ if(metadata?.publication!=='published'||metadata?.inputState!=='closed'||metadata?.scheduleStatus!=='confirmed')mismatches.push('月の確定済み・締切設定を確認してください');
+ for(const [date,owner] of Object.entries(decemberAssignments)){if(byDate[date]?.type!=='practice'||byDate[date]?.ownerId!==owner)mismatches.push(date+'の担当者または練習日が異なります');}
+ for(const date of Object.keys(decemberGames)){if(byDate[date]?.type!=='game'||byDate[date]?.ownerId)mismatches.push(date+'の試合日・当番なし設定が異なります');}
+ if(lookup.wakana!=='おおたけわかな')mismatches.push('おおたけわかなの表示名が一致しません');
+ checkStatus(mismatches.length?mismatches.join('\n'):'✅ 当番15日・試合2日・教習1日・確定締切設定・担当者名を照合しました。保存内容は今回の12月当番表と一致しています。',mismatches.length?'bad':'ok');
+};
+const load=async user=>{
+ const token=++loadVersion;
+ $('calendar').textContent='';$('detail').hidden=true;$('stat').hidden=true;$('month-meta').textContent='';checkStatus('確認待ち');
+ if(!user){$('login').hidden=false;$('auth-status').textContent='Googleログインしてください。';updateStatus('ログイン待ち');return;}
+ $('login').hidden=true;$('auth-status').textContent='管理者権限を確認しています…';updateStatus('Firestoreから最新の当番表を取得中…');
+ try{
+  const admin=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限がありません');
+  const [monthDoc,membersDoc,daysDoc]=await Promise.all([
+   getDocFromServer(doc(db,'teams',teamId,'months',month)),
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',month,'days'))
+  ]);
+  if(token!==loadVersion||auth.currentUser?.uid!==user.uid)return;
+  $('auth-status').textContent='✅ 管理者Googleアカウントでログイン済み';
+  if(!monthDoc.exists())throw Error('2026年12月の当番表が見つかりません');
+  const members=membersDoc.docs.map(x=>({id:x.id,...x.data()}));
+  const days=daysDoc.docs.map(x=>({date:x.id,...x.data()}));
+  render({members,days,metadata:monthDoc.data()});
+  updateStatus('✅ 本番Firebaseから'+days.length+'日分の保存データを取得しました。','ok');
+ }catch(e){if(token!==loadVersion)return;updateStatus('確認できませんでした：'+(e.code||e.message||String(e)),'bad');}
+};
+onAuthStateChanged(auth,user=>{void load(user)},err=>updateStatus('認証エラー：'+(err.code||err.message),'bad'));
+$('login').addEventListener('click',()=>{const p=signInWithPopup(auth,new GoogleAuthProvider());p.catch(e=>updateStatus('ログインに失敗しました：'+(e.code||e.message),'bad'));});
+</script></body></html>
