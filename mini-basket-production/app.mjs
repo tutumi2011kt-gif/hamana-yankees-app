@@ -124,6 +124,7 @@ $('months').addEventListener('click',e=>{const b=e.target.closest('button[data-m
 $('mode-x').addEventListener('click',()=>{ui.mode='x';render()});
 $('mode-o').addEventListener('click',()=>{ui.mode='o';render()});
 $('simulation').addEventListener('change',e=>{if(live)return;ui.simulatedDate=e.target.value;ui.month='';render()});
+if(typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
 $('approve').addEventListener('click',()=>{if(live||access(ui.month)!=='awaiting-manager')return;
  const data=source(ui.month),chk=auditSchedule({month:ui.month,assignments:data.assignments,members:data.members,submissions:data.marks,exceptions:data.exceptions});
  if(!chk.ok){alert('ファクトチェックが未完了のため公開できません。');return;}
@@ -154,7 +155,7 @@ render();
 if(live){
  createCloudClient({
   onStatus:status=>{cloudMessage=status;updateStatus();if(status.kind==='error')render();},
-  onRoster:members=>{cloudRoster=members;render();},
+  onRoster:members=>{cloudRoster=members.map(m=>({...m,kana:m.kana||m.reading||m.name,start:m.start||m.startDate||'9999-12-31',end:m.end??m.endDate??null,days:Array.isArray(m.days)?m.days:null}));render();},
   onMonth:data=>{cloudMonth=data;if(data.ready)cloudMessage={kind:'connected',detail:'最新データを受信しました'};render();}
  }).then(c=>{
    cloud=c;
