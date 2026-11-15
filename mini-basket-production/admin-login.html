@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><title>ミニバス当番｜管理者ログインの準備</title>
+<style>
+*{box-sizing:border-box}body{font:15px/1.65 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f4f7fa;color:#24364b;margin:0}
+main{max-width:570px;padding:14px 12px 48px;margin:auto}header{padding:18px;background:linear-gradient(110deg,#e9f4ff,#fff5e8);border-radius:16px}
+h1{font-size:22px;margin:0 0 6px}h2{font-size:17px;margin:0 0 8px}.card{border:1px solid #dce4ed;border-radius:15px;padding:15px;background:white;margin-top:12px}
+p{margin:7px 0}button{padding:12px 14px;border-radius:10px;border:1px solid #cbd9e5;background:white;font:inherit;font-weight:800;cursor:pointer;min-height:44px}button.primary{background:#264f80;border-color:#264f80;color:white;width:100%}button:disabled{opacity:.5;cursor:default}
+.small{font-size:12px;color:#62768d}.warning{font-size:12px;background:#fff2df;border:1px solid #eed4aa;border-radius:9px;padding:10px;margin-top:11px}
+.error{font-size:13px;border:1px solid #e7bdc4;background:#fff0f1;border-radius:9px;padding:10px;color:#a7374d;white-space:pre-wrap}
+.good{font-size:13px;border:1px solid #c3e2d3;background:#eef9f3;border-radius:9px;padding:10px;color:#136c4b}
+.uid{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;background:#f3f6f9;border:1px solid #dfe6ee;padding:12px;border-radius:9px;font-size:14px;user-select:all}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.actions button{flex:1 1 130px}.hide{display:none}
+</style>
+</head><body><main>
+<header><h1>🏀 管理者ログインの準備</h1><p>ミニバス当番表｜本番アプリの管理者登録用</p><div class="warning">この画面は、管理者として利用するGoogleアカウントの識別番号（UID）を確認するためのものです。<strong>ここから当番表や会員データを変更することはできません。</strong></div></header>
+<section class="card">
+<h2>① Googleアカウントでログイン</h2>
+<p class="small">Firebase AuthenticationでGoogleログインを有効にしたアカウントを使います。<strong>Firebase管理権限を持つ人が、自分で使うGoogleアカウント</strong>を選んでください。</p>
+<button class="primary" id="login">GoogleでログインしてUIDを確認</button>
+<div id="feedback" role="status" aria-live="polite" class="small" style="margin-top:10px">接続準備中…</div>
+</section>
+<section id="account" class="card hide">
+<h2>② 管理者候補のUID</h2><p id="account-label" class="small"></p>
+<div class="uid" id="uid"></div>
+<div class="actions"><button id="copy">UIDをコピー</button><button id="logout">ログアウト</button></div>
+<p class="small">このUIDをFirebase Consoleで管理者として登録すると、後に公開する管理者専用機能で利用できます。<strong>ログインしただけでは管理者権限は付きません。</strong></p>
+</section>
+<section class="card"><h2>接続できない場合</h2>
+<p class="small"><strong>auth/unauthorized-domain</strong> が出た場合は、Firebase Console → Authentication → 設定 → 承認済みドメインに <code>tutumi2011kt-gif.github.io</code> を追加してください。</p>
+<p class="small">ブラウザのポップアップがブロックされたら、ポップアップを許可して再試行してください。設定や画面が不明な場合は、エラーコードのみ伝えてください。</p>
+</section>
+</main>
+<script type="module">
+import {firebaseConfig} from './firebase-config.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'mini-basket-admin-login');
+const auth=getAuth(app);
+const provider=new GoogleAuthProvider();
+const feedback=(text,error=false)=>{$('feedback').textContent=text;$('feedback').className=error?'error':'good';};
+onAuthStateChanged(auth,user=>{
+ $('login').classList.toggle('hide',!!user);
+ $('account').classList.toggle('hide',!user);
+ if(user){
+  $('uid').textContent=user.uid;
+  $('account-label').textContent='ログイン中：'+(user.email||'Googleアカウント');
+  feedback('Google認証に成功しました。以下のUIDを確認できます。');
+ }else feedback('Googleログインはまだ行っていません。');
+},err=>feedback('認証状態の取得に失敗しました：'+(err.code||err.message),true));
+$('login').addEventListener('click',()=>{
+ $('login').disabled=true;
+ // signInWithPopup must be called directly in the click handler.
+ const task=signInWithPopup(auth,provider);
+ task.then(()=>{},err=>{
+  const explanations={
+   'auth/unauthorized-domain':'Firebaseの承認済みドメインを追加してください',
+   'auth/popup-blocked':'ブラウザでポップアップを許可してください',
+   'auth/popup-closed-by-user':'ログイン画面が閉じられました。もう一度お試しください',
+   'auth/operation-not-allowed':'Firebase側のGoogleログイン設定を確認してください'
+  };
+  feedback('ログインできませんでした：'+(err.code||err.message)+'\n'+(explanations[err.code]||''),true);
+ }).finally(()=>$('login').disabled=false);
+});
+$('copy').addEventListener('click',async()=>{
+ const value=auth.currentUser?.uid;if(!value)return;
+ try{await navigator.clipboard.writeText(value);feedback('UIDをコピーしました。');}
+ catch(_){feedback('コピーできない場合はUIDを長押しして選択してください。',true);}
+});
+$('logout').addEventListener('click',async()=>{try{await signOut(auth);}catch(err){feedback('ログアウトに失敗しました：'+(err.code||err.message),true)}});
+</script></body></html>
