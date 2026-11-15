@@ -22,7 +22,7 @@ footer{font-size:11px;color:#718296;margin:14px 0 0}
 <header><h1>🏀 2027年1月・仮当番表作成</h1><p>管理者専用｜練習日・試合日・担当者の確認</p>
 <div class="note"><b>試合日・休み・担当者はまだ未確定です。</b> 水・金・土・日は「練習予定」として並べていますが、実際の活動を確認して変更してください。<b>この画面では保護者に公開せず、下書きだけを保存します。</b></div></header>
 <section class="card"><h2>① 管理者ログイン・既存データを確認</h2><p id="auth" class="small">Google認証を確認中…</p><div class="actions"><button id="login" class="primary">Googleでログイン</button><button id="load">Firebaseから下書きを読み込む</button></div><p id="load-status" class="small">管理者としてログインしてください。</p></section>
-<section class="card"><h2>② 1月の活動予定と担当者を編集</h2><p class="small">「練習」「試合」「休み」を日ごとに変更できます。試合・休みを選ぶと当番なしになります。担当者は自動で決めず、管理者が一人ずつ選択してください。</p>
+<section class="card"><h2>② 1月の活動予定と担当者を編集</h2><p class="small">「練習」「試合」「休み」を日ごとに変更できます。試合・休みを選ぶと当番なしになります。担当者は自動で決めず、管理者が一人ずつ選択してください。曜日の絶対条件に違反する人と曜日未確認の人は新規選択できません。</p>
 <div class="counts"><div><b id="practice-count">—</b><small>練習予定</small></div><div><b id="game-count">—</b><small>試合</small></div><div><b id="rest-count">—</b><small>休み</small></div></div>
 <div id="days" class="rows"><div class="small" style="padding:12px">Firebaseからの読み込み後に表示します。</div></div></section>
 <section class="card"><h2>③ 内容の確認と下書き保存</h2><p class="small">担当者未設定や曜日条件の未確認は、警告として表示します。未完成の状態でも「下書き」として保存できますが、保護者には見えません。</p>
@@ -34,7 +34,8 @@ footer{font-size:11px;color:#718296;margin:14px 0 0}
 </main>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
-import {DRAFT_MONTH,calendarDates,emptyDraft,normalizeMember,eligibleManualOwner,auditDraft,DAY_NAMES} from './month-draft-core.mjs?v=1';
+import {DRAFT_MONTH,calendarDates,emptyDraft,normalizeMember,eligibleManualOwner,auditDraft,DAY_NAMES} from './month-draft-core.mjs?v=3';
+import {isDayAllowed} from './weekday-conditions.mjs?v=3';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
@@ -48,8 +49,8 @@ const status=(msg,cls='small')=>{$('save-status').textContent=msg;$('save-status
 function render(){
  const byId=Object.fromEntries(members.map(m=>[m.id,m]));
  $('days').innerHTML=rows.map(row=>{
-  const allowed=members.filter(m=>eligibleManualOwner(m,row.date)).sort((a,b)=>a.kana.localeCompare(b.kana,'ja'));
-  const who='<option value="">— 担当者未選択 —</option>'+allowed.map(m=>'<option value="'+esc(m.id)+'" '+(row.ownerId===m.id?'selected':'')+'>'+esc(m.name)+'</option>').join('');
+  const allowed=members.filter(m=>eligibleManualOwner(m,row.date)&&(isDayAllowed(m,row.date,row.weekday)||m.id===row.ownerId)).sort((a,b)=>a.kana.localeCompare(b.kana,'ja'));
+  const who='<option value="">— 担当者未選択 —</option>'+allowed.map(m=>'<option value="'+esc(m.id)+'" '+(row.ownerId===m.id?'selected':'')+'>'+esc(m.name)+(isDayAllowed(m,row.date,row.weekday)?'':' ⚠ 曜日条件違反')+'</option>').join('');
   const choices=validTypes.map((x,i)=>'<option value="'+x+'" '+(row.type===x?'selected':'')+'>'+['練習予定','試合','休み'][i]+'</option>').join('');
   return '<div class="r" data-date="'+row.date+'"><div class="date">'+Number(row.date.slice(-2))+'日 <small>('+DAY_NAMES[row.weekday]+')</small></div>'+
     '<select data-field="type" aria-label="'+row.date+' 予定区分">'+choices+'</select>'+
