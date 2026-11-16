@@ -202,6 +202,11 @@ $('approve').onclick=async()=>{
    if(memberSnaps.some(x=>!x.exists()))throw Error('最新のメンバー情報が不足しています');
    const latestMembers=memberSnaps.map((s,i)=>normalizeMember({id:memberIds[i],...s.data()}));
    const currentDays=daySnaps.map((s,i)=>s.exists()?{date:refs[i].id,...s.data()}:{date:refs[i].id});
+   // Approval must be for exactly the snapshot the administrator reviewed.
+   for(let i=0;i<refs.length;i++){
+    if(!daySnaps[i].exists()||snapshotSignature(currentDays[i])!==initialSignatures.get(refs[i].id))
+     throw Error('承認前に'+refs[i].id+'の予定が変更されました。再読み込みして確認してください');
+   }
    const finalAudit=reviewMonthlyDraft({month:chosen,meta:m.data(),days:currentDays,members:latestMembers});
    if(!finalAudit.ok)throw Error('公開前チェックに失敗：'+finalAudit.errors.slice(0,3).join('／'));
    const patch=monthApprovalPatch({month:chosen,meta:m.data(),nowMillis:Date.now()});
