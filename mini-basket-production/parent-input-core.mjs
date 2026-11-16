@@ -17,9 +17,15 @@ export function allowedAnswerKind({kind,ownerId,memberId,dayType}){
    &&(kind==='x'?memberId===ownerId:memberId!==ownerId);
 }
 export function decideAnswerAction(existing,kind,uid){
- if(existing&&!uid)return 'blocked';
+ if(!uid)return 'blocked';
  // An answer can only be cancelled/edited from the same anonymous Firebase UID.
  if(existing&&existing.updatedBy!==uid)return 'different-device';
  if(existing?.kind===kind)return 'delete';
  return 'set';
+}
+
+export function defaultCutoffMillis(inputMonth){
+ if(!isValidMonth(inputMonth))throw Error('入力月が不正です');
+ // The fifth day remains editable; closing is at the start of the sixth in Japan.
+ return Date.parse(inputMonth+'-06T00:00:00+09:00');
 }
