@@ -1,6 +1,6 @@
 // CANDIDATE — DO NOT PUBLISH UNTIL TESTED IN FIRESTORE EMULATOR.
 // Keep current read-only rules published until admin has prepared and tested a future month.
-// Parent name selection is NOT proof of identity. Anyone who has the URL can select a member.
+// Prototype: writes require admin-provisioned memberIds custom claims and verified Google login.
 // Anonymous Firebase UID can only edit an answer made by the same anonymous UID.
 // Manager can always resolve corrections. Server clock (request.time) enforces cutoff.
 rules_version = '2';
@@ -15,9 +15,15 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
         && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
     }
+    // Verified Google users receive memberIds only through trusted admin provisioning.
     function anonymousParent() {
       return signedIn()
-        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.auth.token.email_verified == true
+        && request.auth.token.memberIds is list;
+    }
+    function ownsMember(memberId) {
+      return anonymousParent() && memberId in request.auth.token.memberIds;
     }
     function monthPath(monthId) {
       return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId);
@@ -53,7 +59,7 @@ service cloud.firestore {
     function validAnswer(monthId, answerId) {
       let d = request.resource.data;
       let owner = get(dayPath(monthId, d.date)).data.ownerId;
-      return anonymousParent()
+      return ownsMember(d.memberId)
         && d.keys().hasOnly(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
         && d.keys().hasAll(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
         && d.date is string
@@ -91,7 +97,7 @@ service cloud.firestore {
           && resource.data.memberId == request.resource.data.memberId
           && resource.data.date == request.resource.data.date
           && validAnswer(monthId,answerId);
-        allow delete: if anonymousParent()
+        allow delete: if ownsMember(resource.data.memberId)
           && resource.data.updatedBy == request.auth.uid
           && resource.data.date is string
           && resource.data.memberId is string
