@@ -1,0 +1,54 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>入力締切管理</title>
+<style>body{font:16px sans-serif;max-width:640px;margin:auto;padding:20px;background:#f3f7fb}input,button{font:inherit;min-height:44px;margin:8px 0;width:100%;box-sizing:border-box}label{display:block}#status{white-space:pre-wrap}</style>
+<h1>入力締切管理</h1><button id="login">管理者Googleログイン</button>
+<label>対象月<input id="month" type="month" min="2027-02"></label><button id="load">読み込む</button>
+<label>受付開始（日本時間）<input id="open" type="datetime-local"></label>
+<label>締切（日本時間・この時刻から入力不可）<input id="close" type="datetime-local"></label>
+<button id="default">対象月の5日終了に設定</button><button id="save" disabled>確認して締切を保存</button><p id="status" role="status"></p>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {defaultCutoffMillis,isValidMonth} from './parent-input-core.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,getDocFromServer,runTransaction,Timestamp,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const app=initializeApp(firebaseConfig,'deadline-admin'),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
+let loaded=null;
+const local=t=>new Date(t.toMillis()+9*3600000).toISOString().slice(0,16);
+const report=e=>$('status').textContent=e.message||String(e);
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(report);
+$('month').onchange=()=>{loaded=null;$('save').disabled=true;};
+$('default').onclick=()=>{try{$('close').value=local(Timestamp.fromMillis(defaultCutoffMillis($('month').value)));}catch(e){report(e);}};
+$('load').onclick=async()=>{
+ loaded=null;$('save').disabled=true;
+ try{
+ const month=$('month').value;
+ if(!isValidMonth(month)||month<'2027-02')throw Error('2027年2月以降を指定してください');
+ if(!auth.currentUser)throw Error('管理者ログインが必要です');
+ const admin=await getDocFromServer(doc(db,'admins',auth.currentUser.uid));
+ if(admin.data()?.enabled!==true)throw Error('管理者権限がありません');
+ const ref=doc(db,'teams',teamId,'months',month),snap=await getDocFromServer(ref);
+ if(!snap.exists())throw Error('登録済みの月だけ変更できます');
+ const data=snap.data();
+ $('open').value=data.openAt?local(data.openAt):'';
+ $('close').value=data.cutoffAt?local(data.cutoffAt):'';
+ loaded={ref,uid:auth.currentUser.uid,open:data.openAt?.toMillis()??null,close:data.cutoffAt?.toMillis()??null};
+ $('save').disabled=false;$('status').textContent='現在の締切を読み込みました';
+ }catch(e){report(e);}
+};
+$('save').onclick=async()=>{
+ if(!loaded)return;
+ const baseline=loaded,open=Date.parse($('open').value+':00+09:00'),close=Date.parse($('close').value+':00+09:00');
+ if(!Number.isFinite(open)||!Number.isFinite(close)||open>=close)return report(Error('受付開始より後の締切を指定してください'));
+ if(!confirm('表示中の受付開始・締切を日本時間で保存しますか？'))return;
+ $('save').disabled=true;
+ try{
+ await runTransaction(db,async tx=>{
+ if(auth.currentUser?.uid!==baseline.uid)throw Error('ログインが変わりました');
+ const snap=await tx.get(baseline.ref),data=snap.data();
+ if(!data||(data.openAt?.toMillis()??null)!==baseline.open||(data.cutoffAt?.toMillis()??null)!==baseline.close)throw Error('他の端末で更新されています。再読み込みしてください');
+ tx.update(baseline.ref,{openAt:Timestamp.fromMillis(open),cutoffAt:Timestamp.fromMillis(close),updatedAt:serverTimestamp(),updatedBy:baseline.uid});
+ });
+ loaded=null;$('status').textContent='受付期間を保存しました。公開状態と受付の開閉状態は別途確認してください。';
+ }catch(e){report(e);$('save').disabled=false;}
+};
+</script></html>
