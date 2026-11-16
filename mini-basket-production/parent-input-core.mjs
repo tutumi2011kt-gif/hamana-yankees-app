@@ -1,3 +1,4 @@
+import {jstInputCutoffMillis,jstInputOpenMillis} from './month-rollover-core.mjs';
 // Parent answer UI: pure checks. Firestore Security Rules independently enforce all writes.
 export const isValidMonth = m => typeof m==='string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
 export const isValidDayOfMonth = (month,date) => {
@@ -24,8 +25,9 @@ export function decideAnswerAction(existing,kind,uid){
  return 'set';
 }
 
-export function defaultCutoffMillis(inputMonth){
- if(!isValidMonth(inputMonth))throw Error('入力月が不正です');
- // The fifth day remains editable; closing is at the start of the sixth in Japan.
- return Date.parse(inputMonth+'-06T00:00:00+09:00');
+export function defaultCutoffMillis(targetMonth){
+ return jstInputCutoffMillis(targetMonth);
+}
+export function defaultOpenMillis(targetMonth){
+ return jstInputOpenMillis(targetMonth);
 }
