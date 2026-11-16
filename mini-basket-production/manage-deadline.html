@@ -1,13 +1,13 @@
 <!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>入力締切管理</title>
 <style>body{font:16px sans-serif;max-width:640px;margin:auto;padding:20px;background:#f3f7fb}input,button{font:inherit;min-height:44px;margin:8px 0;width:100%;box-sizing:border-box}label{display:block}#status{white-space:pre-wrap}</style>
 <h1>入力締切管理</h1><button id="login">管理者Googleログイン</button>
-<label>対象月<input id="month" type="month" min="2027-02"></label><button id="load">読み込む</button>
+<label>対象月<input id="month" type="month" min="2027-01"></label><button id="load">読み込む</button>
 <label>受付開始（日本時間）<input id="open" type="datetime-local"></label>
 <label>締切（日本時間・この時刻から入力不可）<input id="close" type="datetime-local"></label>
-<button id="default">対象月の5日終了に設定</button><button id="save" disabled>確認して締切を保存</button><p id="status" role="status"></p>
+<button id="default">標準設定：3か月前の月初から受付・前月1日0時に締切</button><button id="save" disabled>確認して締切を保存</button><p id="status" role="status"></p>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
-import {defaultCutoffMillis,isValidMonth} from './parent-input-core.mjs';
+import {defaultCutoffMillis,defaultOpenMillis,isValidMonth} from './parent-input-core.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,getDocFromServer,runTransaction,Timestamp,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
@@ -17,12 +17,12 @@ const local=t=>new Date(t.toMillis()+9*3600000).toISOString().slice(0,16);
 const report=e=>$('status').textContent=e.message||String(e);
 $('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(report);
 $('month').onchange=()=>{loaded=null;$('save').disabled=true;};
-$('default').onclick=()=>{try{$('close').value=local(Timestamp.fromMillis(defaultCutoffMillis($('month').value)));}catch(e){report(e);}};
+$('default').onclick=()=>{try{const month=$('month').value;$('open').value=local(Timestamp.fromMillis(defaultOpenMillis(month)));$('close').value=local(Timestamp.fromMillis(defaultCutoffMillis(month)));$('status').textContent='標準設定を表示しました。保存前に受付開始と締切を確認してください。';}catch(e){report(e);}};
 $('load').onclick=async()=>{
  loaded=null;$('save').disabled=true;
  try{
  const month=$('month').value;
- if(!isValidMonth(month)||month<'2027-02')throw Error('2027年2月以降を指定してください');
+ if(!isValidMonth(month)||month<'2027-01')throw Error('2027年1月以降を指定してください');
  if(!auth.currentUser)throw Error('管理者ログインが必要です');
  const admin=await getDocFromServer(doc(db,'admins',auth.currentUser.uid));
  if(admin.data()?.enabled!==true)throw Error('管理者権限がありません');
