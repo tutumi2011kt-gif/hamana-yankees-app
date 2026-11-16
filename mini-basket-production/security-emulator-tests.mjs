@@ -1,5 +1,5 @@
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {doc,setDoc,serverTimestamp,Timestamp} from 'firebase/firestore';
+import {doc,collection,getDoc,getDocs,setDoc,serverTimestamp,Timestamp} from 'firebase/firestore';
 import {readFile} from 'node:fs/promises';
 const env=await initializeTestEnvironment({projectId:'demo-mini-basket',firestore:{rules:await readFile('firestore-parent-write-candidate.rules','utf8')}});
 try{
@@ -7,11 +7,20 @@ try{
  await env.withSecurityRulesDisabled(async ctx=>{
   const db=ctx.firestore();
   await setDoc(doc(db,prefix+'/members/yui'),{status:'active',startDate:'2026-12-01',endDate:null});
+  await setDoc(doc(db,prefix+'/public/roster'),{members:[{id:'yui',name:'ゆい',status:'active'}],publishedMonths:['2026-12']});
+  await setDoc(doc(db,prefix+'/months/2027-03'),{publication:'draft',scheduleStatus:'awaiting-manager',inputState:'closed',scheduleVerified:false});
+  await setDoc(doc(db,prefix+'/months/2027-03/days/2027-03-03'),{date:'2027-03-03',type:'practice',ownerId:null,activityVerified:false});
   await setDoc(doc(db,prefix+'/months/2027-02'),{publication:'published',inputState:'open',openAt:Timestamp.fromMillis(0),cutoffAt:Timestamp.fromMillis(Date.now()+60000)});
   await setDoc(doc(db,prefix+'/months/2027-02/days/2027-02-03'),{type:'practice',ownerId:'yui'});
  });
  const auth={email_verified:true,memberIds:['yui'],firebase:{sign_in_provider:'google.com'}};
  const db=env.authenticatedContext('parent',auth).firestore();
+ // A guessed direct Firestore path must never expose the unapproved calendar.
+ await assertFails(getDoc(doc(db,prefix+'/months/2027-03')));
+ await assertFails(getDoc(doc(db,prefix+'/months/2027-03/days/2027-03-03')));
+ await assertFails(getDocs(collection(db,prefix+'/months/2027-03/days')));
+ const roster=await assertSucceeds(getDoc(doc(db,prefix+'/public/roster')));
+ if(roster.data().publishedMonths.includes('2027-03'))throw Error('Unapproved March leaked into publishedMonths');
  const path=prefix+'/months/2027-02/answers/2027-02-03_yui';
  const answer={date:'2027-02-03',memberId:'yui',kind:'x',updatedBy:'parent',updatedAt:serverTimestamp()};
  await assertSucceeds(setDoc(doc(db,path),answer));
