@@ -39,8 +39,9 @@ import {getFirestore,doc,collection,onSnapshot,runTransaction,serverTimestamp} f
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'mini-basket-parent-share'),auth=getAuth(app),db=getFirestore(app);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const key='mini-basket-parent-name-1',today=todayTokyo();
-const options=[monthPlus(today.slice(0,7),1),monthPlus(today.slice(0,7),2),monthPlus(today.slice(0,7),3)];
+const key='mini-basket-parent-name-1';
+let displayedClockMonth=todayTokyo().slice(0,7);
+let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
 let authorizedMembers=[];
 let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false};
 const caption=m=>Number(m.slice(0,4))+'年'+Number(m.slice(5,7))+'月';
@@ -201,6 +202,16 @@ $('parent-login').addEventListener('click',async()=>{
  try{await signInWithPopup(auth,new GoogleAuthProvider());await start();}
  catch(e){connection('ログインできませんでした：'+e.message,'err');}
 });
-setInterval(()=>draw(),1000);
+setInterval(()=>{
+ const clockMonth=todayTokyo().slice(0,7);
+ if(clockMonth!==displayedClockMonth){
+  displayedClockMonth=clockMonth;
+  options=[monthPlus(clockMonth,1),monthPlus(clockMonth,2),monthPlus(clockMonth,3)];
+  // Midnight JST must refresh the 3-month window without page reload.
+  const next=options.includes(selectedMonth)?selectedMonth:options[0];
+  drawMonths();
+  setMonth(next);
+ }else draw();
+},1000);
 void start();
 </script></body></html>
