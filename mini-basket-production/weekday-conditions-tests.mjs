@@ -1,6 +1,6 @@
 // Run from this directory with Node: node weekday-conditions-tests.mjs
 import assert from 'node:assert/strict';
-import {WEEKDAY_UPDATES,PROFILE_IDS,UNCONFIRMED_MEMBER_ID,isDayAllowed,weekdayOf,isPreferredWeekday} from './weekday-conditions.mjs';
+import {WEEKDAY_UPDATES,PROFILE_IDS,isDayAllowed,weekdayOf,isPreferredWeekday} from './weekday-conditions.mjs';
 import {ROSTER,buildDraft} from './core.mjs';
 import {normalizeMember,emptyDraft,auditDraft} from './month-draft-core.mjs';
 let n=0;
@@ -8,15 +8,15 @@ function test(label,work){work();n++;console.log('✅ '+label)}
 const byId=Object.fromEntries(ROSTER.map(x=>[x.id,x]));
 const dates={wed:'2027-01-06',fri:'2027-01-08',sat:'2027-01-09',sun:'2027-01-10'};
 const w={wed:3,fri:5,sat:6,sun:0};
-test('11 confirmed profiles',()=>assert.equal(PROFILE_IDS.length,11));
-test('Sawa is excluded',()=>assert.equal(WEEKDAY_UPDATES[UNCONFIRMED_MEMBER_ID],undefined));
+test('12 confirmed profiles',()=>assert.equal(PROFILE_IDS.length,12));
+test('Sawa Friday prohibition included',()=>assert.deepEqual(WEEKDAY_UPDATES.sawa.days,[0,3,6]));
 for(const [id,allowed] of [
  ['wakana',['wed','fri','sat','sun']],
  ['mia',['sat']],['yui',['wed']],['an',['sat','sun']],
  ['mai',['wed','fri','sat','sun']],['koharu',['wed']],
  ['nagisa',['wed','fri']],['nodoka',['wed','fri','sun']],
  ['sayaka',['wed','fri','sat','sun']],['haruka',['wed','fri','sat','sun']],
- ['kaho',['wed','fri']]
+ ['kaho',['wed','fri']],['sawa',['wed','sat','sun']]
  ]){
  test(id+' absolute/regular allowed weekdays',()=>{
   for(const [key,date] of Object.entries(dates)){
@@ -24,9 +24,12 @@ for(const [id,allowed] of [
   }
  });
 }
-test('Sawa cannot be assigned while unconfirmed',()=>{
- assert.equal(byId.sawa.days,null);
- assert.equal(isDayAllowed(byId.sawa,dates.wed,3),false);
+test('Sawa can begin Jan 2027 but cannot do Friday',()=>{
+ assert.equal(isDayAllowed(byId.sawa,'2026-12-30',3),false);
+ assert.equal(isDayAllowed(byId.sawa,dates.wed,3),true);
+ assert.equal(isDayAllowed(byId.sawa,dates.fri,5),false);
+ assert.equal(isDayAllowed(byId.sawa,dates.sat,6),true);
+ assert.equal(isDayAllowed(byId.sawa,dates.sun,0),true);
 });
 test('Mai prefers Wednesday but can do weekends',()=>{
  assert.equal(isPreferredWeekday(byId.mai,3),true);
@@ -51,10 +54,14 @@ test('Jan draft checks Sat-only Mia',()=>{
  const audit=auditDraft('2027-01',rows,[normalizeMember(byId.mia)]);
  assert.equal(audit.ok,false);assert.ok(audit.problems.some(x=>x.includes('曜日条件')));
 });
-test('Jan draft rejects unconfirmed Sawa even if start date valid',()=>{
- const rows=emptyDraft(),day=rows.find(x=>x.date===dates.wed);day.ownerId='sawa';
- const audit=auditDraft('2027-01',rows,[normalizeMember(byId.sawa)]);
- assert.equal(audit.ok,false);
+test('Jan draft rejects Sawa Friday and accepts Sawa Saturday',()=>{
+ const rows=emptyDraft(),fri=rows.find(x=>x.date===dates.fri),sat=rows.find(x=>x.date===dates.sat);
+ fri.ownerId='sawa';
+ const rejected=auditDraft('2027-01',rows,[normalizeMember(byId.sawa)]);
+ assert.equal(rejected.ok,false);
+ fri.ownerId=null;sat.ownerId='sawa';
+ const accepted=auditDraft('2027-01',rows,[normalizeMember(byId.sawa)]);
+ assert.equal(accepted.ok,true);
 });
 test('Jan draft allows Mai weekend but warns preference',()=>{
  const rows=emptyDraft(),day=rows.find(x=>x.date===dates.sat);day.ownerId='mai';
@@ -67,8 +74,12 @@ test('Auto draft never assigns anyone on banned weekday',()=>{
   if(id)assert.equal(isDayAllowed(byId[id],date),true,date+' '+id);
  }
 });
-test('Auto draft does not assign Sawa',()=>{
+test('Auto draft may assign Sawa only on Wed, Sat, Sun from Jan 2027',()=>{
  const draft=buildDraft({month:'2027-01',members:ROSTER});
- assert.ok(Object.values(draft.assignments).every(id=>id!=='sawa'));
+ for(const [date,id] of Object.entries(draft.assignments)){
+  if(id==='sawa')assert.ok([0,3,6].includes(weekdayOf(date)));
+ }
+ const dec=buildDraft({month:'2026-12',members:ROSTER});
+ assert.ok(Object.values(dec.assignments).every(id=>id!=='sawa'));
 });
 console.log('PASS '+n+' weekday rule tests');
