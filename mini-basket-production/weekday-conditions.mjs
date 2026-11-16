@@ -1,7 +1,7 @@
-// 管理者確認済みの当番曜日（2026-11-15）。曜日番号: 日0・水3・金5・土6
+// 管理者確認済みの当番曜日（2026-11-16 更新）。曜日番号: 日0・水3・金5・土6
 // "days" is allowed for regular automatic drafts. Nothing in here rewrites confirmed past duties.
-// 村松さわ is deliberately excluded: her weekdays are still UNCONFIRMED.
-export const WEEKDAY_PROFILE_VERSION='2026-11-15';
+// 村松さわ: 2027-01-01開始、水・土・日。金曜は絶対不可。
+export const WEEKDAY_PROFILE_VERSION='2026-11-16';
 export const WEEKDAYS=[0,3,5,6];
 export const WEEKDAY_LABELS={0:'日',3:'水',5:'金',6:'土'};
 export const WEEKDAY_UPDATES=Object.freeze({
@@ -15,9 +15,9 @@ export const WEEKDAY_UPDATES=Object.freeze({
  nodoka:{days:[0,3,5],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'土曜日は絶対不可'},
  sayaka:{days:[0,3,5,6],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'全曜日可'},
  haruka:{days:[0,3,5,6],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'全曜日可'},
- kaho:{days:[3,5],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'水・金曜日以外は絶対不可'}
+ kaho:{days:[3,5],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'水・金曜日以外は絶対不可'},
+ sawa:{days:[0,3,6],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'水・土・日曜日のみ。当番開始は2027年1月。金曜日は絶対不可'}
 });
-export const UNCONFIRMED_MEMBER_ID='sawa';
 export const PROFILE_IDS=Object.keys(WEEKDAY_UPDATES);
 export function weekdayOf(date){
  if(typeof date!=='string'||!/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(date))return null;
