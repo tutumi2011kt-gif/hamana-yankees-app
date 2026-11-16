@@ -9,19 +9,19 @@ button{font:inherit;cursor:pointer;min-height:44px;border:1px solid #ccdae6;bord
 .check{display:flex;align-items:flex-start;gap:9px;padding:11px;background:#f2f7fb;border-radius:9px;font-size:12px}.check input{accent-color:#167b55;width:18px;height:18px;margin-top:3px}footer{font-size:11px;color:#71849a;margin-top:15px}
 </style></head><body><main>
 <header><h1>🏀 当番可能曜日を一括設定</h1><p>有玉女子ミニバス｜管理者専用</p>
-<div class="note">この画面は、確認済み11人の<strong>曜日条件・希望曜日だけ</strong>を本番Firebaseへ保存します。<b>村松さわさんは確認中のため変更しません。</b> 既存の12月確定当番表と1月下書きの日付・担当者は変更しません。</div></header>
+<div class="note">この画面は、確認済み12人の<strong>曜日条件・希望曜日だけ</strong>を本番Firebaseへ保存します。<b>村松さわさんは水・土・日のみ、金曜は絶対不可として登録します。</b> 既存の12月確定当番表と1月下書きの日付・担当者は変更しません。</div></header>
 <section class="card"><h2>① 管理者として現在のメンバーを確認</h2><p id="auth" class="small">管理者認証の状態を確認中…</p><div class="actions"><button id="login" class="primary">Googleでログイン</button><button id="load">Firebaseの12人を読み込む</button></div><p id="load-status" class="small">ログイン後に読み込んでください。</p></section>
 <section class="card"><h2>② 今回保存する曜日条件</h2><div class="list" id="members"><div class="small" style="padding:13px">Firebaseに接続して名前と条件を照合します。</div></div>
 <div class="note" style="margin-top:10px"><b>なぎささん：</b>平日（水・金）を通常の割当可能曜日として設定します。<b>土日を自動割当しません。</b> 2〜3か月前に日程を伝え、個別に承認を得た日だけ特例で設定する方式です。</div></section>
 <section class="card"><h2>③ 条件だけを本番Firebaseに保存</h2>
-<label class="check"><input id="agree" type="checkbox"><span><b>確認済み11人の曜日条件と希望を保存</b>し、村松さわさんの「未確認」は変更しないことを確認しました。12月・1月の当番表は書き換えません。</span></label>
-<div class="actions" style="margin-top:11px"><button id="save" class="primary" disabled>11人の曜日条件を保存</button></div>
+<label class="check"><input id="agree" type="checkbox"><span><b>確認済み12人の曜日条件と希望を保存</b>し、村松さわさんを水・土・日可、金曜絶対不可として登録することを確認しました。12月・1月の当番表は書き換えません。</span></label>
+<div class="actions" style="margin-top:11px"><button id="save" class="primary" disabled>12人の曜日条件を保存</button></div>
 <p id="result" role="status" aria-live="polite" class="small">まだ保存していません。</p></section>
 <footer>保存後は1月の管理者チェック画面で、既存の仮割当に曜日条件違反がないか再確認してください。条件は今後の仮当番作成に使用します。個別の希望日・不可日は変更しません。</footer>
 </main>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
-import {WEEKDAY_UPDATES,PROFILE_IDS,UNCONFIRMED_MEMBER_ID,WEEKDAY_LABELS,profileMatches} from './weekday-conditions.mjs?v=2';
+import {WEEKDAY_UPDATES,PROFILE_IDS,WEEKDAY_LABELS,profileMatches} from './weekday-conditions.mjs?v=5';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,getDocFromServer,collection,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
@@ -67,15 +67,13 @@ $('load').addEventListener('click',async()=>{
   if(auth.currentUser?.uid!==user.uid)throw Error('ログインの状態が変わりました。');
   if(rows.size!==12)throw Error('メンバーが12人ではありません。現在 '+rows.size+'人です。');
   const members=rows.docs.map(d=>({id:d.id,...d.data()})),ids=new Set(members.map(x=>x.id));
-  for(const id of [...PROFILE_IDS,UNCONFIRMED_MEMBER_ID])if(!ids.has(id))throw Error('メンバー '+id+' が見つかりません。');
-  const sawa=members.find(x=>x.id===UNCONFIRMED_MEMBER_ID);
-  if(sawa.days!==null)throw Error('村松さわさんの曜日が既に設定されています。確認中に戻すか、管理者に相談してください。既存データは変更しません。');
+  for(const id of PROFILE_IDS)if(!ids.has(id))throw Error('メンバー '+id+' が見つかりません。');
   const wakana=members.find(x=>x.id==='wakana');
   if(wakana.name!=='おおたけわかな')throw Error('わかなさんの名前が以前の表記と異なります。メンバー管理で確認してください。');
   snapshots=new Map(members.map(m=>[m.id,m]));
   $('members').innerHTML=members.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja')).map(previewMember).join('');
   loaded=true;
-  $('load-status').textContent='✅ 12人を確認しました。11人の条件を更新対象とし、村松さわさんは未確認のままにします。';
+  $('load-status').textContent='✅ 12人を確認しました。12人の条件を更新対象とし、村松さわさんも水・土・日曜可・金曜絶対不可に更新します。';
   status('内容が正しければ確認チェックを入れて保存してください。');
  }catch(err){loaded=false;snapshots.clear();$('members').textContent='データを読み込めませんでした。';$('load-status').textContent='エラー：'+(err.code||err.message);status('保存していません。','error');}
  finally{busy=false;update();}
@@ -83,21 +81,19 @@ $('load').addEventListener('click',async()=>{
 $('save').addEventListener('click',async()=>{
  const user=auth.currentUser;
  if(!user||!loaded||busy||!$('agree').checked)return;
- if(!confirm('確認済み11人の曜日条件をFirebaseに保存します。\n村松さわさんと既存の当番表は変更しません。\n続けますか？'))return;
+ if(!confirm('確認済み12人の曜日条件をFirebaseに保存します。\n12人の条件を更新し、既存の当番表は変更しません。\n続けますか？'))return;
  busy=true;loaded=false;update();status('Firebaseへ条件だけを保存しています…');
  try{
   const uid=user.uid,existing=new Map(snapshots);
   await runTransaction(db,async tx=>{
-   // All reads occur before any write. The same transaction updates 11 profiles atomically.
-   const refs=[...PROFILE_IDS,UNCONFIRMED_MEMBER_ID].map(memberRef);
+   // All reads occur before any write. The same transaction updates 12 profiles atomically.
+   const refs=PROFILE_IDS.map(memberRef);
    const docs=[];for(const ref of refs)docs.push(await tx.get(ref));
-   const memberMap=new Map(docs.map((d,i)=>[[...PROFILE_IDS,UNCONFIRMED_MEMBER_ID][i],d]));
+   const memberMap=new Map(docs.map((d,i)=>[PROFILE_IDS[i],d]));
    for(const id of PROFILE_IDS){
     const d=memberMap.get(id);if(!d.exists())throw Error('対象者 '+id+' が消えています。');
     if(currentDigest(d.data())!==currentDigest(existing.get(id)))throw Error(id+' のデータが他の端末で変更されました。再読み込みしてください。');
    }
-   const sawa=memberMap.get(UNCONFIRMED_MEMBER_ID);
-   if(!sawa.exists()||sawa.data().days!==null)throw Error('村松さわさんの状態が変わりました。再確認してください。');
    for(const id of PROFILE_IDS){
     const profile=WEEKDAY_UPDATES[id];
     const fields={days:[...profile.days],preferredWeekdays:[...profile.preferredWeekdays],
@@ -108,7 +104,7 @@ $('save').addEventListener('click',async()=>{
    }
   });
   $('agree').checked=false;
-  status('✅ 確認済み11人の曜日条件をFirebaseに保存しました。村松さわさん、12月確定表、1月下書きは変更していません。','ok');
+  status('✅ 確認済み12人の曜日条件をFirebaseに保存しました。村松さわさんの金曜絶対不可を含めて保存しました。12月確定表と1月下書きは変更していません。','ok');
   $('load-status').textContent='保存後の最新情報を確認する場合は「Firebaseの12人を読み込む」を押してください。';
  }catch(err){status('保存できませんでした：'+(err.code||err.message||String(err))+'\n保存状況を確認するため、もう一度メンバーを読み込んでください。','error');}
  finally{busy=false;update();}
