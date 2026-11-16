@@ -24,6 +24,7 @@ jobs:
           java-version: '21'
       - run: npm install --ignore-scripts
       - run: node parent-input-tests.mjs && node weekday-conditions-tests.mjs && node auto-draft-tests.mjs && node month-rollover-tests.mjs
+      - run: node --check firebase-functions/index.mjs
       - run: npm run test:rules
       - run: npm audit --json > audit-results.json
         continue-on-error: true
