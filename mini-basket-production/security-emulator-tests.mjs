@@ -20,6 +20,13 @@ try{
  await assertFails(setDoc(doc(db,path),{...answer,kind:'o'}));
  await assertFails(setDoc(doc(db,path),{...answer,extra:true}));
  await assertFails(setDoc(doc(db,prefix+'/months/2027-02/days/2027-02-03'),{ownerId:'mia'}));
+ await assertFails(setDoc(doc(env.authenticatedContext('other',{...auth,memberIds:['yui']}).firestore(),path),{...answer,updatedBy:'other'}));
+ await env.withSecurityRulesDisabled(ctx=>setDoc(doc(ctx.firestore(),prefix+'/months/2027-02/days/2027-02-03'),{type:'game',ownerId:null}));
+ await assertFails(setDoc(doc(db,path),answer));
+ await env.withSecurityRulesDisabled(ctx=>setDoc(doc(ctx.firestore(),prefix+'/months/2027-02/days/2027-02-03'),{type:'rest',ownerId:null}));
+ await assertFails(setDoc(doc(db,path),answer));
+ await env.withSecurityRulesDisabled(ctx=>setDoc(doc(ctx.firestore(),prefix+'/months/2027-02/days/2027-02-03'),{type:'practice',ownerId:'yui'}));
+ await Promise.all([assertSucceeds(setDoc(doc(db,path),answer)),assertSucceeds(setDoc(doc(env.authenticatedContext('parent',auth).firestore(),path),answer))]);
  await env.withSecurityRulesDisabled(ctx=>setDoc(doc(ctx.firestore(),prefix+'/months/2027-02'),{publication:'published',inputState:'open',openAt:Timestamp.fromMillis(0),cutoffAt:Timestamp.fromMillis(1)}));
  await assertFails(setDoc(doc(db,path),answer));
  console.log('PASS emulator identity, impersonation, anonymous, invalid kind, extra fields, owner mutation, cutoff');
