@@ -39,7 +39,10 @@ export function stageHtml(source,title){
  if((html.match(/initializeApp\(firebaseConfig/g)||[]).length!==1)throw new Error(title+' のFirebase初期化回数が想定外です');
  html=html.replace('initializeApp(firebaseConfig','initializeApp((assertStagingFirebaseConfig(firebaseConfig),firebaseConfig)');
  html=html.replace(/<title>/i,'<title>【検証版】');
- html=html.replace('<body><main>','<body><main><div style="position:sticky;top:0;z-index:999;background:#963c12;color:white;border-radius:8px;padding:8px 10px;font-weight:800;text-align:center">🧪 検証版・架空のデータ専用／本番とは別のFirebase</div>');
+ const ribbon='<div style="position:sticky;top:0;z-index:999;background:#963c12;color:white;border-radius:8px;padding:8px 10px;font-weight:800;text-align:center">🧪 検証版・架空のデータ専用／本番とは別のFirebase</div>';
+ if(html.includes('<body><main>'))html=html.replace('<body><main>','<body><main>'+ribbon);
+ else if(html.includes('<h1>'))html=html.replace('<h1>',ribbon+'<h1>');
+ else throw new Error(title+' に検証版の警告表示を挿入できません');
  return html;
 }
 async function main(){
