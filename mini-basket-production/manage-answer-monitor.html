@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
+<title>🏀 ×・○回答の監査｜管理者</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#26394f;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:740px;margin:auto;padding:12px 10px 60px}header{background:linear-gradient(105deg,#e5f2ff,#fff1de);border-radius:15px;padding:16px}h1{font-size:21px;margin:0 0 5px}h2{font-size:17px;margin:0 0 8px}.card{background:#fff;border:1px solid #dfe7ef;padding:13px;margin:12px 0;border-radius:13px}
+.info{padding:10px;border-radius:9px;background:#eaf3fc;font-size:12px}.warn{padding:11px;border:1px solid #eac7a4;background:#fff2dc;border-radius:9px;font-size:12px}
+.bad{padding:9px;border-radius:9px;background:#fff0f3;border:1px solid #e4bfcd;color:#9f2f4b}.good{background:#ecf8f0;border-radius:9px;padding:9px;color:#206c4d}.small{font-size:12px;color:#64788a;white-space:pre-wrap}
+.row{display:flex;flex-wrap:wrap;gap:8px}.row>*{flex:1 1 170px}button{font:inherit;min-height:44px;padding:9px 12px;border:1px solid #c7d7e5;border-radius:9px;background:white;color:inherit;font-weight:700}button.primary{background:#255d88;color:white;border-color:#255d88}button:disabled{opacity:.5}
+.event{border:1px solid #dde7f1;padding:11px;border-radius:11px;margin:9px 0}.event.flag{border-color:#e9adb9;background:#fff7f9}.event h3{font-size:14px;margin:0 0 7px}
+</style></head><body><main><header><h1>🏀 ×・○回答の監査</h1><p>有玉女子ミニバス｜管理者専用</p>
+<div class="warn"><b>A方式：入力直後に全員へ反映します。</b> 複数の子ども名を同じ匿名端末が使った場合などを「確認推奨」として表示します。ただし、なりすましを確実に検出・防止できるものではありません。</div></header>
+<section class="card"><h2>① ログイン・最新の回答履歴</h2>
+<p id="auth" class="small">管理者ログイン状態を確認中…</p>
+<div class="row"><button id="login" class="primary">管理者Googleログイン</button><button id="load">最新の100件を確認</button></div>
+<p id="status" class="small">まだ読み込んでいません。</p></section>
+<section class="card"><h2>② 確認が必要な操作</h2>
+<div id="flagged" class="small">ログインして履歴を読み込んでください。</div></section>
+<section class="card"><h2>③ 最近の回答履歴</h2>
+<p class="small">記録・変更・削除を表示します。削除した人の端末は、削除前の記録だけでは特定できません。表示上の「最終登録者」は削除操作を行った人とは限りません。</p>
+<div id="history" class="small">未読み込み</div></section>
+<section class="card"><h2>間違いを見つけたら</h2>
+<p>保護者本人へLINE等で確認し、管理者用の「回答の訂正」画面で正しい内容に変更します。交代確定済みの場合は先に交代確定を解除し、再確認後に確定してください。</p>
+<p class="small">回答履歴の収集はCloud Functions候補のデプロイが必要です。現在の開発ブランチ上ではまだ本番の監査イベントは発生しません。100件より前はこの画面では表示しません。</p></section>
+</main><script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {auditItemTitle,recentSuspiciousAnswers} from './answer-monitor-core.mjs?v=1';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,query,orderBy,limit} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'basket-audit-admin'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const status=(s,cls='small')=>{$('status').textContent=s;$('status').className=cls};
+let busy=false;
+function controls(){$('login').hidden=!!auth.currentUser;$('load').disabled=busy||!auth.currentUser;}
+function renderEvent(item,names){
+ const label=(names[item.memberId]||item.memberId||'不明');
+ const when=item.observedAt?.toDate?.()?.toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})||item.eventTime||'日時不明';
+ const flags=(item.flags||[]).map(v=>v==='one-device-multiple-children'?'同じ端末で複数の名前':v==='writer-uid-changed'?'書込識別子の変更':'削除者を特定不可');
+ const title=(item.operation==='delete'?'取消':item.operation==='update'?'変更':'登録');
+ const content='<div class="event '+(item.needsReview?'flag':'')+'"><h3>'+esc(label)+'｜'+esc(item.date)+'｜'+esc(title)+'</h3>'+
+  '<div>'+esc(item.kindBefore||'—')+' → '+esc(item.kindAfter||'—')+'</div>'+
+  '<div class="small">'+esc(when)+(flags.length?' ／ 注意：'+esc(flags.join('、')):'')+'</div>'+
+  '<div class="small">端末の識別子：'+esc(item.actorType==='admin'?'管理者':item.actorUid?'匿名・'+item.actorUid.slice(0,6)+'…':'不明')+'</div></div>';
+ return content;
+}
+$('load').onclick=async()=>{
+ const user=auth.currentUser;if(!user||busy)return;
+ busy=true;controls();status('管理者権限・監査履歴を読み込み中…');
+ try{
+  const adm=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!adm.exists()||adm.data().enabled!==true)throw Error('管理者権限がありません');
+  const [snap,ms]=await Promise.all([
+   getDocsFromServer(query(collection(db,'teams',teamId,'answerAudit'),orderBy('observedAt','desc'),limit(100))),
+   getDocsFromServer(collection(db,'teams',teamId,'members'))
+  ]);
+  if(auth.currentUser?.uid!==user.uid)throw Error('ログイン状態が変更されました');
+  const names=Object.fromEntries(ms.docs.map(d=>[d.id,d.data().name]));
+  const entries=snap.docs.map(d=>({id:d.id,...d.data()}));
+  const suspected=recentSuspiciousAnswers(entries);
+  $('flagged').innerHTML=suspected.length?suspected.map(e=>renderEvent(e,names)).join(''):
+   '<div class="good">最新100件の中に自動判定の要確認記録はありません。ただし、なりすましがなかったことの証明にはなりません。</div>';
+  $('history').innerHTML=entries.length?entries.map(e=>renderEvent(e,names)).join(''):'監査履歴はまだありません。';
+  status('✅ 最新'+entries.length+'件を確認／要確認'+suspected.length+'件。必要に応じて本人に確認してください。','good');
+ }catch(e){status('読み込み失敗：'+(e.code||e.message||String(e)),'bad');}
+ finally{busy=false;controls();}
+};
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>status('ログイン失敗：'+(e.code||e.message),'bad'));
+onAuthStateChanged(auth,user=>{$('auth').textContent=user?'管理者のGoogleアカウントでログイン済み':'管理者のGoogleアカウントでログインしてください。';controls();},
+ e=>status('認証エラー：'+(e.code||e.message),'bad'));
+controls();
+</script></body></html>
