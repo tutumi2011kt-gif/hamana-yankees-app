@@ -8,7 +8,7 @@ export const QA_TEAM_ID='aritama-mini-basket';
 export const QA_PUBLISHED_MONTH='2027-01';
 export const QA_DRAFT_MONTH='2027-03';
 export const QA_START='2026-12-01';
-export const QA_MARKER_ID='__staging_fixtures_v1__';
+export const QA_MARKER_ID='staging-fixtures-v1';
 
 export function makeQaMembers(){
  return Array.from({length:12},(_,index)=>{
