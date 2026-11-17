@@ -75,6 +75,7 @@ async function main(){
   const next=pending.values().next().value;pending.delete(next);
   if(copied.has(next))continue;
   copied.add(next);
+  if(next==='firebase-config-staging.mjs'||next==='parent-write-config-staging.mjs')continue; // Generated in dist, not read from production source.
   if(next==='firebase-config.mjs'||next==='parent-write-config.mjs')
    throw new Error('誤って本番設定を公開対象へ含めようとしました');
   if(!next.endsWith('.mjs')||next.includes('..')||next.startsWith('/'))
