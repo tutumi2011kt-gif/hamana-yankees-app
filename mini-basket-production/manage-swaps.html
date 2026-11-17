@@ -49,7 +49,7 @@ function render(){
  const people=nameMap(),needs=[];
  for(const day of days){
   const state=swapState(day,answers,members);
-  if(state.status==='not-applicable'||(state.status==='normal'&&!state.candidates.length))continue;
+  if(state.status==='not-applicable'||(!state.needsSwap&&state.status!=='confirmed'))continue;
   needs.push({day,state});
  }
  const urgents=needs.filter(x=>x.state.status==='urgent').length;
