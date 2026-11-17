@@ -34,6 +34,18 @@ jobs:
           test -f dist-staging/admin-swaps.html
           test -f dist-staging/firebase-config-staging.mjs
           ! grep -R "aritama-mini-basket.firebaseapp.com" dist-staging/
+      - name: Ensure QA seed default is dry-run and production project is rejected
+        run: |
+          node firebase-functions/seed-qa.mjs --project basket-staging-qa | tee /tmp/mini-basket-qa-dryrun.txt
+          grep -q "DRY-RUN: Firebase" /tmp/mini-basket-qa-dryrun.txt
+          if node firebase-functions/seed-qa.mjs --project aritama-mini-basket; then
+            echo "ERROR: production project was accepted" >&2
+            exit 1
+          fi
+          if node firebase-functions/seed-qa.mjs --project basket-staging-qa --apply; then
+            echo "ERROR: apply without duplicate project confirmation/admin UID was accepted" >&2
+            exit 1
+          fi
       - run: node --check firebase-functions/index.mjs && node --check firebase-functions/seed-qa.mjs
       - run: npm run test:rules
       - run: npm audit --json > audit-results.json
