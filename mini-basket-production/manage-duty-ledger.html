@@ -163,6 +163,7 @@ $('save').onclick=async()=>{
  }catch(e){message('save-status',e.message,'error');return;}
  busy=true;update();message('save-status','台帳と監査履歴に保存中…');
  try{
+  const auditRef=doc(collection(db,'teams',teamId,'dutyLedgerAudit'));
   await runTransaction(db,async tx=>{
    const [admin,monthSnap,daySnap,prior]=await Promise.all([
     tx.get(doc(db,'admins',user.uid)),tx.get(doc(db,'teams',teamId,'months',currentMonth)),
@@ -179,7 +180,7 @@ $('save').onclick=async()=>{
    const nextRevision=(expected?Number(expected.revision??1):0)+1;
    const payload={...result,revision:nextRevision,updatedAt:serverTimestamp(),updatedBy:user.uid};
    tx.set(doc(ledgerCollection,date),payload);
-   tx.create(doc(db,'teams',teamId,'dutyLedgerAudit',date+'__'+nextRevision),{
+   tx.set(auditRef,{
     action:'upsert',date,previous:prior.exists()?prior.data():null,next:result,revision:nextRevision,
     updatedAt:serverTimestamp(),updatedBy:user.uid
    });
@@ -195,13 +196,14 @@ $('remove').onclick=async()=>{
  if(!confirm(date+' の台帳記録を取り消しますか？取消履歴は保持しますが、実施回数・繰越集計から除外されます。'))return;
  busy=true;update();message('save-status','記録を取り消し中…');
  try{
+  const auditRef=doc(collection(db,'teams',teamId,'dutyLedgerAudit'));
   await runTransaction(db,async tx=>{
    const [admin,prior]=await Promise.all([tx.get(doc(db,'admins',user.uid)),tx.get(doc(ledgerCollection,date))]);
    if(!admin.exists()||admin.data().enabled!==true||auth.currentUser?.uid!==user.uid)throw Error('管理者権限を確認できません');
    if(!prior.exists()||Number(prior.data().revision??1)!==Number(existing.revision??1))throw Error('別端末で変更されています。再読み込みしてください');
    const revision=Number(existing.revision??1)+1;
    tx.delete(doc(ledgerCollection,date));
-   tx.create(doc(db,'teams',teamId,'dutyLedgerAudit',date+'__'+revision),{
+   tx.set(auditRef,{
     action:'delete',date,previous:prior.data(),next:null,revision,updatedAt:serverTimestamp(),updatedBy:user.uid
    });
   });
