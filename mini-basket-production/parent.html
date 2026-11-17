@@ -135,7 +135,7 @@ function draw(){
     (swap.confirmedId?'<small style="color:#136744;font-weight:800">✅ 管理者確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'さんが交代</small>':'')+'</div></div>';
  }
  $('calendar').innerHTML=calendar;$('detail').innerHTML=detail||'<p>当番日がありません。</p>';
- monthMessage('🗓️ 当番表を閲覧中です。保護者の書き込みは安全確認待ちのため停止中です。','info');
+ monthMessage(!PARENT_WRITES_ENABLED?'🗓️ 当番表を閲覧中です。保護者の書き込みは安全確認待ちのため停止中です。':canWrite?'✅ ×・○の入力受付中。登録内容は即時に共有されます。':'🗓️ 閲覧中です。未受付・締切済み、または名前未選択のため入力できません。','info');
 }
 $('person').addEventListener('change',e=>{selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
 $('mark-x').addEventListener('click',()=>{selectedMode='x';lastSaveMessage='';draw()});
