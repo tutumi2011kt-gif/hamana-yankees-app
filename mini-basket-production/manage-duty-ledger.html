@@ -78,7 +78,8 @@ function displayEntry(){
  const day=days.find(d=>d.date===$('date').value),entry=records.find(r=>r.date===$('date').value);
  $('owner').value=entry?.scheduledOwnerId||day?.ownerId||'';
  $('status').value=entry?.status||'completed';
- $('actual').value=entry?.actualOwnerId||day?.ownerId||'';
+ // A confirmed swap is only a suggestion; count actual duty after completion.
+ $('actual').value=entry?.actualOwnerId||day?.confirmedSubstituteId||day?.ownerId||'';
  $('reason').value=entry?.reason||'game';
  $('carry').value=entry?.carryState||'pending';
  $('resolved').value=entry?.carryResolvedDate||'';
