@@ -6,7 +6,7 @@ import {canEditMonth} from './parent-input-core.mjs';
 const html=await readFile(new URL('./parent.html',import.meta.url),'utf8');
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script);
-new Function(script.replace(/^import[^\n]*;\s*$/gm,''),'Browser script syntax must be valid');
+new Function(script.replace(/^import[^\n]*;\s*$/gm,'')); // Browser script syntax must be valid
 assert.match(script,/lastInputWindowOpen=canEditMonth\(monthData\)/);
 assert.match(script,/else if\(canEditMonth\(monthData\)!==lastInputWindowOpen\)\{/);
 assert.doesNotMatch(script,/\}\s*else draw\(\);\s*\},1000\);/,'do not replace iPhone tap targets each second');
