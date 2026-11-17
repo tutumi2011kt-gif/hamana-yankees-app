@@ -26,13 +26,14 @@ footer{font-size:11px;color:#76889b}.not-available{display:none}
 <section class="card"><h2>② 月を選ぶ</h2><div id="months" class="months"></div><p id="month-status" class="info">当番表を読み込んでいます。</p></section>
 <section class="card"><h2 id="calendar-title">当番カレンダー</h2><div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal" aria-label="当番カレンダー"></div><div class="legend"><span>水色：練習日</span><span>薄橙：試合・当番なし</span></div></section>
 <section class="card"><h2>日付ごとの詳しい当番</h2><div id="detail" class="small">読み込み中です。</div></section>
-<section class="card"><h2>③ ×・○の希望入力</h2><p class="small">最初にお子さんの名前を選び、入力する種類を選択してください。<b>カレンダーの日付を直接タップ</b>して登録・取消を行います。</p><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない</button><button id="mark-o" type="button">⭕ 代わりにできる</button></div><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。お子さんの名前を選ぶだけでは本人確認になりません。ログイン不要のため、名前の選択だけでは本人確認はできません。別端末で以前の回答を取り消せない場合は管理者にご連絡ください。</p></section>
+<section class="card"><h2>③ ×・○の希望入力</h2><p class="small">最初にお子さんの名前を選び、入力する種類を選択してください。<b>カレンダーの日付を直接タップ</b>して登録・取消を行います。</p><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない</button><button id="mark-o" type="button">⭕ 代わりにできる</button></div><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。保存した×・○は全員のカレンダーへすぐに反映されます（管理者がまだ有効化していない間は閲覧のみ）。名前の選択だけでは本人確認になりません。間違い・他人名義の入力を見つけたら管理者へ連絡してください。別端末に機種変更した場合も管理者に回答訂正を依頼できます。</p></section>
 <footer>この画面では学年・当番可能曜日・個別の不可日などの管理情報は公開しません。共通URLを知る人が閲覧できる形式のため、URLの共有先にはご注意ください。接続エラー時は当番表を推測して表示しません。</footer>
 </main>
 <script type="module">
 import {todayTokyo,monthPlus,DAY_NAMES,dayList} from './core.mjs?v=parent-input-2';
 import {canEditMonth,allowedAnswerKind,decideAnswerAction} from './parent-input-core.mjs?v=2';
 import {swapState,canEditSwapAnswer} from './swap-confirmation-core.mjs?v=1';
+import {PARENT_WRITES_ENABLED,ANSWER_PUBLICATION_MODE} from './parent-write-config.mjs?v=1';
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,signInAnonymously} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
@@ -41,8 +42,7 @@ const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'mini-basket-parent-share'),auth=getAuth(app),db=getFirestore(app);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key='mini-basket-parent-name-1';
-// Parent writes are blocked server-side until an accountless-safe write design is approved.
-const PARENT_WRITES_ENABLED=false;
+// A方式：回答は保存後に即時全員へ反映。公開まで書き込みスイッチは無効。
 let displayedClockMonth=todayTokyo().slice(0,7);
 let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
 let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false};
@@ -93,7 +93,7 @@ function draw(){
  if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';$('detail').textContent='管理者の公開待ちです。';return;}
  if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
- const canWrite=PARENT_WRITES_ENABLED&&canEditMonth(monthData)&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
+ const canWrite=PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&canEditMonth(monthData)&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
  reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?'Firebaseに保存中です…':lastSaveMessage|| (canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。');
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
@@ -146,7 +146,7 @@ $('calendar').addEventListener('click',async event=>{
  if(!target||target.disabled||writing)return;
  const date=target.dataset.day,month=selectedMonth,person=selectedPerson,kind=selectedMode;
  const day=days.find(d=>d.date===date);
- if(!PARENT_WRITES_ENABLED||auth.currentUser?.isAnonymous!==true||!canEditSwapAnswer(day)||!canEditMonth(monthData)||!published.includes(month)||!person
+ if(!PARENT_WRITES_ENABLED||ANSWER_PUBLICATION_MODE!=='instant'||auth.currentUser?.isAnonymous!==true||!canEditSwapAnswer(day)||!canEditMonth(monthData)||!published.includes(month)||!person
    ||!allowedAnswerKind({kind,ownerId:day?.ownerId,memberId:person,dayType:day?.type}))return;
  const old=answers.find(a=>a.date===date&&a.memberId===person);
  const uid=auth.currentUser?.uid;
@@ -155,7 +155,7 @@ $('calendar').addEventListener('click',async event=>{
  if(action==='blocked'||!uid){alert('Firebaseの認証状態を確認してください。');return;}
  const name=names.find(x=>x.id===person)?.name||person,mark=kind==='x'?'×':'○';
  const verb=action==='delete'?'取り消し':'登録';
- if(!confirm(name+'さん：'+date+' の'+mark+'を'+verb+'しますか？'))return;
+ if(!confirm('入力者のお名前：'+name+'さん\n日付：'+date+'\n回答：'+mark+'\n\nご自身のお子さんの名前になっているか確認してください。'+mark+'を'+verb+'すると、全員のカレンダーにすぐ反映されます。続けますか？'))return;
  const ref=doc(db,'teams',teamId,'months',month,'answers',date+'_'+person);
  const refMonth=doc(db,'teams',teamId,'months',month);
  const refDay=doc(db,'teams',teamId,'months',month,'days',date);
