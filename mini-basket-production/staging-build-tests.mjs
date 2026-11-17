@@ -27,7 +27,7 @@ for(const name of pages){
  const compiled=stageHtml(html,name);
  assert.match(compiled,/from '.\/firebase-config-staging\.mjs'/);
  assert.doesNotMatch(compiled,/from '.\/firebase-config\.mjs'/);
- assert.match(compiled,/assertStagingFirebaseConfig\(firebaseConfig\);/);
+ assert.match(compiled,/initializeApp\(\(assertStagingFirebaseConfig\(firebaseConfig\),firebaseConfig\)/);
  assert.match(compiled,/🧪 検証版/);
  const js=compiled.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];assert.ok(js);
  new Function(js.replace(/^import[^\n]*;\s*$/gm,''));
