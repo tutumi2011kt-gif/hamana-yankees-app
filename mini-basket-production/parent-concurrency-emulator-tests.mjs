@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
 import {doc,collection,getDoc,getDocs,setDoc,updateDoc,Timestamp,serverTimestamp} from 'firebase/firestore';
 import {readFile} from 'node:fs/promises';
-import {jstInputCutoffMillis,defaultOpenMillis} from './parent-input-core.mjs';
+import {defaultOpenMillis} from './parent-input-core.mjs';
+import {jstInputCutoffMillis} from './month-rollover-core.mjs';
 
 const month='2027-01',date='2027-01-06';
 const base='teams/aritama-mini-basket',prefix=base+'/months/'+month;
