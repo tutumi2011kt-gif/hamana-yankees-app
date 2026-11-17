@@ -23,7 +23,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm install --ignore-scripts
-      - run: node parent-accountless-tests.mjs && node parent-input-tests.mjs && node weekday-conditions-tests.mjs && node auto-draft-tests.mjs && node month-rollover-tests.mjs && node month-approval-tests.mjs && node duty-ledger-tests.mjs && node swap-confirmation-tests.mjs && node swap-ui-tests.mjs && node admin-answer-correction-tests.mjs && node admin-answer-ui-tests.mjs
+      - run: node parent-accountless-tests.mjs && node parent-input-tests.mjs && node weekday-conditions-tests.mjs && node auto-draft-tests.mjs && node month-rollover-tests.mjs && node month-approval-tests.mjs && node duty-ledger-tests.mjs && node swap-confirmation-tests.mjs && node swap-ui-tests.mjs && node admin-answer-correction-tests.mjs && node admin-answer-ui-tests.mjs && node answer-monitor-tests.mjs
       - run: node --check firebase-functions/index.mjs
       - run: npm run test:rules
       - run: npm audit --json > audit-results.json
