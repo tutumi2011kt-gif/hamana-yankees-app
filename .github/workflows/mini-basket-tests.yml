@@ -23,7 +23,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm install --ignore-scripts
-      - run: node parent-accountless-tests.mjs && node parent-clock-tests.mjs && node parent-input-tests.mjs && node weekday-conditions-tests.mjs && node auto-draft-tests.mjs && node month-rollover-tests.mjs && node month-approval-tests.mjs && node duty-ledger-tests.mjs && node swap-confirmation-tests.mjs && node swap-ui-tests.mjs && node admin-answer-correction-tests.mjs && node admin-answer-ui-tests.mjs && node answer-monitor-tests.mjs && node staging-build-tests.mjs && node staging-fixture-tests.mjs && node staging-deploy-tests.mjs
+      - run: node parent-accountless-tests.mjs && node parent-clock-tests.mjs && node parent-input-tests.mjs && node weekday-conditions-tests.mjs && node auto-draft-tests.mjs && node month-rollover-tests.mjs && node month-approval-tests.mjs && node duty-ledger-tests.mjs && node swap-confirmation-tests.mjs && node swap-ui-tests.mjs && node admin-answer-correction-tests.mjs && node admin-answer-ui-tests.mjs && node answer-monitor-tests.mjs && node staging-build-tests.mjs && node staging-fixture-tests.mjs && node staging-deploy-tests.mjs && node qa-readiness-tests.mjs && node qa-health-ui-tests.mjs
       - name: Smoke-test isolated staging website build (fake QA config only)
         env:
           STAGING_FIREBASE_CONFIG_JSON: '{"apiKey":"build-only-test","projectId":"basket-staging-qa","authDomain":"basket-staging-qa.firebaseapp.com","appId":"1:123:web:fake"}'
@@ -32,8 +32,21 @@ jobs:
           test -f dist-staging/index.html
           test -f dist-staging/admin-approve.html
           test -f dist-staging/admin-swaps.html
+          test -f dist-staging/admin-qa-health.html
           test -f dist-staging/firebase-config-staging.mjs
           ! grep -R "aritama-mini-basket.firebaseapp.com" dist-staging/
+      - name: Verify QA read-only doctor refuses production and needs no credentials in dry-run
+        run: |
+          node firebase-functions/verify-qa.mjs --project basket-staging-qa | tee /tmp/qa-verify-dryrun.txt
+          grep -q "Firebaseへ接続せず" /tmp/qa-verify-dryrun.txt
+          if node firebase-functions/verify-qa.mjs --project aritama-mini-basket; then
+            echo "ERROR: production accepted for QA diagnostics" >&2
+            exit 1
+          fi
+          if node firebase-functions/verify-qa.mjs --project basket-staging-qa --remote; then
+            echo "ERROR: unconfirmed remote QA diagnostics accepted" >&2
+            exit 1
+          fi
       - name: Ensure QA deploy wrapper defaults to dry-run and refuses production
         run: |
           node deploy-qa.mjs --project basket-staging-qa | tee /tmp/mini-basket-qa-deploy-dryrun.txt
@@ -58,7 +71,7 @@ jobs:
             echo "ERROR: apply without duplicate project confirmation/admin UID was accepted" >&2
             exit 1
           fi
-      - run: node --check firebase-functions/index.mjs && node --check firebase-functions/seed-qa.mjs && node --check deploy-qa.mjs
+      - run: node --check firebase-functions/index.mjs && node --check firebase-functions/seed-qa.mjs && node --check deploy-qa.mjs && node --check firebase-functions/verify-qa.mjs
       - run: npm run test:rules
       - run: npm audit --json > audit-results.json
         continue-on-error: true
