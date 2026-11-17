@@ -15,7 +15,7 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day{border:1px solid #e0e8ef;border-radius:7px;background:#fff;min-width:0;min-height:81px;padding:5px 2px;overflow-wrap:anywhere;text-align:left;color:inherit;display:block;width:100%}.day:disabled{cursor:default}.day.tap-x{border:2px solid #c64a66;padding:4px 1px}.day.tap-o{border:2px solid #23865f;padding:4px 1px}.day.tap-x,.day.tap-o{cursor:pointer}
 .day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
-.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}
+.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}.rowday.urgent{background:#fff1f3;border-left:4px solid #c64a66}
 .rowday{display:grid;grid-template-columns:78px minmax(0,1fr);gap:9px;align-items:center;padding:11px 9px;border-bottom:1px solid #e2eaf1}.rowday:last-child{border-bottom:0}.rowday.game{background:#fffbf5}.rowday b{font-size:14px}.rowday small{font-size:11px;color:#708195;display:block}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
 footer{font-size:11px;color:#76889b}.not-available{display:none}
@@ -32,6 +32,7 @@ footer{font-size:11px;color:#76889b}.not-available{display:none}
 <script type="module">
 import {todayTokyo,monthPlus,DAY_NAMES,dayList} from './core.mjs?v=parent-input-2';
 import {canEditMonth,allowedAnswerKind,decideAnswerAction} from './parent-input-core.mjs?v=2';
+import {swapState,canEditSwapAnswer} from './swap-confirmation-core.mjs?v=1';
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,signInAnonymously} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
@@ -40,6 +41,8 @@ const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'mini-basket-parent-share'),auth=getAuth(app),db=getFirestore(app);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key='mini-basket-parent-name-1';
+// Parent writes are blocked server-side until an accountless-safe write design is approved.
+const PARENT_WRITES_ENABLED=false;
 let displayedClockMonth=todayTokyo().slice(0,7);
 let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
 let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false};
@@ -90,8 +93,8 @@ function draw(){
  if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';$('detail').textContent='管理者の公開待ちです。';return;}
  if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
- const canWrite=canEditMonth(monthData)&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
- reply.textContent=writing?'Firebaseに保存中です…':lastSaveMessage|| (canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。');
+ const canWrite=PARENT_WRITES_ENABLED&&canEditMonth(monthData)&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
+ reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?'Firebaseに保存中です…':lastSaveMessage|| (canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。');
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
  $('mark-o').className=selectedMode==='o'?'selected-o':'';
@@ -104,17 +107,20 @@ function draw(){
  for(const day of dayList(selectedMonth)){
   const date=day.date,n=Number(date.slice(-2)),d=dayMap[date],marks=markMap[date]||[];
   const isPractice=d?.type==='practice',isGame=d?.type==='game';
+  const swap=swapState(d,marks);
   const owner=isPractice?(people[d.ownerId]||'担当未登録'):'';
   const label=isGame?'🏀 試合':owner;
   const existing=marks.find(a=>a.memberId===selectedPerson);
-  const eligible=canWrite&&selectedPerson&&allowedAnswerKind({kind:selectedMode,ownerId:d?.ownerId,memberId:selectedPerson,dayType:d?.type})
+  const eligible=canWrite&&canEditSwapAnswer(d)&&selectedPerson&&allowedAnswerKind({kind:selectedMode,ownerId:d?.ownerId,memberId:selectedPerson,dayType:d?.type})
     &&(!existing||existing.updatedBy===auth.currentUser?.uid);
   const selectedMark=existing?.kind===selectedMode?' ✓':'';
   const volunteerMarks=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId);
   const extras=marks.filter(a=>a.kind==='x'&&a.memberId===d?.ownerId).map(a=>'<span class="bad">'+esc(people[a.memberId]||'')+' ×</span>').join('')+
     volunteerMarks.slice(0,2).map(a=>'<span class="good">'+esc(people[a.memberId]||'')+' ○</span>').join('')+
-    (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'');
-  const cls='day '+(isPractice?'practice':isGame?'game':'')+(eligible?' tap-'+selectedMode:'');
+    (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'')+
+    (swap.status==='urgent'?'<span class="bad">⚠ 交代候補なし（要調整）</span>':'')+
+    (swap.confirmedId?'<span class="confirmed">✅ 管理者確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'（交代）</span>':'');
+  const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+(eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
    ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(selectedMode==='x'?'×を登録または取消':'○を登録または取消')+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
    (label?'<span class="owner">'+esc(label)+'</span>':'')+(d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+extras+'</button>';
@@ -123,12 +129,13 @@ function draw(){
   const extra=d?.traineeIds?.length?'＋'+d.traineeIds.map(id=>people[id]||id).join('・')+'（教習）':'';
   const volunteers=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId).map(a=>people[a.memberId]||a.memberId);
   const needSwap=marks.some(a=>a.kind==='x'&&a.memberId===d?.ownerId);
-  detail+='<div class="rowday '+(isGame?'game':'')+'"><b>'+n+'日<small>('+DAY_NAMES[day.weekday]+')</small></b><div><b>'+esc(dlabel)+'</b>'+
+  detail+='<div class="rowday '+(isGame?'game':swap.status==='urgent'?'urgent':'')+'"><b>'+n+'日<small>('+DAY_NAMES[day.weekday]+')</small></b><div><b>'+esc(dlabel)+'</b>'+
     (extra?'<small>'+esc(extra)+'</small>':'')+(isGame&&d.eventLocation?'<small>'+esc(d.eventLocation)+'</small>':'')+
-    (needSwap?'<small style="color:#b54456">元担当者 '+esc(owner)+' × ／ '+(volunteers.length?'交代候補（未確定）：'+esc(volunteers.join('・'))+' ○':'交代募集中（○候補なし）')+'</small>':volunteers.length?'<small style="color:#19805d">交代可能：'+esc(volunteers.join('・'))+' ○</small>':'')+'</div></div>';
+    (needSwap?'<small style="color:#b54456">元担当者 '+esc(owner)+' × ／ '+(volunteers.length?'交代候補：'+esc(volunteers.join('・'))+' ○':'⚠ 交代募集中（○候補なし）')+'</small>':volunteers.length?'<small style="color:#19805d">交代可能：'+esc(volunteers.join('・'))+' ○</small>':'')+
+    (swap.confirmedId?'<small style="color:#136744;font-weight:800">✅ 管理者確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'さんが交代</small>':'')+'</div></div>';
  }
  $('calendar').innerHTML=calendar;$('detail').innerHTML=detail||'<p>当番日がありません。</p>';
- monthMessage(monthData.inputState==='closed'?'🔒 この月は確定済み・入力締切です。閲覧のみできます。':'🗓️ 当番表を表示中です。現在の画面は閲覧のみです。','info');
+ monthMessage('🗓️ 当番表を閲覧中です。保護者の書き込みは安全確認待ちのため停止中です。','info');
 }
 $('person').addEventListener('change',e=>{selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
 $('mark-x').addEventListener('click',()=>{selectedMode='x';lastSaveMessage='';draw()});
@@ -139,7 +146,7 @@ $('calendar').addEventListener('click',async event=>{
  if(!target||target.disabled||writing)return;
  const date=target.dataset.day,month=selectedMonth,person=selectedPerson,kind=selectedMode;
  const day=days.find(d=>d.date===date);
- if(auth.currentUser?.isAnonymous!==true||!canEditMonth(monthData)||!published.includes(month)||!person
+ if(!PARENT_WRITES_ENABLED||auth.currentUser?.isAnonymous!==true||!canEditSwapAnswer(day)||!canEditMonth(monthData)||!published.includes(month)||!person
    ||!allowedAnswerKind({kind,ownerId:day?.ownerId,memberId:person,dayType:day?.type}))return;
  const old=answers.find(a=>a.date===date&&a.memberId===person);
  const uid=auth.currentUser?.uid;
@@ -160,7 +167,7 @@ $('calendar').addEventListener('click',async event=>{
     tx.get(refMonth),tx.get(refDay),tx.get(refRoster),tx.get(ref)
    ]);
    if(!mSnap.exists()||!canEditMonth(mSnap.data()))throw Error('この月は入力締切です。');
-   if(!dSnap.exists()||!allowedAnswerKind({kind,ownerId:dSnap.data().ownerId,memberId:person,dayType:dSnap.data().type}))throw Error('この日には入力できません。');
+   if(!dSnap.exists()||!canEditSwapAnswer(dSnap.data())||!allowedAnswerKind({kind,ownerId:dSnap.data().ownerId,memberId:person,dayType:dSnap.data().type}))throw Error('この日は交代確定済み、または入力できません。');
    if(!rSnap.exists()||!(rSnap.data().members||[]).some(x=>x.id===person&&x.status==='active'))throw Error('メンバー情報を確認してください。');
    const existing=aSnap.exists()?aSnap.data():null;
    const actualAction=decideAnswerAction(existing,kind,uid);
