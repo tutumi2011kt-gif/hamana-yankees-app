@@ -3,7 +3,7 @@
 // No real Firebase project is accessed; never execute against production.
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
+import {initializeTestEnvironment,assertSucceeds} from '@firebase/rules-unit-testing';
 import {collection,doc,getDoc,getDocs,onSnapshot,runTransaction,
         setDoc,serverTimestamp,Timestamp,updateDoc} from 'firebase/firestore';
 import {allowedAnswerKind,canEditMonth,decideAnswerAction} from './parent-input-core.mjs';
@@ -95,7 +95,7 @@ try{
   await stream.waitFor(a=>a.length===2&&a.some(x=>x.id===day+'_qa02'&&x.kind==='o'));
   console.log('PASS voluntary o instantly shared without auto-reassigning original owner');
 
-  await assertFails(tapAsParent(dbVolunteer,'phone-volunteer','qa01','x'));
+  await assert.rejects(tapAsParent(dbVolunteer,'phone-volunteer','qa01','x'),/別端末からの回答/);
   assert.equal((await getDoc(dayRef(dbViewer))).data().ownerId,'qa01');
   console.log('PASS different anonymous device cannot overwrite owner x');
 
@@ -106,7 +106,7 @@ try{
   await env.withSecurityRulesDisabled(ctx=>updateDoc(dayRef(ctx.firestore()),{
    confirmedSubstituteId:'qa02'
   }));
-  await assertFails(tapAsParent(dbVolunteer,'phone-volunteer','qa02','o'));
+  await assert.rejects(tapAsParent(dbVolunteer,'phone-volunteer','qa02','o'),/回答できない日/);
   assert.equal((await getDoc(dayRef(dbViewer))).data().ownerId,'qa01');
   console.log('PASS manager-confirmed substitute locks further x/o changes and preserves owner');
 
@@ -114,7 +114,7 @@ try{
    await updateDoc(dayRef(ctx.firestore()),{confirmedSubstituteId:null});
    await updateDoc(monthRef(ctx.firestore()),{cutoffAt:Timestamp.fromMillis(Date.now()-1000)});
   });
-  await assertFails(tapAsParent(dbParent,'phone-owner','qa01','x'));
+  await assert.rejects(tapAsParent(dbParent,'phone-owner','qa01','x'),/締切済み/);
   console.log('PASS server cutoff wins over stale parent UI');
  }finally{stream.close();}
 }finally{await env.cleanup();}
