@@ -4,6 +4,7 @@
 // Locking at the exact instant is already enforced separately by Firestore
 // request.time against cutoffAt; this job materializes monthly calendar docs.
 import {onSchedule} from 'firebase-functions/v2/scheduler';
+import {onDocumentWritten} from 'firebase-functions/v2/firestore';
 import {initializeApp} from 'firebase-admin/app';
 import {getFirestore,Timestamp,FieldValue} from 'firebase-admin/firestore';
 
@@ -76,4 +77,52 @@ export const monthlyBasketRollover=onSchedule(
    }
   });
   console.log('Rollover checked', {lockMonth,createMonth,practiceDays:practiceDays.length});
+ });
+
+// Staged only — MUST NOT DEPLOY before administrator approval.
+// Server-generated audit for every parent answer change; cannot be forged by an anonymous client.
+// This is detection, not proof that the selected child belongs to the submitting adult.
+// Deletes cannot reliably identify the remover from the deleted document's previous updatedBy.
+export const auditBasketParentAnswer=onDocumentWritten(
+ {document:'teams/{teamId}/months/{monthId}/answers/{answerId}',region:'asia-northeast1'},
+ async event=>{
+  const {teamId,monthId,answerId}=event.params;
+  if(teamId!==TEAM)return;
+  const before=event.data?.before?.exists?event.data.before.data():null;
+  const after=event.data?.after?.exists?event.data.after.data():null;
+  if(!before&&!after)return;
+  const op=!before?'create':!after?'delete':'update';
+  const current=after??before;
+  const actorUid=after?.updatedBy??null; // NOT available from delete's old document.
+  const lastRecordedWriterUid=before?.updatedBy??after?.updatedBy??null;
+  const eventId=encodeURIComponent(String(event.id)).slice(0,1200);
+  const auditRef=db.doc('teams/'+TEAM+'/answerAudit/'+eventId);
+  let isManager=false;
+  if(actorUid){
+   const manager=await db.doc('admins/'+actorUid).get();
+   isManager=manager.exists&&manager.data()?.enabled===true;
+  }
+  const indexRef=actorUid&&!isManager?db.doc('teams/'+TEAM+'/anonymousWriterIndex/'+actorUid):null;
+  await db.runTransaction(async tx=>{
+   const [existing,idx]=await Promise.all([tx.get(auditRef),indexRef?tx.get(indexRef):Promise.resolve(null)]);
+   if(existing.exists)return; // idempotent under at-least-once Firestore events
+   const seen=idx?.exists&&Array.isArray(idx.data()?.memberIds)?idx.data().memberIds:[];
+   const crossMember=!!indexRef&&seen.length>0&&!seen.includes(current.memberId);
+   const flags=[];
+   if(crossMember)flags.push('one-device-multiple-children');
+   if(op==='delete')flags.push('delete-actor-unverified');
+   if(op==='update'&&before?.updatedBy!==after?.updatedBy)flags.push('writer-uid-changed');
+   tx.create(auditRef,{
+    month:monthId,answerId,date:current.date??null,memberId:current.memberId??null,
+    operation:op,kindBefore:before?.kind??null,kindAfter:after?.kind??null,
+    actorUid,lastRecordedWriterUid,actorType:isManager?'admin':op==='delete'?'unknown':'anonymous',
+    flags,needsReview:crossMember||(op==='update'&&before?.updatedBy!==after?.updatedBy),
+    eventTime:event.time??null,observedAt:FieldValue.serverTimestamp()
+   });
+   if(indexRef){
+    const updated=[...new Set([...seen,current.memberId])].filter(Boolean);
+    tx.set(indexRef,{memberIds:updated,lastSeenAt:FieldValue.serverTimestamp(),lastAuditEventId:eventId},{merge:true});
+   }
+  });
+  console.log('Answer audit recorded', {monthId,answerId,operation:op});
  });
