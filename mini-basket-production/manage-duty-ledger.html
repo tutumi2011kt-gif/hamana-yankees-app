@@ -25,7 +25,7 @@ table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px
 <label id="resolve-label" hidden>繰越を解消した日<input id="resolved" type="date"></label>
 <p class="small" id="window-note"></p></div>
 <label>管理者メモ（250文字以内）<textarea id="note" maxlength="250" disabled placeholder="例：急な練習試合で中止。繰越希望を確認"></textarea></label>
-<div class="notice">中止になった日の元担当者は固定記録します。3〜4か月後の再割当候補になりますが、本人都合と曜日条件を優先します。元の日付の当番表はこの画面から変更しません。</div>
+<div class="notice">中止になった日の元担当者は固定記録します。3〜4か月後の再割当候補になりますが、本人都合と曜日条件を優先します。「練習試合・試合化」「練習休み」で中止を保存すると、カレンダーの当番も同時に取り消します。×・○の回答は履歴として残し、入力は停止します。誤記録を取り消すと元の予定に戻ります。個人的事情・その他は台帳だけに記録します。2026年12月の確定表は変更しません。</div>
 <div class="actions" style="margin-top:10px"><button id="save" class="primary" disabled>実施・中止の記録を保存</button><button id="remove" class="danger" disabled>誤記録を取り消す</button></div>
 <p id="save-status" class="small" role="status">未保存です。</p></section>
 <section class="card"><h2>③ 実施回数と繰越の管理者集計</h2>
@@ -39,6 +39,7 @@ import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {addMonths} from './month-rollover-core.mjs';
 import {buildDutyLedgerRecord,eligibleCarryWindow,ledgerTotals} from './duty-ledger-core.mjs';
 import {todayTokyo} from './core.mjs';
+import {persistLedger,planLedgerCalendar} from './ledger-calendar-core.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
@@ -157,35 +158,13 @@ $('save').onclick=async()=>{
  let result;
  try{
   result=buildDutyLedgerRecord(values,members.map(x=>x.id),todayTokyo());
-  if(result.status==='completed'&&day.type!=='practice')throw Error('試合・休みを実施済みとは記録できません');
-  if(day.type==='practice'&&day.ownerId&&result.scheduledOwnerId!==day.ownerId)
-   throw Error('元担当者は現在の日別当番表の担当者と一致させてください');
-  if(!confirm(date+' の「'+(result.status==='completed'?'実施済み':'中止')+'」記録をFirebaseに保存します。実施回数・繰越集計に反映しますか？'))return;
+  planLedgerCalendar({date,day,prior:records.find(x=>x.date===date),record:result,revision:1});
+  if(!confirm(date+' の「'+(result.status==='completed'?'実施済み':'中止')+'」記録をFirebaseに保存します。実施回数・繰越集計に反映します。試合・休みの中止はカレンダーの当番も取り消します。保存しますか？'))return;
  }catch(e){message('save-status',e.message,'error');return;}
  busy=true;update();message('save-status','台帳と監査履歴に保存中…');
  try{
-  const auditRef=doc(collection(db,'teams',teamId,'dutyLedgerAudit'));
-  await runTransaction(db,async tx=>{
-   const [admin,monthSnap,daySnap,prior]=await Promise.all([
-    tx.get(doc(db,'admins',user.uid)),tx.get(doc(db,'teams',teamId,'months',currentMonth)),
-    tx.get(doc(db,'teams',teamId,'months',currentMonth,'days',date)),tx.get(doc(ledgerCollection,date))
-   ]);
-   if(!admin.exists()||admin.data().enabled!==true||auth.currentUser?.uid!==user.uid)throw Error('管理者権限を確認できません');
-   if(!monthSnap.exists()||!daySnap.exists())throw Error('当番表にこの日がありません');
-   const latestDay=daySnap.data();
-   if(result.status==='completed'&&latestDay.type!=='practice')throw Error('試合・休みは実施回数に含めません');
-   if(latestDay.type==='practice'&&latestDay.ownerId&&result.scheduledOwnerId!==latestDay.ownerId)throw Error('元担当者が別端末で変更されました');
-   const expected=records.find(x=>x.date===date);
-   if((prior.exists()?Number(prior.data().revision??1):0)!==(expected?Number(expected.revision??1):0))
-    throw Error('ほかの端末で台帳が変更されました。再読み込みしてください');
-   const nextRevision=(expected?Number(expected.revision??1):0)+1;
-   const payload={...result,revision:nextRevision,updatedAt:serverTimestamp(),updatedBy:user.uid};
-   tx.set(doc(ledgerCollection,date),payload);
-   tx.set(auditRef,{
-    action:'upsert',date,previous:prior.exists()?prior.data():null,next:result,revision:nextRevision,
-    updatedAt:serverTimestamp(),updatedBy:user.uid
-   });
-  });
+  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,uid:user.uid,date,record:result,
+   expected:records.find(x=>x.date===date)??null,expectedDay:day,authMatches:()=>auth.currentUser?.uid===user.uid});
   message('save-status','✅ 記録と変更履歴を保存しました。最新データを読み込み直します。','ok');
   busy=false;await load();
  }catch(e){message('save-status','保存できませんでした：'+(e.code||e.message||String(e)),'error');}
@@ -194,20 +173,11 @@ $('save').onclick=async()=>{
 $('remove').onclick=async()=>{
  const user=auth.currentUser,date=$('date').value,existing=records.find(x=>x.date===date);
  if(!ready||busy||!user||!existing)return;
- if(!confirm(date+' の台帳記録を取り消しますか？取消履歴は保持しますが、実施回数・繰越集計から除外されます。'))return;
+ if(!confirm(date+' の台帳記録を取り消しますか？取消履歴を保持し、実施回数・繰越集計から除外します。この記録で中止した予定は元に戻ります。'))return;
  busy=true;update();message('save-status','記録を取り消し中…');
  try{
-  const auditRef=doc(collection(db,'teams',teamId,'dutyLedgerAudit'));
-  await runTransaction(db,async tx=>{
-   const [admin,prior]=await Promise.all([tx.get(doc(db,'admins',user.uid)),tx.get(doc(ledgerCollection,date))]);
-   if(!admin.exists()||admin.data().enabled!==true||auth.currentUser?.uid!==user.uid)throw Error('管理者権限を確認できません');
-   if(!prior.exists()||Number(prior.data().revision??1)!==Number(existing.revision??1))throw Error('別端末で変更されています。再読み込みしてください');
-   const revision=Number(existing.revision??1)+1;
-   tx.delete(doc(ledgerCollection,date));
-   tx.set(auditRef,{
-    action:'delete',date,previous:prior.data(),next:null,revision,updatedAt:serverTimestamp(),updatedBy:user.uid
-   });
-  });
+  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,uid:user.uid,date,record:null,
+   expected:existing,expectedDay:days.find(x=>x.date===date),authMatches:()=>auth.currentUser?.uid===user.uid});
   message('save-status','✅ 誤記録を取り消しました。','ok');
   busy=false;await load();
  }catch(e){message('save-status','取消に失敗：'+(e.code||e.message||String(e)),'error');}

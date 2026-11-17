@@ -13,7 +13,7 @@ export function swapState(day,answers=[],members=[]){
   if(!Array.isArray(members)||!members.length)return true; // Public viewer only uses published marks.
   const m=members.find(x=>x.id===id);
   return !!m&&m.status==='active'&&(m.startDate??m.start??'9999-12-31')<=day.date
-   &&!(m.endDate??m.end)||((m.endDate??m.end)>=day.date);
+   &&(!(m.endDate??m.end)||(m.endDate??m.end)>=day.date);
  };
  const candidates=[...new Set(marks.filter(a=>
   a.kind==='o'&&a.memberId!==day.ownerId&&typeof a.memberId==='string'&&active(a.memberId)
