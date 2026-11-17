@@ -1,3 +1,30 @@
+## 更新：架空12名の初期データ・安全な登録ツールを追加
+
+- `staging-fixture-core.mjs` に**本番とは無関係の架空名「テスト01〜テスト12」**のデータを用意。本番保護者の個人情報、当番実績、既存の12月・1月データはコピーしない
+- 検証用Firebaseには、2027年1月を**公開済みの入力試験用**、2027年3月を**未公開・管理者承認待ち**として作る。1月の練習日には各1人の担当者、練習試合・休みのサンプル各1日を含む。3月は担当者未設定・全日未確認で開始
+- `firebase-functions/seed-qa.mjs` は**初期動作がdry-run**。QA環境の管理者認証のFirebase UIDと、QAプロジェクトIDの二重確認を指定しない限りデータを登録しない。QAへの登録は全件を1つのcreate-onlyトランザクションで行い、既存レコードがあれば何も変更せず中止する
+- `staging-fixture-tests.mjs` および `staging-fixture-emulator-tests.mjs` で、架空名・曜日・ロック・公開月と未公開月、×○の入力、管理者公開承認まで検証する。**本番Firebaseには接続しない**
+- これらは開発ブランチ上の準備。実際の検証用Firebaseプロジェクト／iPhone用URLはまだ作成されていない
+
+### QAプロジェクトができた後の初期化手順（未実行）
+
+1. Firebaseコンソールで**検証専用プロジェクト**を作成し、匿名認証／Google認証／Firestoreを有効化する。実際に使うQAプロジェクトIDを確認する
+2. 検証版の管理者画面へGoogleログインし、**QA側Firebase Authentication > Users** に記録された管理者UIDを確認（本番側のUIDを推測・流用しない）
+3. QA環境にだけアクセスできるApplication Default Credentials（ADC）を設定する。作業PCでは `cd mini-basket-production && npm install --prefix firebase-functions --ignore-scripts` を実行
+4. まず接続しないdry-runでデータの件数を確認：
+
+```sh
+node firebase-functions/seed-qa.mjs --project aritama-mini-basket-qa
+```
+
+5. 管理者が**QAプロジェクトIDを再確認して承認した場合のみ**、その同じQA IDとFirebase Authenticationの管理者UIDを指定して初期化（以下は**例示・未実行**）：
+
+```sh
+node firebase-functions/seed-qa.mjs --project aritama-mini-basket-qa --confirm aritama-mini-basket-qa --admin-uid <QA側で確認したUID> --apply
+```
+
+6. 既存データが少しでもあると登録を拒否する。再実行や再初期化で本番・QAの月データを勝手に上書きしない。管理者画面の初回データが揃っていることを確認してから、検証専用Hostingへ進む
+
 # iPhone検証版の準備手順｜本番と完全分離
 
 作成：2026-11-17。**PR #1の開発ブランチ限定。実際の検証用Firebaseプロジェクト、公開URLはまだ未作成。** GitHubの静的コードだけでは実際のクラウド書込みは検証できません。
