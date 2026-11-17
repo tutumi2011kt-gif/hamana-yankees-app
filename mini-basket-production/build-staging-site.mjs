@@ -50,7 +50,7 @@ async function main(){
  const config=parseAndCheckStagingFirebaseConfig(process.env.STAGING_FIREBASE_CONFIG_JSON);
  const project=assertStagingFirebaseConfig(config);
  // Fail before doing any work if the requested destination is unsafe.
- if(out===root||out==='/'||!out.startsWith(root+'/'))throw new Error('出力先が不正です');
+ if(relative(root,out)!=='dist-staging')throw new Error('出力先が不正です');
  await rm(out,{recursive:true,force:true});
  await mkdir(out,{recursive:true});
  const pending=new Set(['staging-config-guard.mjs']);
