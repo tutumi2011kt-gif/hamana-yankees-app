@@ -1,3 +1,12 @@
+## QA専用デプロイの誤操作防止
+
+- `deploy-qa.mjs` は確認モードが標準で、**Firebaseへの配信を行わない**
+- 本番 `aritama-mini-basket` のIDは拒否する。検証専用IDを `--project` と `--confirm` の両方に指定し、明示的に `--apply` を付けた場合だけFirebase CLIを起動する
+- 生成済み `dist-staging/firebase-config-staging.mjs` のプロジェクトIDと、配信先のQA IDの一致を確認する
+- **管理者がステージング用のFirestoreルール（匿名入力の実験用候補）を承認したときにだけ実行**。本番Firebaseの書込み制限は変更しない
+- Windowsでも `node deploy-qa.mjs --project ...` を使用できるようFirebase CLI本体をNode経由で起動する。事前に `npm install --ignore-scripts` が必要
+- `staging-deploy-tests.mjs` とGitHub Actionsで、本番ID・不一致・確認省略の場合に配信されないことを自動テスト
+
 ## 更新：架空12名の初期データ・安全な登録ツールを追加
 
 - `staging-fixture-core.mjs` に**本番とは無関係の架空名「テスト01〜テスト12」**のデータを用意。本番保護者の個人情報、当番実績、既存の12月・1月データはコピーしない
@@ -42,7 +51,7 @@ node firebase-functions/seed-qa.mjs --project aritama-mini-basket-qa --confirm a
 3. 検証用のWebアプリを登録して、そのプロジェクトの `apiKey`、`authDomain`、`projectId`、`appId` 等の**Web設定値**を取得する。秘密のサービスアカウント鍵は不要で、Webページへ混入させない。
 4. 本番の12人の実データをコピーしない。架空名の12人と、公開済み2027年1月の仮練習日・テスト用×○を別プロジェクトに登録する。管理者Google UIDにだけ `admins/{uid}.enabled=true` を作成し、ほかのメンバー情報・公開用名簿と月の状態を揃える。
 5. 開発用マシン・Work等で、環境変数 `STAGING_FIREBASE_CONFIG_JSON` を設定し `node build-staging-site.mjs` を実行する。生成後、`dist-staging/index.html` が検証用保護者ページ、`qa-menu.html` が検証用の各管理者画面へのリンクになる。
-6. **検証環境でのみ**、管理者がルールとテスト結果を確認してから `firebase --config firebase.staging.json --project <検証プロジェクトID> deploy --only firestore:rules,hosting` を実行する（まだ実行しない）。必ず `--project` で本番ではないIDを指定して、実行前に表示されるプロジェクトIDを再確認。
+6. **検証環境でのみ**、管理者がルール・テスト結果とプロジェクトIDを確認し、`node deploy-qa.mjs --project <検証QAプロジェクトID> --confirm <同じQAプロジェクトID> --apply` で配置する（**まだ実行しない**）。通常の`firebase deploy`ではなく、この二重確認・本番拒否チェック付きツールを使う。
 7. 発行された **検証用URL** をまず管理者のiPhoneで確認。保護者2〜3人へは検証用途であることを明記した後に限定共有。検証URLは外部SNSに一般公開しない。
 8. QAの詳細は `SMARTPHONE_QA_PLAN.md` を参照。通過後も**本番Firebaseへの反映は別途管理者承認が必要**。
 
