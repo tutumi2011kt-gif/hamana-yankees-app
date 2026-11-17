@@ -6,6 +6,7 @@ const SAFE_STAGE_SUFFIX=/(?:-staging|-qa|-test)(?:-[a-z0-9]+)?$/;
 export function assertStagingFirebaseConfig(config) {
  if (!config || typeof config!=='object') throw new Error('検証版Firebaseの設定がありません');
  const id=config.projectId,auth=config.authDomain;
+ if(typeof id==='string'&&!/^[a-z][a-z0-9-]{4,29}$/.test(id))throw new Error('Firebase検証用プロジェクトIDの形式が不正です');
  if(typeof id!=='string'||!id||id===PRODUCTION_FIREBASE_PROJECT_ID
    ||!SAFE_STAGE_SUFFIX.test(id))throw new Error('安全のため、検証専用Firebaseプロジェクト以外は接続できません');
  if(typeof auth!=='string'||auth!==id+'.firebaseapp.com')
