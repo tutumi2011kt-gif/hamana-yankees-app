@@ -39,8 +39,8 @@ for(const name of pages){
   const calendarHeading=compiled.indexOf('id="calendar-title"');
   const detailHeading=compiled.indexOf('日付ごとの詳しい当番');
   assert.ok(nameHeading>=0&&nameHeading<monthHeading&&monthHeading<modeHeading&&modeHeading<calendarHeading&&calendarHeading<detailHeading);
-  assert.match(compiled,/<button id="mark-x"[^>]*>❌ 当番ができない日<\\/button>/);
-  assert.match(compiled,/<button id="mark-o"[^>]*>⭕ 代わりにできる日<\\/button>/);
+  assert.match(compiled,/<button id="mark-x"[^>]*>❌ 当番ができない日<[/]button>/);
+  assert.match(compiled,/<button id="mark-o"[^>]*>⭕ 代わりにできる日<[/]button>/);
   assert.equal((compiled.match(/id="mark-x"/g)||[]).length,1);
   assert.equal((compiled.match(/id="mark-o"/g)||[]).length,1);
   assert.match(compiled,/from '.\/parent-write-config-staging\.mjs\?v=1'/);
