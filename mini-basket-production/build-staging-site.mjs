@@ -35,9 +35,9 @@ export function stageHtml(source,title){
   // Inject before initialization, after imports and in the script body.
  if(!html.includes("from './firebase-config-staging.mjs'"))throw new Error('staging import rewrite failed');
  html=html.replace("from './firebase-config-staging.mjs';","from './firebase-config-staging.mjs';\nimport {assertStagingFirebaseConfig} from './staging-config-guard.mjs';");
- const codeCheck=html.indexOf('const $=id=>');
- if(codeCheck<0)throw new Error(title+' は共通初期化部分が想定外です');
- html=html.slice(0,codeCheck)+'assertStagingFirebaseConfig(firebaseConfig);\n'+html.slice(codeCheck);
+ // Validate at the exact initializeApp call site; the 7 admin pages have different setup syntax.
+ if((html.match(/initializeApp\(firebaseConfig/g)||[]).length!==1)throw new Error(title+' のFirebase初期化回数が想定外です');
+ html=html.replace('initializeApp(firebaseConfig','initializeApp((assertStagingFirebaseConfig(firebaseConfig),firebaseConfig)');
  html=html.replace(/<title>/i,'<title>【検証版】');
  html=html.replace('<body><main>','<body><main><div style="position:sticky;top:0;z-index:999;background:#963c12;color:white;border-radius:8px;padding:8px 10px;font-weight:800;text-align:center">🧪 検証版・架空のデータ専用／本番とは別のFirebase</div>');
  return html;
