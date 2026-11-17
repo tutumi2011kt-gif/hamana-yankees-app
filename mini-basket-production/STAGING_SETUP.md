@@ -1,3 +1,17 @@
+## 【重要・2026年11月確認】Firebase新規プロジェクトのHosting初期設定
+
+2026年10月15日以降の新規Firebaseプロジェクトは、**デフォルトHostingサイトをプロジェクト作成時には自動作成しない**仕様になっています。Firebase公式：https://firebase.google.com/docs/hosting/default-site
+
+検証用プロジェクトを作ったら、次の順番で設定してください。
+
+1. Firebase Consoleで、新しい検証専用プロジェクトを作成し、**プロジェクトIDを確認**する（例：`aritama-mini-basket-qa`。既存の本番 `aritama-mini-basket` は使用しない）
+2. Hosting画面の「使ってみる／始める」等から、**デフォルトHostingサイトのIDを検証用FirebaseのプロジェクトIDと同じ値**で作成する。既に自動作成されている場合は、ID・既定サイトかどうかだけを確認する
+3. 検証用Webアプリを登録し、`authDomain` が `<QAプロジェクトID>.firebaseapp.com` になっていることを確認する。Firebase Consoleで匿名認証・Google認証を有効化する
+4. `deploy-qa.mjs` は、配信直前に `firebase hosting:sites:list --project <QA ID> --json` を**読み取り専用で実行**。一致するデフォルトHostingサイトがない場合には公開せず中止する。**サイトを黙って作成することはありません**
+5. QAのWebアプリ設定（公開用ID・APIキーなど）で検証版を生成し、架空の12人だけを登録して動作テストする。本番のFirestoreは変更しない
+
+**検証サイトを公開できることと、本番公開の承認は別です。** 自動テスト・スマホ実機試験、権限と個人情報の確認が完了するまで本番公開しない。
+
 ## 今回追加：iPhoneから検証用Firebaseを一括点検する画面
 
 - `admin-qa-health.html`：検証専用サイトに組み込まれる管理者向け画面。Googleログイン後、**読み取り専用**でQA初期状態を点検する
