@@ -1,6 +1,6 @@
 {
   "firestore": {
-    "rules": "firestore-parent-write-candidate.rules"
+    "rules": "firestore-parent-readonly.rules"
   },
   "emulators": {
     "firestore": {
