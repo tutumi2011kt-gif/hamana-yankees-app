@@ -32,6 +32,17 @@ for(const name of pages){
  const js=compiled.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];assert.ok(js);
  new Function(js.replace(/^import[^\n]*;\s*$/gm,''));
  if(name==='parent.html'){
+  // Prevent the answer mode controls from slipping below the long calendar on mobile.
+  const nameHeading=compiled.indexOf('① お子さんの名前を選ぶ');
+  const monthHeading=compiled.indexOf('② 月を選ぶ');
+  const modeHeading=compiled.indexOf('③ ×・○の希望入力');
+  const calendarHeading=compiled.indexOf('id="calendar-title"');
+  const detailHeading=compiled.indexOf('日付ごとの詳しい当番');
+  assert.ok(nameHeading>=0&&nameHeading<monthHeading&&monthHeading<modeHeading&&modeHeading<calendarHeading&&calendarHeading<detailHeading);
+  assert.match(compiled,/<button id="mark-x"[^>]*>❌ 当番ができない日<\\/button>/);
+  assert.match(compiled,/<button id="mark-o"[^>]*>⭕ 代わりにできる日<\\/button>/);
+  assert.equal((compiled.match(/id="mark-x"/g)||[]).length,1);
+  assert.equal((compiled.match(/id="mark-o"/g)||[]).length,1);
   assert.match(compiled,/from '.\/parent-write-config-staging\.mjs\?v=1'/);
   assert.doesNotMatch(compiled,/from '.\/parent-write-config\.mjs\?v=1'/);
  }
