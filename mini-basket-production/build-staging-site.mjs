@@ -32,8 +32,7 @@ export function stageHtml(source,title){
  if(html.includes("from './parent-write-config.mjs'"))
   html=html.replaceAll("from './parent-write-config.mjs'","from './parent-write-config-staging.mjs'");
  if(!html.includes('initializeApp(firebaseConfig'))throw new Error(title+' はFirebaseアプリを初期化できません');
- html=html.replace('initializeApp(firebaseConfig','initializeApp(firebaseConfig');
- // Inject before initialization, after imports and in the script body.
+  // Inject before initialization, after imports and in the script body.
  if(!html.includes("from './firebase-config-staging.mjs'"))throw new Error('staging import rewrite failed');
  html=html.replace("from './firebase-config-staging.mjs';","from './firebase-config-staging.mjs';\nimport {assertStagingFirebaseConfig} from './staging-config-guard.mjs';");
  const codeCheck=html.indexOf('const $=id=>');
@@ -68,8 +67,11 @@ async function main(){
   "// QA-only. The build is rejected if projectId is the live project. Not to be copied into production.\n"+
   "export const ANSWER_PUBLICATION_MODE='instant';\nexport const PARENT_WRITES_ENABLED=true;\n"+
   "export const ACCOUNT_REQUIRED=false;\nexport const REGISTRATION_REQUIRED=false;\n");
+ const copied=new Set();
  while(pending.size){
   const next=pending.values().next().value;pending.delete(next);
+  if(copied.has(next))continue;
+  copied.add(next);
   if(next==='firebase-config.mjs'||next==='parent-write-config.mjs')
    throw new Error('誤って本番設定を公開対象へ含めようとしました');
   if(!next.endsWith('.mjs')||next.includes('..')||next.startsWith('/'))
