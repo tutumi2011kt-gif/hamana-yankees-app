@@ -15,7 +15,8 @@ const sourcePages=Object.freeze({
  'manage-parent-answers.html':'admin-answers.html',
  'manage-duty-ledger.html':'admin-ledger.html',
  'manage-deadline.html':'admin-deadline.html',
- 'manage-answer-monitor.html':'admin-monitor.html'
+ 'manage-answer-monitor.html':'admin-monitor.html',
+ 'admin-qa-health.html':'admin-qa-health.html'
 });
 export const isSafeImportPath=(src)=>src.startsWith('./')&&!src.includes('..')&&!src.includes('\\')&&!src.startsWith('//');
 const importRe=/(?:from\s+|import\s*)['"](\.[^'"]+)['"]/g;
