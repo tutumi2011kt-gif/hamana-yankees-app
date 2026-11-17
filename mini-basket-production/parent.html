@@ -45,7 +45,7 @@ const key='mini-basket-parent-name-1';
 // A方式：回答は保存後に即時全員へ反映。公開まで書き込みスイッチは無効。
 let displayedClockMonth=todayTokyo().slice(0,7);
 let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
-let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false};
+let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false},lastInputWindowOpen=null;
 const caption=m=>Number(m.slice(0,4))+'年'+Number(m.slice(5,7))+'月';
 const mapNames=()=>Object.fromEntries(names.map(m=>[m.id,m.name]));
 function connection(text,type='notice'){$('connection').textContent=text;$('connection').className=type}
@@ -87,14 +87,17 @@ function setMonth(m){
  }));
 }
 function draw(){
+ // Only redraw the whole calendar when data or the edit window changes.
+ // A timer still checks JST time every second, but it must not replace tap targets every second.
+ lastInputWindowOpen=canEditMonth(monthData);
  $('calendar-title').textContent=caption(selectedMonth)+' 当番カレンダー';
  const publishedNow=published.includes(selectedMonth);
  const reply=$('reply-status');
  if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';$('detail').textContent='管理者の公開待ちです。';return;}
  if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
- const canWrite=PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&canEditMonth(monthData)&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
- reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?'Firebaseに保存中です…':lastSaveMessage|| (canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。');
+ const canWrite=PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&lastInputWindowOpen&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
+ reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?'Firebaseに保存中です…':lastSaveMessage|| (!lastInputWindowOpen?'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。':!selectedPerson?'まずお子さんの名前を選んでください。':canWrite?'✅ 入力受付中。枠線が付いた日をタップしてください。':'接続確認中です。');
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
  $('mark-o').className=selectedMode==='o'?'selected-o':'';
@@ -212,7 +215,11 @@ setInterval(()=>{
   const next=options.includes(selectedMonth)?selectedMonth:options[0];
   drawMonths();
   setMonth(next);
- }else draw();
+ }else if(canEditMonth(monthData)!==lastInputWindowOpen){
+  // Administrator-customized cutoffs can happen at times other than JST midnight.
+  // Refresh the UI once when the window flips; Firestore request.time remains authoritative.
+  draw();
+ }
 },1000);
 void start();
 </script></body></html>
