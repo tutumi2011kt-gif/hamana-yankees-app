@@ -1,3 +1,13 @@
+## 今回追加：iPhoneから検証用Firebaseを一括点検する画面
+
+- `admin-qa-health.html`：検証専用サイトに組み込まれる管理者向け画面。Googleログイン後、**読み取り専用**でQA初期状態を点検する
+- 確認項目：検証プロジェクトID・初期化マーカー、管理者のQA権限、架空名「テスト01〜12」、1月の公開・入力受付、3月の非公開下書き、日ごとの担当者・活動区分
+- `qa-readiness-core.mjs` に合否判定を集約。`qa-readiness-tests.mjs` / `qa-health-ui-tests.mjs` で検証し、GitHub Actionsの自動テストに組み込む
+- パソコンでは `node firebase-functions/verify-qa.mjs --project <QA_ID>` と実行すると**接続しない確認モード**が動く
+- 実際のQAのFirestoreを**読み取りだけ**確認するには、管理者がQAのGoogle UIDとQA IDを二重指定した上で `node firebase-functions/verify-qa.mjs --project <QA_ID> --confirm <QA_ID> --admin-uid <QA側管理者UID> --remote` を使用。QAのApplication Default Credentialsが必要
+- `admin-qa-health.html` は、検証用Hosting上で `qa-menu.html` から開ける。現時点では**まだ検証用Firebase・Hosting URLは作成していない**
+- この点検の合格はアプリの本番公開許可ではない。iPhone実機操作、匿名認証、複数端末での即時反映、締切を跨ぐ動作は別途確認する
+
 ## QA専用デプロイの誤操作防止
 
 - `deploy-qa.mjs` は確認モードが標準で、**Firebaseへの配信を行わない**
