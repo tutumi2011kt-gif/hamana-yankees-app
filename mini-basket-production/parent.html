@@ -21,12 +21,12 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 footer{font-size:11px;color:#76889b}.not-available{display:none}
 </style></head><body><main>
 <header><h1>🏀 有玉女子ミニバス 当番表</h1><p>みんなで確認する当番カレンダー</p><p id="connection" class="notice" role="status" aria-live="polite">Firebaseに接続中です…</p></header>
-<section class="card"><button id="parent-login">保護者のGoogleアカウントでログイン</button><p id="identity-status" role="status"></p></section>
+<section class="card"><p class="small">✅ アカウント登録・ログインは不要です。共通URLからお子さんの名前を選んで利用できます。</p></section>
 <section class="card"><h2>① お子さんの名前を選ぶ</h2><select id="person" aria-label="お子さんの名前"><option value="">メンバーを読み込み中…</option></select><p class="small">名前を選ぶだけでカレンダーを見られます。選択した名前はこの端末に保存されます。</p></section>
 <section class="card"><h2>② 月を選ぶ</h2><div id="months" class="months"></div><p id="month-status" class="info">当番表を読み込んでいます。</p></section>
 <section class="card"><h2 id="calendar-title">当番カレンダー</h2><div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal" aria-label="当番カレンダー"></div><div class="legend"><span>水色：練習日</span><span>薄橙：試合・当番なし</span></div></section>
 <section class="card"><h2>日付ごとの詳しい当番</h2><div id="detail" class="small">読み込み中です。</div></section>
-<section class="card"><h2>③ ×・○の希望入力</h2><p class="small">最初にお子さんの名前を選び、入力する種類を選択してください。<b>カレンダーの日付を直接タップ</b>して登録・取消を行います。</p><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない</button><button id="mark-o" type="button">⭕ 代わりにできる</button></div><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。お子さんの名前を選ぶだけでは本人確認になりません。同じGoogleアカウントでログインすると、別の端末でも回答を変更できます。</p></section>
+<section class="card"><h2>③ ×・○の希望入力</h2><p class="small">最初にお子さんの名前を選び、入力する種類を選択してください。<b>カレンダーの日付を直接タップ</b>して登録・取消を行います。</p><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない</button><button id="mark-o" type="button">⭕ 代わりにできる</button></div><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。お子さんの名前を選ぶだけでは本人確認になりません。ログイン不要のため、名前の選択だけでは本人確認はできません。別端末で以前の回答を取り消せない場合は管理者にご連絡ください。</p></section>
 <footer>この画面では学年・当番可能曜日・個別の不可日などの管理情報は公開しません。共通URLを知る人が閲覧できる形式のため、URLの共有先にはご注意ください。接続エラー時は当番表を推測して表示しません。</footer>
 </main>
 <script type="module">
@@ -34,7 +34,7 @@ import {todayTokyo,monthPlus,DAY_NAMES,dayList} from './core.mjs?v=parent-input-
 import {canEditMonth,allowedAnswerKind,decideAnswerAction} from './parent-input-core.mjs?v=2';
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import {getAuth,GoogleAuthProvider,signInWithPopup,getIdTokenResult,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getAuth,signInAnonymously} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,collection,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'mini-basket-parent-share'),auth=getAuth(app),db=getFirestore(app);
@@ -42,7 +42,6 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const key='mini-basket-parent-name-1';
 let displayedClockMonth=todayTokyo().slice(0,7);
 let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
-let authorizedMembers=[];
 let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false};
 const caption=m=>Number(m.slice(0,4))+'年'+Number(m.slice(5,7))+'月';
 const mapNames=()=>Object.fromEntries(names.map(m=>[m.id,m.name]));
@@ -91,7 +90,7 @@ function draw(){
  if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';$('detail').textContent='管理者の公開待ちです。';return;}
  if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
- const canWrite=canEditMonth(monthData)&&!writing&&authorizedMembers.includes(selectedPerson);
+ const canWrite=canEditMonth(monthData)&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
  reply.textContent=writing?'Firebaseに保存中です…':lastSaveMessage|| (canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。');
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
@@ -140,7 +139,7 @@ $('calendar').addEventListener('click',async event=>{
  if(!target||target.disabled||writing)return;
  const date=target.dataset.day,month=selectedMonth,person=selectedPerson,kind=selectedMode;
  const day=days.find(d=>d.date===date);
- if(!authorizedMembers.includes(person)||!canEditMonth(monthData)||!published.includes(month)||!person
+ if(auth.currentUser?.isAnonymous!==true||!canEditMonth(monthData)||!published.includes(month)||!person
    ||!allowedAnswerKind({kind,ownerId:day?.ownerId,memberId:person,dayType:day?.type}))return;
  const old=answers.find(a=>a.date===date&&a.memberId===person);
  const uid=auth.currentUser?.uid;
@@ -179,12 +178,11 @@ $('calendar').addEventListener('click',async event=>{
 });
 drawMonths();
 async function start(){
- connection('Firebaseに匿名で接続中…');
+ connection('アカウント不要で当番表を読み込み中…');
  try{
-  if(!auth.currentUser){connection('Googleログイン後に当番表を表示します。');return;}
-  const identity=await getIdTokenResult(auth.currentUser,true);
-  authorizedMembers=identity.claims.email_verified===true&&Array.isArray(identity.claims.memberIds)?identity.claims.memberIds:[];
-  $('identity-status').textContent=authorizedMembers.length?'本人確認済み。管理者が登録したお子さんの回答を入力できます。':'入力権限の登録待ちです。管理者にGoogleアカウントを確認してもらってください。';
+  // Firebase anonymous sign-in is silent and asks parents for no account.
+  // It identifies one app installation only; it cannot prove a selected child's identity.
+  if(auth.currentUser?.isAnonymous!==true)await signInAnonymously(auth);
   unsubscribeRoster?.();resetMonthListeners();
   unsubscribeRoster=onSnapshot(rosterRef,s=>{
    if(!s.exists()){connection('公開用名簿がまだ準備されていません。管理者に確認してください。','notice');return}
@@ -198,10 +196,6 @@ async function start(){
   },e=>connection('読み込みに失敗：'+(e.code||e.message)+'。Firestoreの公開ルールを確認してください。','err'));
  }catch(e){connection('Firebaseに接続できませんでした：'+(e.code||e.message),'err')}
 }
-$('parent-login').addEventListener('click',async()=>{
- try{await signInWithPopup(auth,new GoogleAuthProvider());await start();}
- catch(e){connection('ログインできませんでした：'+e.message,'err');}
-});
 setInterval(()=>{
  const clockMonth=todayTokyo().slice(0,7);
  if(clockMonth!==displayedClockMonth){
