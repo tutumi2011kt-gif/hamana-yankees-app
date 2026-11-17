@@ -53,17 +53,22 @@ async function main(){
  if(!parentHtml.includes('🧪 検証版')||!parentHtml.includes('firebase-config-staging.mjs'))
   throw Error('検証用の保護者画面を確認できません');
  if(!writeGate.includes('PARENT_WRITES_ENABLED=true'))throw Error('検証用入力設定ではありません');
- if(!rules.includes('DO NOT DEPLOY')&&!rules.includes('DO NOT DEPLOY'))
+ if(!rules.includes('DO NOT DEPLOY'))
   throw Error('匿名書込み候補ルールの確認が必要です');
  const deployment=JSON.parse(settings);
  if(deployment?.firestore?.rules!=='firestore-parent-anonymous-write-candidate.rules'
    ||deployment?.hosting?.public!=='dist-staging')throw Error('QA専用の配信設定ではありません');
- const cli=join(root,'node_modules','.bin',process.platform==='win32'?'firebase.cmd':'firebase');
+ // Read the installed firebase-tools CLI entry from package metadata. Invoke via node
+ // so Windows does not need shell:true or fragile .cmd execution.
+ const firebasePkg=JSON.parse(await readFile(join(root,'node_modules','firebase-tools','package.json'),'utf8'));
+ const bin=typeof firebasePkg.bin==='string'?firebasePkg.bin:firebasePkg.bin?.firebase;
+ if(typeof bin!=='string'||bin.startsWith('/')||bin.includes('..')||bin.includes('\\'))throw Error('Firebase CLIが正しくインストールされていません');
+ const cli=join(root,'node_modules','firebase-tools',bin);
  if(!(await stat(cli)).isFile())throw Error('Firebase CLIをnpm installで準備してください');
  console.log('=== QA ONLY DEPLOY: '+opts.project+' ===');
  console.log('Host: QA専用、Rules: 匿名入力の検証候補。管理者が承認したQAのみ対象。');
  const {spawnSync}=await import('node:child_process');
- const result=spawnSync(cli,['deploy','--config','firebase.staging.json','--project',opts.project,'--only','hosting,firestore:rules'],
+ const result=spawnSync(process.execPath,[cli,'deploy','--config','firebase.staging.json','--project',opts.project,'--only','hosting,firestore:rules'],
   {cwd:root,stdio:'inherit',shell:false});
  if(result.error)throw result.error;
  if(result.status!==0)throw Error('検証環境への配信に失敗しました：終了コード '+result.status);
