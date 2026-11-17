@@ -22,6 +22,12 @@ select{width:100%;background:white;border:1px solid #c6d4e2;border-radius:9px;mi
 <p id="load-status" class="small">管理者として読み込んでください。</p></section>
 <section class="card"><h2>② 日ごとの活動・当番を確認</h2>
 <p class="small">自動生成された日は「練習予定・担当者なし・未確認」です。実際に練習があるか確認し、試合・休みに変更してから担当者を選んでください。「確認済み」は活動区分と担当者を確認して初めてチェックしてください。</p>
+<div class="notice" style="margin:10px 0"><b>仮当番の自動配置：</b> 12人の実施回数・繰越回数を確認し、実際の練習・試合・休みを確認してから実行してください。生成結果はこの画面の未保存プレビューです。保存後も管理者が「公開OK」を押すまでは共有されません。</div>
+<div id="history-inputs" class="small"></div>
+<label class="check"><input id="history-confirmed" type="checkbox"><span>12人全員の過去の実施回数・繰越回数を確認しました</span></label>
+<label class="check"><input id="calendar-confirmed" type="checkbox"><span>対象月すべての日の練習・試合・休みを確認しました（担当者は自動配置後に別途確認）</span></label>
+<button id="auto-draft" type="button" style="width:100%;margin:10px 0" disabled>確認した条件で当番を自動仮配置</button>
+<p id="auto-status" class="small" role="status">実績と日程を確認すると仮配置できます。</p>
 <div id="days" class="small">下書きはまだ読み込まれていません。</div>
 <div class="row"><button id="save" class="primary" disabled>確認した内容を下書き保存</button></div>
 <p id="save-status" role="status" class="small">保存しても保護者には公開されません。</p></section>
@@ -38,6 +44,7 @@ import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {canReviewGeneratedMonth,reviewMonthlyDraft,monthApprovalPatch,publishMonthList,APPROVAL_FIRST_MONTH,APPROVAL_LAST_MONTH} from './month-approval-core.mjs?v=1';
 import {preliminaryPracticeDays,addMonths} from './month-rollover-core.mjs?v=1';
 import {normalizeMember} from './month-draft-core.mjs?v=3';
+import {generateAutomaticDraft} from './auto-draft.mjs?v=2';
 import {isDayAllowed} from './weekday-conditions.mjs?v=6';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
@@ -64,9 +71,49 @@ function controls(){
  $('login').hidden=!!auth.currentUser;
  $('load').disabled=busy||!auth.currentUser;
  $('save').disabled=busy||!loaded||!dirty||meta?.publication!=='draft';
+ $('auto-draft').disabled=busy||!loaded||meta?.publication!=='draft';
  const ok=loaded&&!dirty&&!busy&&currentAudit().ok&&meta?.publication==='draft';
  $('approve').disabled=!ok||!$('agree').checked;
 }
+function renderHistoryInputs(){
+ const ordered=members.slice().sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+ $('history-inputs').innerHTML='<div class="small">累計実施回数・繰越（数値はこの画面内の自動仮割当に使用し、まだFirestoreには保存しません）</div>'+
+  ordered.map(m=>'<div class="row" style="align-items:center;margin-top:5px">'+
+  '<b style="flex:1 1 90px">'+esc(m.name)+'</b>'+
+  '<label style="flex:1 1 110px">実施回数<input type="number" min="0" step="1" data-count="'+esc(m.id)+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
+  '<label style="flex:1 1 110px">繰越回数<input type="number" min="0" step="1" data-carry="'+esc(m.id)+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
+  '</div>').join('');
+ $('history-confirmed').checked=false;
+ $('calendar-confirmed').checked=false;
+}
+$('history-inputs').addEventListener('input',()=>{$('history-confirmed').checked=false;});
+$('days').addEventListener('change',()=>{$('calendar-confirmed').checked=false;});
+$('auto-draft').addEventListener('click',()=>{
+ if(!loaded||busy||meta?.publication!=='draft')return;
+ if(!$('history-confirmed').checked||!$('calendar-confirmed').checked){
+  out('auto-status','先に実績回数・繰越回数と、全日の練習・試合・休みの確認をしてください。','err');return;
+ }
+ const counts={},carry={};
+ for(const m of members){
+  const a=document.querySelector('[data-count="'+m.id+'"]')?.value??'';
+  const b=document.querySelector('[data-carry="'+m.id+'"]')?.value??'';
+  if(a.trim()===''||b.trim()===''||!Number.isSafeInteger(Number(a))||!Number.isSafeInteger(Number(b))||Number(a)<0||Number(b)<0){
+   out('auto-status',m.name+'の実施回数・繰越回数を0以上の整数で入力してください。','err');return;
+  }
+  counts[m.id]=Number(a);carry[m.id]=Number(b);
+ }
+ if(rows.some(x=>x.ownerId)&&!confirm('現在の担当者を自動で再計算します。既存の担当者割当を置き換えますが、まだFirestoreには保存されません。続けますか？'))return;
+ try{
+  const result=generateAutomaticDraft({month,rows,members,counts,carry,calendarConfirmed:true});
+  rows=result.rows.map(x=>({...x,activityVerified:false}));
+  dirty=true;
+  $('agree').checked=false;
+  render();
+  out('auto-status','仮配置（未保存） '+members.map(m=>m.name+' '+(result.allocated[m.id]||0)+'回').join('／')+
+   (result.warnings.length?'｜要確認：'+result.warnings.join('／'):'')+
+   '。各日の担当者・活動内容を確認済みにしてから下書き保存してください。','notice');
+ }catch(e){out('auto-status','自動割当できません：'+(e.message||String(e)),'err');}
+});
 function review(){
  if(!loaded){out('review','Firebaseの下書き読み込み待ちです。');$('errors').textContent='';controls();return;}
  const audit=currentAudit();
@@ -98,13 +145,13 @@ function render(){
 }
 onAuthStateChanged(auth,user=>{
  loaded=false;rows=[];members=[];dirty=false;meta=null;version=null;
- $('days').textContent='Firebaseの読み込み待ちです。';$('agree').checked=false;
+ $('days').textContent='Firebaseの読み込み待ちです。';$('history-inputs').textContent='';$('agree').checked=false;
  out('auth',user?'管理者アカウントでログイン済み。読み込みを押してください。':'管理者のGoogleアカウントでログインしてください。');
  out('load-status','Firebaseの月データは未確認です。');out('approve-status','まだ公開していません。');
  review();
 },e=>out('auth','認証エラー：'+(e.code||e.message),'err'));
 $('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>out('auth','ログインエラー：'+(e.code||e.message),'err'));
-$('month').onchange=()=>{loaded=false;rows=[];members=[];dirty=false;meta=null;version=null;$('agree').checked=false;$('days').textContent='この月を読み込んでください。';review()};
+$('month').onchange=()=>{loaded=false;rows=[];members=[];dirty=false;meta=null;version=null;$('agree').checked=false;$('history-inputs').textContent='';$('days').textContent='この月を読み込んでください。';review()};
 $('agree').onchange=controls;
 $('days').addEventListener('change',event=>{
  if(!loaded||busy||meta?.publication!=='draft')return;
@@ -138,7 +185,7 @@ $('load').onclick=async()=>{
   members=ms.docs.map(x=>normalizeMember({id:x.id,...x.data()}));
   rows=days.docs.map(d=>({date:d.id,...d.data()})).sort((a,b)=>a.date.localeCompare(b.date));
   initialSignatures=new Map(rows.map(x=>[x.date,snapshotSignature(x)]));
-  loaded=true;dirty=false;render();
+  loaded=true;dirty=false;renderHistoryInputs();render();
   out('load-status','✅ '+chosen+' の'+rows.length+'日分を取得。状態：'+meta.publication+'。','ok');
   out('save-status','確認内容を修正したら下書き保存してください。');
  }catch(e){loaded=false;out('load-status','読み込み失敗：'+(e.code||e.message||String(e)),'err');$('days').textContent='読み込みできませんでした。'}
