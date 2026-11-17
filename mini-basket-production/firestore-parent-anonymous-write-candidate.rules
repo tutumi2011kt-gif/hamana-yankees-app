@@ -1,7 +1,5 @@
-// EXPERIMENTAL CANDIDATE. DO NOT DEPLOY: common URL + child name cannot prove parent identity.
-// A Firebase anonymous UID only identifies one installation. Any anonymous user may
-// claim another child's name on an empty date; that risk is NOT solved by this rule.
-// Keeps manager-only editing of calendar, ledger, and swap decisions.
+// EXPERIMENTAL ANONYMOUS WRITE CANDIDATE — DO NOT DEPLOY. Name selection cannot authenticate parent.
+// This deliberately exposes a MINIMAL public roster only to signed-in clients,
 // including anyone who can visit the link and sign in anonymously.
 // Do not publish before obtaining team consent to anonymous-viewer access.
 // Private members (grade, unavailable dates, etc.) remain admin-only.
@@ -41,45 +39,7 @@ service cloud.firestore {
       return /databases/$(database)/documents/teams/aritama-mini-basket/members/$(memberId);
     }
     function validEditableMonth(monthId) {
-      return monthId.matches('^2027-(0[1-9]|1[01])
-      allow get: if isAdmin() && request.auth.uid == uid;
-      allow list, write: if false;
-    }
-
-    // Management data: Google admin only, including private member constraints.
-    match /teams/{teamId}/{document=**} {
-      allow read, write: if isAdmin();
-    }
-
-    // Share only minimal names and IDs, never the full private member documents.
-    match /teams/aritama-mini-basket/public/roster {
-      allow get: if signedIn();
-    }
-
-    // Parents can read only manager-approved months; candidate writes are strictly limited.
-    match /teams/aritama-mini-basket/months/{monthId} {
-      allow get: if signedIn() && resource.data.publication == 'published';
-
-      match /days/{dayId} {
-        allow get, list: if signedIn() && publishedMonth(monthId);
-      }
-
-      match /answers/{answerId} {
-        allow get, list: if signedIn() && publishedMonth(monthId);
-        allow create: if anonymousParent()
-          && validAnswerShape(monthId, answerId, request.resource.data);
-        allow update: if anonymousParent()
-          && resource.data.updatedBy == request.auth.uid
-          && resource.data.memberId == request.resource.data.memberId
-          && resource.data.date == request.resource.data.date
-          && validAnswerShape(monthId, answerId, request.resource.data);
-        allow delete: if anonymousParent()
-          && validDelete(monthId, answerId);
-      }
-    }
-  }
-}
-)
+      return monthId.matches('^2027-(0[1-9]|1[01])$')
         && exists(monthPath(monthId))
         && get(monthPath(monthId)).data.publication == 'published'
         && get(monthPath(monthId)).data.inputState == 'open'
@@ -105,36 +65,7 @@ service cloud.firestore {
         && answer.keys().hasOnly(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
         && answer.keys().hasAll(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
         && answer.date is string
-        && answer.date.matches('^' + monthId + '-(0[1-9]|[12][0-9]|3[01])
-      allow get: if isAdmin() && request.auth.uid == uid;
-      allow list, write: if false;
-    }
-
-    // Management data: Google admin only, including private member constraints.
-    match /teams/{teamId}/{document=**} {
-      allow read, write: if isAdmin();
-    }
-
-    // Share only minimal names and IDs, never the full private member documents.
-    match /teams/aritama-mini-basket/public/roster {
-      allow get: if signedIn();
-    }
-
-    // Only published months. No parent writes are permitted at this stage.
-    match /teams/aritama-mini-basket/months/{monthId} {
-      allow get: if signedIn() && resource.data.publication == 'published';
-
-      match /days/{dayId} {
-        allow get, list: if signedIn() && publishedMonth(monthId);
-      }
-
-      match /answers/{answerId} {
-        allow get, list: if signedIn() && publishedMonth(monthId);
-      }
-    }
-  }
-}
-)
+        && answer.date.matches('^' + monthId + '-(0[1-9]|[12][0-9]|3[01])$')
         && answer.memberId is string
         && answerId == answer.date + '_' + answer.memberId
         && answer.kind in ['x', 'o']
@@ -173,7 +104,7 @@ service cloud.firestore {
       allow get: if signedIn();
     }
 
-    // Only published months. No parent writes are permitted at this stage.
+    // Only manager-published months are readable. Candidate parent answers are bounded by server-side checks.
     match /teams/aritama-mini-basket/months/{monthId} {
       allow get: if signedIn() && resource.data.publication == 'published';
 
@@ -183,6 +114,13 @@ service cloud.firestore {
 
       match /answers/{answerId} {
         allow get, list: if signedIn() && publishedMonth(monthId);
+        allow create: if anonymousParent() && validAnswerShape(monthId, answerId, request.resource.data);
+        allow update: if anonymousParent()
+          && resource.data.updatedBy == request.auth.uid
+          && resource.data.date == request.resource.data.date
+          && resource.data.memberId == request.resource.data.memberId
+          && validAnswerShape(monthId, answerId, request.resource.data);
+        allow delete: if anonymousParent() && validDelete(monthId, answerId);
       }
     }
   }
