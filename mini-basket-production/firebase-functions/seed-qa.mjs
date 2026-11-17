@@ -4,8 +4,6 @@
 //   node firebase-functions/seed-qa.mjs --project my-basket-qa
 //   node firebase-functions/seed-qa.mjs --project my-basket-qa --confirm my-basket-qa --admin-uid FIREBASE_GOOGLE_UID --apply
 // Requires Firebase Admin application-default credentials authorized for the QA project.
-import {initializeApp,applicationDefault} from 'firebase-admin/app';
-import {getFirestore,Timestamp,FieldValue} from 'firebase-admin/firestore';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 import {makeQaFixture} from '../staging-fixture-core.mjs';
@@ -30,14 +28,15 @@ export function parseQaSeedArgs(args){
  }
  return {...opts,fixture};
 }
-export function qaSeedEntries(opts){
+export function qaSeedEntries(opts,serverTimestamp){
+ if(typeof serverTimestamp!=='function')throw Error('検証用Admin SDKのサーバー時刻関数が必要です');
  const {fixture}=opts;
  const admin=opts.adminUid?[
   {path:'admins/'+opts.adminUid,data:{enabled:true,qaOnly:true}}
  ]:[];
  return [...fixture.entries,...admin,{
   path:fixture.markerPath,data:{
-   qaOnly:true,projectId:fixture.projectId,version:1,createdAt:FieldValue.serverTimestamp(),
+   qaOnly:true,projectId:fixture.projectId,version:1,createdAt:serverTimestamp(),
    adminUid:opts.adminUid,fixtureMonth:fixture.publishedMonth
   }
  }];
@@ -53,10 +52,13 @@ async function run(){
   console.log('実際にQAへ初期データを作るには --confirm [同じQA ID] --admin-uid [検証用UID] --apply が必要です。');
   return;
  }
+ const [{initializeApp,applicationDefault},{getFirestore,Timestamp,FieldValue}]=await Promise.all([
+  import('firebase-admin/app'),import('firebase-admin/firestore')
+ ]);
  const app=initializeApp({credential:applicationDefault(),projectId:opts.project},'qa-fixtures');
  const db=getFirestore(app);
  if(db.projectId!==opts.project)throw Error('FirestoreのプロジェクトIDが一致しません');
- const records=qaSeedEntries(opts);
+ const records=qaSeedEntries(opts,()=>FieldValue.serverTimestamp());
  const refs=records.map(r=>db.doc(r.path));
  // All reads are performed before writes. This is one atomic, create-only transaction.
  // Never overwrite even a single existing record, calendar, roster or admin entry.
