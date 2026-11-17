@@ -13,6 +13,8 @@ const people=['yui','wakana','mia','an','mai','koharu','nagisa','nodoka','sayaka
 const env=await initializeTestEnvironment({projectId:'demo-mini-basket',firestore:{
  rules:await readFile('firestore-parent-anonymous-write-candidate.rules','utf8')
 }});
+// Previous test files share one emulator process; clear their answers before this suite.
+await env.clearFirestore();
 const answer=(id,uid,kind='o')=>({date,memberId:id,kind,updatedAt:serverTimestamp(),updatedBy:uid});
 const contexts=Array.from({length:15},(_,i)=>env.authenticatedContext('phone-'+i,{firebase:{sign_in_provider:'anonymous'}}).firestore());
 const answerRef=(db,id,answerDate=date)=>doc(db,prefix+'/answers/'+answerDate+'_'+id);
@@ -56,25 +58,13 @@ try{
   })
  });
  const results=await Promise.allSettled(ops.map(o=>o.job));
- const initialSuccess=results.slice(0,12).filter(x=>x.status==='fulfilled').length;
- const deniedValid=results.slice(0,12).map((r,i)=>r.status==='rejected'?i:null).filter(x=>x!==null);
- for(let i=12;i<15;i++)assert.equal(results[i].status,'rejected','invalid anonymous write must be denied '+i);
- console.log('15-device initial wave', {validSuccess:initialSuccess,validDenied:deniedValid,invalidDenied:3});
- // Probe whether initial "permission-denied" on valid writes is transient only.
- // Retrying uses the same anonymous UID, without bypassing server-side rules.
- for(const i of deniedValid){
-  try{
-   await assertSucceeds(setDoc(answerRef(contexts[i],people[i]),answer(people[i],'phone-'+i,people[i]==='yui'?'x':'o')));
-   console.log('Recovered failed valid write on same UID',i,people[i]);
-  }catch(error){
-   throw new Error('Valid concurrent write remains denied after isolation for member '+people[i]+': '+String(error?.message||error));
-  }
- }
+ for(let i=0;i<results.length;i++)assert.equal(results[i].status,ops[i].expected?'fulfilled':'rejected',
+  'device '+i+' ('+(people[i]||'invalid')+') result: '+(results[i].reason?.message||'ok'));
  const visible=await assertSucceeds(getDocs(collection(contexts[14],prefix+'/answers')));
  assert.equal(visible.size,12,'12 valid answers are immediately available to other signed-in viewers');
  assert.ok(visible.docs.some(x=>x.id===date+'_yui'&&x.data().kind==='x'));
  assert.ok(visible.docs.some(x=>x.id===date+'_haruka'&&x.data().kind==='o'));
- console.log('15 devices checked: all 12 correct answers persisted after '+deniedValid.length+' isolated retry(s), 3 invalid denied');
+ console.log('PASS 15 simultaneous clients: 12 correct answers persisted, 3 invalid denied');
 
  // Two different phones racing to claim the first response for the same child/day.
  const r1=doc(contexts[12],prefix+'/answers/2027-01-08_yui');
