@@ -56,6 +56,7 @@ try{
   })
  });
  const results=await Promise.allSettled(ops.map(o=>o.job));
+ console.log('DEBUG 15-device outcomes',results.map((x,i)=>({i,member:people[i]??'invalid',status:x.status,reason:x.status==='rejected'?(x.reason?.code||x.reason?.message||String(x.reason)):'ok'})));
  for(let i=0;i<results.length;i++)
   assert.equal(results[i].status,ops[i].expected?'fulfilled':'rejected',
    'unexpected result for anonymous device '+i);
