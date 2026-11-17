@@ -4,6 +4,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {assertStagingFirebaseConfig} from './staging-config-guard.mjs';
+import {getQaDefaultHostingSite} from './qa-hosting-check.mjs';
 
 const root=dirname(fileURLToPath(import.meta.url));
 export function parseQaDeployArgs(args){
@@ -65,9 +66,21 @@ async function main(){
  if(typeof bin!=='string'||bin.startsWith('/')||bin.includes('..')||bin.includes('\\'))throw Error('Firebase CLIが正しくインストールされていません');
  const cli=join(root,'node_modules','firebase-tools',bin);
  if(!(await stat(cli)).isFile())throw Error('Firebase CLIをnpm installで準備してください');
+ // Firebase projects created since Oct 15, 2026 may lack a default Hosting site.
+ // Never create one silently; read-only preflight and fail with an actionable message.
+ const {spawnSync}=await import('node:child_process');
+ const inspect=spawnSync(process.execPath,[cli,'hosting:sites:list','--project',opts.project,'--json'],
+  {cwd:root,encoding:'utf8',shell:false});
+ if(inspect.error)throw inspect.error;
+ if(inspect.status!==0)throw Error('検証用Hostingサイト一覧を取得できません：'+
+  String(inspect.stderr||inspect.stdout||'').slice(0,600));
+ let sites;
+ try{sites=JSON.parse(inspect.stdout);}
+ catch{throw Error('Hostingサイト一覧を解析できないため、安全のため配信を中止します');}
+ getQaDefaultHostingSite(sites,opts.project);
+ console.log('✅ 検証用デフォルトHostingサイトを確認：'+opts.project);
  console.log('=== QA ONLY DEPLOY: '+opts.project+' ===');
  console.log('Host: QA専用、Rules: 匿名入力の検証候補。管理者が承認したQAのみ対象。');
- const {spawnSync}=await import('node:child_process');
  const result=spawnSync(process.execPath,[cli,'deploy','--config','firebase.staging.json','--project',opts.project,'--only','hosting,firestore:rules'],
   {cwd:root,stdio:'inherit',shell:false});
  if(result.error)throw result.error;
