@@ -1,0 +1,189 @@
+// EXPERIMENTAL CANDIDATE. DO NOT DEPLOY: common URL + child name cannot prove parent identity.
+// A Firebase anonymous UID only identifies one installation. Any anonymous user may
+// claim another child's name on an empty date; that risk is NOT solved by this rule.
+// Keeps manager-only editing of calendar, ledger, and swap decisions.
+// including anyone who can visit the link and sign in anonymously.
+// Do not publish before obtaining team consent to anonymous-viewer access.
+// Private members (grade, unavailable dates, etc.) remain admin-only.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+
+    function publishedMonth(monthId) {
+      return exists(/databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId))
+        && get(/databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId)).data.publication == 'published';
+    }
+
+
+    function anonymousParent() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+    function monthPath(monthId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId);
+    }
+    function dayPath(monthId, dateId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId)/days/$(dateId);
+    }
+    function memberPath(memberId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/members/$(memberId);
+    }
+    function validEditableMonth(monthId) {
+      return monthId.matches('^2027-(0[1-9]|1[01])
+      allow get: if isAdmin() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // Management data: Google admin only, including private member constraints.
+    match /teams/{teamId}/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Share only minimal names and IDs, never the full private member documents.
+    match /teams/aritama-mini-basket/public/roster {
+      allow get: if signedIn();
+    }
+
+    // Parents can read only manager-approved months; candidate writes are strictly limited.
+    match /teams/aritama-mini-basket/months/{monthId} {
+      allow get: if signedIn() && resource.data.publication == 'published';
+
+      match /days/{dayId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+
+      match /answers/{answerId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+        allow create: if anonymousParent()
+          && validAnswerShape(monthId, answerId, request.resource.data);
+        allow update: if anonymousParent()
+          && resource.data.updatedBy == request.auth.uid
+          && resource.data.memberId == request.resource.data.memberId
+          && resource.data.date == request.resource.data.date
+          && validAnswerShape(monthId, answerId, request.resource.data);
+        allow delete: if anonymousParent()
+          && validDelete(monthId, answerId);
+      }
+    }
+  }
+}
+)
+        && exists(monthPath(monthId))
+        && get(monthPath(monthId)).data.publication == 'published'
+        && get(monthPath(monthId)).data.inputState == 'open'
+        && request.time >= get(monthPath(monthId)).data.openAt
+        && request.time < get(monthPath(monthId)).data.cutoffAt;
+    }
+    function activeMember(memberId, dayId) {
+      return exists(memberPath(memberId))
+        && get(memberPath(memberId)).data.status == 'active'
+        && get(memberPath(memberId)).data.startDate <= dayId
+        && (get(memberPath(memberId)).data.get('endDate', null) == null
+          || get(memberPath(memberId)).data.endDate >= dayId);
+    }
+    function validPracticeDay(monthId, dateId) {
+      return exists(dayPath(monthId, dateId))
+        && get(dayPath(monthId, dateId)).data.type == 'practice'
+        && get(dayPath(monthId, dateId)).data.ownerId is string
+        && get(dayPath(monthId, dateId)).data.ownerId.size() > 0
+        && get(dayPath(monthId, dateId)).data.get('confirmedSubstituteId', null) == null;
+    }
+    function validAnswerShape(monthId, answerId, answer) {
+      return answer is map
+        && answer.keys().hasOnly(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
+        && answer.keys().hasAll(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
+        && answer.date is string
+        && answer.date.matches('^' + monthId + '-(0[1-9]|[12][0-9]|3[01])
+      allow get: if isAdmin() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // Management data: Google admin only, including private member constraints.
+    match /teams/{teamId}/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Share only minimal names and IDs, never the full private member documents.
+    match /teams/aritama-mini-basket/public/roster {
+      allow get: if signedIn();
+    }
+
+    // Only published months. No parent writes are permitted at this stage.
+    match /teams/aritama-mini-basket/months/{monthId} {
+      allow get: if signedIn() && resource.data.publication == 'published';
+
+      match /days/{dayId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+
+      match /answers/{answerId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+    }
+  }
+}
+)
+        && answer.memberId is string
+        && answerId == answer.date + '_' + answer.memberId
+        && answer.kind in ['x', 'o']
+        && answer.updatedAt == request.time
+        && answer.updatedBy == request.auth.uid
+        && validEditableMonth(monthId)
+        && activeMember(answer.memberId, answer.date)
+        && validPracticeDay(monthId, answer.date)
+        && ((answer.kind == 'x'
+              && get(dayPath(monthId, answer.date)).data.ownerId == answer.memberId)
+         || (answer.kind == 'o'
+              && get(dayPath(monthId, answer.date)).data.ownerId != answer.memberId));
+    }
+    function validDelete(monthId, answerId) {
+      return resource.data.updatedBy == request.auth.uid
+        && resource.data.date is string
+        && resource.data.memberId is string
+        && answerId == resource.data.date + '_' + resource.data.memberId
+        && validEditableMonth(monthId)
+        && activeMember(resource.data.memberId, resource.data.date)
+        && validPracticeDay(monthId, resource.data.date);
+    }
+
+    match /admins/{uid} {
+      allow get: if isAdmin() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // Management data: Google admin only, including private member constraints.
+    match /teams/{teamId}/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Share only minimal names and IDs, never the full private member documents.
+    match /teams/aritama-mini-basket/public/roster {
+      allow get: if signedIn();
+    }
+
+    // Only published months. No parent writes are permitted at this stage.
+    match /teams/aritama-mini-basket/months/{monthId} {
+      allow get: if signedIn() && resource.data.publication == 'published';
+
+      match /days/{dayId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+
+      match /answers/{answerId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+    }
+  }
+}
