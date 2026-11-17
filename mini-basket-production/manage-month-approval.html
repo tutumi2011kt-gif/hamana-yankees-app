@@ -45,6 +45,7 @@ import {canReviewGeneratedMonth,reviewMonthlyDraft,monthApprovalPatch,publishMon
 import {preliminaryPracticeDays,addMonths} from './month-rollover-core.mjs?v=1';
 import {normalizeMember} from './month-draft-core.mjs?v=3';
 import {generateAutomaticDraft} from './auto-draft.mjs?v=2';
+import {ledgerTotals} from './duty-ledger-core.mjs?v=1';
 import {isDayAllowed} from './weekday-conditions.mjs?v=6';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
@@ -55,7 +56,7 @@ const memberRef=id=>doc(db,'teams',teamId,'members',id);
 const monthRef=m=>doc(db,'teams',teamId,'months',m);
 const dayRef=(m,date)=>doc(db,'teams',teamId,'months',m,'days',date);
 const rosterRef=doc(db,'teams',teamId,'public','roster');
-let month='',members=[],rows=[],meta=null,version=null,loaded=false,busy=false,dirty=false;
+let month='',members=[],rows=[],meta=null,version=null,loaded=false,busy=false,dirty=false,ledgerRecords=[];
 const daysLabel=['日','月','火','水','木','金','土'];
 const out=(id,msg,cls='small')=>{$(id).textContent=msg;$(id).className=cls};
 const snapshotSignature=d=>JSON.stringify({date:d.date,weekday:d.weekday,type:d.type,ownerId:d.ownerId??null,activityVerified:d.activityVerified===true,updatedAt:d.updatedAt?.toMillis?.()??null});
@@ -77,12 +78,16 @@ function controls(){
 }
 function renderHistoryInputs(){
  const ordered=members.slice().sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
- $('history-inputs').innerHTML='<div class="small">累計実施回数・繰越（数値はこの画面内の自動仮割当に使用し、まだFirestoreには保存しません）</div>'+
+ const fromLedger=ledgerRecords.length?ledgerTotals(members.map(m=>m.id),ledgerRecords,month):null;
+ $('history-inputs').innerHTML='<div class="small">'+
+  (fromLedger?'📒 管理者の実績台帳から仮入力しました（実績・中止の未記録がないか確認し、必要なら修正）。':'📒 実績台帳に記録がありません。未確認のまま0と決めつけず、過去の実施回数と繰越を手動入力してください。')+
+  ' この画面の数字は仮割当に使い、実績台帳には書き込みません。</div>'+
   ordered.map(m=>'<div class="row" style="align-items:center;margin-top:5px">'+
   '<b style="flex:1 1 90px">'+esc(m.name)+'</b>'+
-  '<label style="flex:1 1 110px">実施回数<input type="number" min="0" step="1" data-count="'+esc(m.id)+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
-  '<label style="flex:1 1 110px">繰越回数<input type="number" min="0" step="1" data-carry="'+esc(m.id)+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
-  '</div>').join('');
+  '<label style="flex:1 1 110px">実施回数<input type="number" min="0" step="1" data-count="'+esc(m.id)+'" value="'+(fromLedger?fromLedger.counts[m.id]:'')+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
+  '<label style="flex:1 1 110px">繰越回数<input type="number" min="0" step="1" data-carry="'+esc(m.id)+'" value="'+(fromLedger?fromLedger.carry[m.id]:'')+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
+  '</div>').join('')+
+  (fromLedger?.overdue.length?'<div class="notice">⚠ 4か月超の未解消繰越：'+esc(fromLedger.overdue.join('、'))+'。管理者が個別確認してください。</div>':'');
  $('history-confirmed').checked=false;
  $('calendar-confirmed').checked=false;
 }
@@ -104,7 +109,8 @@ $('auto-draft').addEventListener('click',()=>{
  }
  if(rows.some(x=>x.ownerId)&&!confirm('現在の担当者を自動で再計算します。既存の担当者割当を置き換えますが、まだFirestoreには保存されません。続けますか？'))return;
  try{
-  const result=generateAutomaticDraft({month,rows,members,counts,carry,calendarConfirmed:true});
+  const histories=ledgerRecords.length?ledgerTotals(members.map(m=>m.id),ledgerRecords,month):null;
+  const result=generateAutomaticDraft({month,rows,members,counts,carry,historyDates:histories?.historyDates??{},calendarConfirmed:true});
   rows=result.rows.map(x=>({...x,activityVerified:false}));
   dirty=true;
   $('agree').checked=false;
@@ -144,14 +150,14 @@ function render(){
  review();
 }
 onAuthStateChanged(auth,user=>{
- loaded=false;rows=[];members=[];dirty=false;meta=null;version=null;
+ loaded=false;rows=[];members=[];ledgerRecords=[];dirty=false;meta=null;version=null;
  $('days').textContent='Firebaseの読み込み待ちです。';$('history-inputs').textContent='';$('agree').checked=false;
  out('auth',user?'管理者アカウントでログイン済み。読み込みを押してください。':'管理者のGoogleアカウントでログインしてください。');
  out('load-status','Firebaseの月データは未確認です。');out('approve-status','まだ公開していません。');
  review();
 },e=>out('auth','認証エラー：'+(e.code||e.message),'err'));
 $('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>out('auth','ログインエラー：'+(e.code||e.message),'err'));
-$('month').onchange=()=>{loaded=false;rows=[];members=[];dirty=false;meta=null;version=null;$('agree').checked=false;$('history-inputs').textContent='';$('days').textContent='この月を読み込んでください。';review()};
+$('month').onchange=()=>{loaded=false;rows=[];members=[];ledgerRecords=[];dirty=false;meta=null;version=null;$('agree').checked=false;$('history-inputs').textContent='';$('days').textContent='この月を読み込んでください。';review()};
 $('agree').onchange=controls;
 $('days').addEventListener('change',event=>{
  if(!loaded||busy||meta?.publication!=='draft')return;
@@ -172,9 +178,10 @@ $('load').onclick=async()=>{
  try{
   const admin=await getDocFromServer(doc(db,'admins',user.uid));
   if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限を確認できません');
-  const [m,days,ms,roster]=await Promise.all([
+  const [m,days,ms,roster,ledger]=await Promise.all([
    getDocFromServer(monthRef(chosen)),getDocsFromServer(collection(db,'teams',teamId,'months',chosen,'days')),
-   getDocsFromServer(collection(db,'teams',teamId,'members')),getDocFromServer(rosterRef)
+   getDocsFromServer(collection(db,'teams',teamId,'members')),getDocFromServer(rosterRef),
+   getDocsFromServer(collection(db,'teams',teamId,'dutyLedger'))
   ]);
   if(auth.currentUser?.uid!==user.uid||$('month').value!==chosen)throw Error('ログインまたは選択月が変わりました');
   if(!m.exists())throw Error('まだ自動生成されていません。月初の作成を確認してください');
@@ -183,6 +190,7 @@ $('load').onclick=async()=>{
   if(!roster.exists()||!Array.isArray(roster.data().members)||!Array.isArray(roster.data().publishedMonths))throw Error('保護者向け公開名簿を確認できません');
   month=chosen;meta=m.data();version=Number(meta.version??0);
   members=ms.docs.map(x=>normalizeMember({id:x.id,...x.data()}));
+  ledgerRecords=ledger.docs.map(x=>({date:x.id,...x.data()}));
   rows=days.docs.map(d=>({date:d.id,...d.data()})).sort((a,b)=>a.date.localeCompare(b.date));
   initialSignatures=new Map(rows.map(x=>[x.date,snapshotSignature(x)]));
   loaded=true;dirty=false;renderHistoryInputs();render();
