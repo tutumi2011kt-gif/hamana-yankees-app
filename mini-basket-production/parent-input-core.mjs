@@ -42,6 +42,25 @@ export function answerTapDecision({day,existing,kind,memberId,uid,canWrite}){
  return {enabled:action!=='blocked',action};
 }
 
+// While a Firebase transaction is in flight, the same calendar cell must
+// remain tappable. Each repeat tap reverses the queued toggle (tap parity).
+export function sameAnswerTap(pending,{month,date,person,kind}){
+ return !!pending&&pending.month===month&&pending.date===date
+  &&pending.person===person&&pending.kind===kind;
+}
+
+// Show just-committed answers while onSnapshot lags.
+// Overrides are answer-document IDs scoped to one month;
+// null represents a successful deletion, an answer object a successful set.
+export function overlayParentAnswers(snapshotAnswers,overrides){
+ const visible=new Map(snapshotAnswers.map(a=>[a.id||a.date+'_'+a.memberId,a]));
+ for(const [id,answer] of overrides){
+  if(answer===null)visible.delete(id);
+  else visible.set(id,{id,...answer});
+ }
+ return [...visible.values()];
+}
+
 export function defaultCutoffMillis(targetMonth){
  return jstInputCutoffMillis(targetMonth);
 }
