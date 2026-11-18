@@ -1,4 +1,4 @@
-name: Mini basket QA Hosting only (stable rapid x/o taps)
+name: Mini basket QA Hosting only (calendar and annual planner demo)
 on:
   workflow_dispatch:
   push:
@@ -53,7 +53,11 @@ jobs:
           node staging-build-tests.mjs
           node parent-input-tests.mjs
           node parent-clock-tests.mjs
+          node annual-admin-demo-tests.mjs
           test -s dist-staging/index.html
+          test -s dist-staging/annual-admin-demo.html
+          grep -q '年間当番表管理' dist-staging/annual-admin-demo.html
+          grep -q 'aritama-qa-annual-demo-v1' dist-staging/annual-admin-demo.html
           grep -q 'id="calendar"' dist-staging/index.html
           grep -q 'id="mark-x"' dist-staging/index.html
           grep -q 'id="mark-o"' dist-staging/index.html
@@ -69,7 +73,7 @@ jobs:
             echo 'ERROR: outdated detailed duty section remains; QA release refused' >&2
             exit 1
           fi
-          echo 'PASS: QA parent has stable mobile tap target, queued rapid cancel, and committed-state overlay'
+          echo 'PASS: QA parent x/o and 11-month annual planner demo build tested without Firebase writes'
       - name: Deploy ONLY QA Firebase Hosting when authorized QA credentials exist
         env:
           QA_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ARITAMA_MINI_BASKET_QA }}
@@ -117,4 +121,11 @@ jobs:
             echo 'QA site still contains the removed detail list; deployment verification failed' >&2
             exit 1
           fi
-          echo 'PASS: live QA Hosting serves stable rapid tap/cancel UI; no Firebase data or security rules touched'
+          curl --fail --silent --show-error --location --max-redirs 2 \
+            --retry 3 --retry-delay 2 -H 'Cache-Control: no-cache' \
+            'https://aritama-mini-basket-qa.web.app/annual-admin-demo.html?verify=annual-20261119' \
+            -o "$RUNNER_TEMP/qa-annual-after.html"
+          grep -q '年間当番表管理' "$RUNNER_TEMP/qa-annual-after.html"
+          grep -q 'aritama-qa-annual-demo-v1' "$RUNNER_TEMP/qa-annual-after.html"
+          grep -q 'Firebaseや保護者用カレンダーには一切反映しません' "$RUNNER_TEMP/qa-annual-after.html"
+          echo 'PASS: live QA Hosting serves annual demo and x/o parent; no Firebase data or security rules touched'
