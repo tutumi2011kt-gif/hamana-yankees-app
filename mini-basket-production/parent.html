@@ -172,7 +172,7 @@ $('calendar').addEventListener('click',async event=>{
   return;
  }
  const day=days.find(d=>d.date===date);
- const old=answers.find(a=>a.date===date&&a.memberId===person);
+ const old=overlayParentAnswers(answers,answerOverlay).find(a=>a.date===date&&a.memberId===person);
  const uid=auth.currentUser?.uid;
  const decision=answerTapDecision({day,existing:old,kind,memberId:person,uid,
    canWrite:PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&
@@ -224,6 +224,7 @@ $('calendar').addEventListener('click',async event=>{
    if(month===selectedMonth){
     answerOverlay.set(answerId(date,person),committedAction==='delete'?null:
       {date,memberId:person,kind,updatedBy:uid});
+    reconcileAnswerOverlay();
    }
    lastSaveMessage=committedAction==='delete'?
     '✅ '+mark+'を取り消しました。カレンダーにも反映されます。':
