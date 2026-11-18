@@ -27,6 +27,8 @@ label{display:block;margin:10px 0}.tick{display:flex;gap:11px;align-items:flex-s
 <label>締切（日本時間・この時刻から入力不可）<input id="close" type="datetime-local" disabled></label>
 </div>
 <button id="defaults" disabled>標準の受付期間を表示（保存しない）</button>
+<p id="window-difference" role="status" class="muted">読み込み後に受付期間を照合します。</p>
+<label class="tick"><input type="checkbox" id="custom-window-ack" disabled><span>標準と異なる受付開始・締切を指定していることを理解し、チームの正式運用と照合しました。</span></label>
 <p class="warn">⚠ 1月分の標準締切は2026年12月1日0:00です。チームの運用上「毎月5日」など異なる締切にする場合、責任者と確認し、保護者へ必ず案内してください。公開後の締切変更は別の管理者画面で行います。</p></section>
 <section class="card"><h2>③ 練習・試合・休み・当番担当を全日確認</h2>
 <p class="muted">各日を実際の活動予定と照合してください。担当未登録・曜日条件違反の日は公開できません。試合・休みには当番を置きません。確認用のチェックはこの画面の一時状態で、日別データを書き換えません。</p>
@@ -58,6 +60,8 @@ let loaded=false,busy=false,meta=null,days=[],members=[],roster=null,version=nul
 const jstInput=millis=>Number.isFinite(millis)?new Date(millis+9*3600000).toISOString().slice(0,16):'';
 const selectedMillis=id=>{const value=$(id).value;return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)?Date.parse(value+':00+09:00'):NaN};
 const monthState=x=>JSON.stringify([x?.publication??null,x?.inputState??null,Number(x?.version??-1),timestampMillis(x?.openAt)||null,timestampMillis(x?.cutoffAt)||null]);
+const customWindow=()=>selectedMillis('open')!==jstInputOpenMillis(month)||selectedMillis('close')!==jstInputCutoffMillis(month);
+const customWindowApproved=()=>!customWindow()||$('custom-window-ack').checked;
 function evaluate(){
  return reviewJanuaryForPublication({
   month,meta,days,members,roster,
@@ -68,13 +72,21 @@ function controls(){
  $('login').hidden=!!auth.currentUser;
  $('load').disabled=busy||!auth.currentUser;
  for(const id of ['open','close','defaults','consent','operations','publish-consent'])$(id).disabled=!loaded||busy;
+ $('custom-window-ack').disabled=!loaded||busy||!customWindow();
  const ok=loaded&&!busy&&evaluate().ok&&checkedDates.size===calendarDates(month).length
-  &&$('consent').checked&&$('operations').checked&&$('publish-consent').checked;
+  &&$('consent').checked&&$('operations').checked&&$('publish-consent').checked
+  &&customWindowApproved();
  $('publish').disabled=!ok;
 }
 function review(){
  if(!loaded){controls();return;}
  const result=evaluate();
+ const extra=customWindow();
+ txt('window-difference',extra
+  ?'⚠ 標準期間（開始 '+jstInput(jstInputOpenMillis(month))+'／締切 '+jstInput(jstInputCutoffMillis(month))+
+   '）と異なります。今回選択（開始 '+$('open').value+'／締切 '+$('close').value+
+   '）。意図した日時であることを確認し、下の追加チェックを入れてください。'
+  :'✅ 選択した受付開始・締切は標準設定と一致しています。',extra?'warn':'good');
  const missing=calendarDates(month).filter(d=>!checkedDates.has(d.date)).length;
  txt('summary','活動日 '+result.days+'日（練習 '+result.practice+'／試合 '+result.game+'／休み '+result.rest+'）／目視未確認 '+missing+'日');
  const lines=[...result.errors,...(missing?['活動予定・担当者を確認していない日が '+missing+'日あります']:[]),...result.warnings.map(x=>'注意：'+x)];
@@ -94,7 +106,7 @@ function renderDays(){
 function clearState(){
  loaded=false;meta=null;days=[];members=[];roster=null;version=null;signatureMap=new Map();checkedDates=new Set();
  originalRosterIds='';initialWindow=null;
- for(const id of ['consent','operations','publish-consent'])$(id).checked=false;
+ for(const id of ['consent','operations','publish-consent','custom-window-ack'])$(id).checked=false;
  $('dates').textContent='下書きを読み込んでください。';controls();
 }
 $('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>txt('auth','Googleログイン失敗：'+(e.code||e.message),'bad'));
@@ -135,18 +147,23 @@ $('dates').addEventListener('change',event=>{
  if(event.target.checked)checkedDates.add(date);else checkedDates.delete(date);
  review();
 });
-for(const id of ['open','close','consent','operations','publish-consent'])$(id).addEventListener('change',review);
+for(const id of ['open','close','consent','operations','publish-consent','custom-window-ack'])$(id).addEventListener('change',()=>{
+ if(id==='open'||id==='close')$('custom-window-ack').checked=false;
+ review();
+});
 $('defaults').onclick=()=>{
  if(!loaded||busy)return;
  $('open').value=jstInput(jstInputOpenMillis(month));
  $('close').value=jstInput(jstInputCutoffMillis(month));
+ $('custom-window-ack').checked=false;
  review();
 };
 $('publish').onclick=async()=>{
  const user=auth.currentUser;if(!user||!loaded||busy)return;
  const windowStart=selectedMillis('open'),windowEnd=selectedMillis('close');
  if(!evaluate().ok||checkedDates.size!==calendarDates(month).length||
-    !$('consent').checked||!$('operations').checked||!$('publish-consent').checked){review();return;}
+    !$('consent').checked||!$('operations').checked||!$('publish-consent').checked
+    ||!customWindowApproved()){review();return;}
  if(!confirm('本当に2027年1月の当番表を保護者全員へ公開しますか？\n全19日分を確認済み、チーム責任者の了承済みであることを再確認してください。\n受付締切（日本時間）：'+$('close').value+'\n本番データの公開状態が変更されます。'))return;
  const uid=user.uid,expectedVersion=version,expectedMonth=initialWindow,expectedRoster=originalRosterIds;
  const reviewedSignatures=new Map(signatureMap),reviewedDates=new Set(checkedDates);
