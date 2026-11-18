@@ -101,6 +101,8 @@ check('reviewed day signature detects owner, type, location, updated timestamp c
  assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,ownerId:'other'}));
  assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,type:'game'}));
  assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,eventLocation:'体育館'}));
+ assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,activityVerified:true}));
+ assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,confirmedSubstituteId:'haruka'}));
  assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,updatedAt:{toMillis:()=>2000}}));
 });
 const ui=await readFile(new URL('./manage-january-publish.html',import.meta.url),'utf8');
