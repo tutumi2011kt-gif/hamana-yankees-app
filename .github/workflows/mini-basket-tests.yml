@@ -62,6 +62,9 @@ jobs:
           set -euo pipefail
           test -s /tmp/mini-basket-live-qa.html
           mkdir -p qa-evidence
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends fonts-noto-cjk >/dev/null
+          fc-cache -f >/dev/null
           if command -v google-chrome >/dev/null 2>&1; then
             browser=google-chrome
           elif command -v chromium >/dev/null 2>&1; then
