@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
+<title>🏀 2027年1月の当番表・管理者公開承認</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f7fb;color:#273a51;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:760px;margin:auto;padding:12px 11px 60px}
+header{background:linear-gradient(110deg,#e4f1ff,#fff1dc);border:1px solid #d3e4ef;border-radius:14px;padding:16px}
+h1{font-size:21px;margin:0}h2{font-size:17px;margin:0 0 8px}.card{border:1px solid #dde7ef;border-radius:13px;background:white;padding:15px;margin-top:12px}
+p{margin:8px 0}.warn{background:#fff2d9;border:1px solid #efcc94;border-radius:10px;padding:10px}.good{background:#e7f8ef;border-radius:10px;padding:10px;color:#12583f}
+.bad{background:#ffecf0;border:1px solid #f3bac9;border-radius:10px;padding:10px;color:#9b2644}
+button,input{font:inherit}button{min-height:44px;border:1px solid #bacdde;border-radius:9px;padding:10px;background:white;font-weight:750}
+button.primary{background:#255e89;color:white}button.publish{background:#176843;color:white;border-color:#176843;width:100%}button:disabled{opacity:.45}
+input[type=datetime-local]{width:100%;min-height:44px;padding:8px;border:1px solid #c4d5e4;border-radius:9px}
+label{display:block;margin:10px 0}.tick{display:flex;gap:11px;align-items:flex-start}.tick input{width:21px;height:21px;flex-shrink:0;margin:2px 0 0}
+.date{border-bottom:1px solid #e2eaf1;padding:9px 3px}.muted{font-size:12px;color:#617b8f}.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1 1 155px}#problems{white-space:pre-wrap}
+</style></head><body><main>
+<header><h1>🏀 2027年1月・公開承認</h1><p>有玉女子ミニバス｜管理者専用</p>
+<div class="warn"><b>この画面は2027年1月の既存下書きだけが対象です。</b> 1月の全日程・担当者・受付期間を確認した管理者が明示的に公開します。2026年12月の確定当番表、他の月、メンバーの割当を変更しません。Google管理者でログインしてください。</div></header>
+<section class="card"><h2>① Firebaseから既存の1月下書きを読み込む</h2>
+<p id="auth" class="muted">管理者認証を確認しています…</p>
+<div class="row"><button id="login" class="primary">Googleで管理者ログイン</button><button id="load">2027年1月の下書きを確認</button></div>
+<p id="status" role="status" class="muted">まだ読み込んでいません。</p></section>
+<section class="card"><h2>② 入力受付の開始・締切を確認</h2>
+<p class="muted">下書きに受付日時が未設定の場合だけ標準日時を表示します。編集しても、「公開OK」まではFirebaseへ反映しません。締切は日本時間で表示します。</p>
+<div class="row">
+<label>受付開始（日本時間）<input id="open" type="datetime-local" disabled></label>
+<label>締切（日本時間・この時刻から入力不可）<input id="close" type="datetime-local" disabled></label>
+</div>
+<button id="defaults" disabled>標準の受付期間を表示（保存しない）</button>
+<p class="warn">⚠ 1月分の標準締切は2026年12月1日0:00です。チームの運用上「毎月5日」など異なる締切にする場合、責任者と確認し、保護者へ必ず案内してください。公開後の締切変更は別の管理者画面で行います。</p></section>
+<section class="card"><h2>③ 練習・試合・休み・当番担当を全日確認</h2>
+<p class="muted">各日を実際の活動予定と照合してください。担当未登録・曜日条件違反の日は公開できません。試合・休みには当番を置きません。確認用のチェックはこの画面の一時状態で、日別データを書き換えません。</p>
+<div id="dates">下書き読み込み後に表示されます。</div>
+<p id="summary" class="muted">全日程の確認待ちです。</p></section>
+<section class="card"><h2>④ 公開前チェック・最終承認</h2>
+<div id="problems" class="warn">すべての確認が済むまで公開できません。</div>
+<label class="tick"><input type="checkbox" id="consent" disabled><span>チーム会長が、名前選択のみではなりすましを防止できないことと、共通URLでの名前・当番日の共有範囲を理解し、運用を承認しました。</span></label>
+<label class="tick"><input type="checkbox" id="operations" disabled><span>×・○の本人確認・管理者訂正・監視・緊急停止体制と、1月の正式な締切を確認しました。</span></label>
+<label class="tick"><input type="checkbox" id="publish-consent" disabled><span>1月の全日程・担当者を確認し、保護者全員に当番カレンダーを共有することを明示的に承認します。</span></label>
+<button id="publish" class="publish" disabled>管理者として2027年1月を保護者へ公開OK</button>
+<p id="result" role="status" class="muted">未公開です。</p></section>
+<p class="muted">※ この承認画面は1月の公開状態と公開月一覧だけを書き換えます。保護者の×・○書き込みは、別途承認済みのFirestoreルールとUIスイッチが両方有効になるまで本番では許可されません。</p>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {normalizeMember,calendarDates} from './month-draft-core.mjs';
+import {reviewJanuaryForPublication,januaryPublicationPatch,januaryDaySignature,JANUARY_PUBLICATION_MONTH,timestampMillis} from './january-publication-core.mjs';
+import {jstInputOpenMillis,jstInputCutoffMillis} from './month-rollover-core.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,Timestamp,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'january-publish-admin'),auth=getAuth(app),db=getFirestore(app);
+const month=JANUARY_PUBLICATION_MONTH,monthRef=doc(db,'teams',teamId,'months',month);
+const rosterRef=doc(db,'teams',teamId,'public','roster');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const txt=(id,value,cls='muted')=>{$(id).textContent=value;$(id).className=cls};
+let loaded=false,busy=false,meta=null,days=[],members=[],roster=null,version=null,signatureMap=new Map(),checkedDates=new Set(),initialWindow=null,originalRosterIds='';
+const jstInput=millis=>Number.isFinite(millis)?new Date(millis+9*3600000).toISOString().slice(0,16):'';
+const selectedMillis=id=>{const value=$(id).value;return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)?Date.parse(value+':00+09:00'):NaN};
+const monthState=x=>JSON.stringify([x?.publication??null,x?.inputState??null,Number(x?.version??-1),timestampMillis(x?.openAt)||null,timestampMillis(x?.cutoffAt)||null]);
+function evaluate(){
+ return reviewJanuaryForPublication({
+  month,meta,days,members,roster,
+  openMillis:selectedMillis('open'),cutoffMillis:selectedMillis('close')
+ });
+}
+function controls(){
+ $('login').hidden=!!auth.currentUser;
+ $('load').disabled=busy||!auth.currentUser;
+ for(const id of ['open','close','defaults','consent','operations','publish-consent'])$(id).disabled=!loaded||busy;
+ const ok=loaded&&!busy&&evaluate().ok&&checkedDates.size===calendarDates(month).length
+  &&$('consent').checked&&$('operations').checked&&$('publish-consent').checked;
+ $('publish').disabled=!ok;
+}
+function review(){
+ if(!loaded){controls();return;}
+ const result=evaluate();
+ const missing=calendarDates(month).filter(d=>!checkedDates.has(d.date)).length;
+ txt('summary','活動日 '+result.days+'日（練習 '+result.practice+'／試合 '+result.game+'／休み '+result.rest+'）／目視未確認 '+missing+'日');
+ const lines=[...result.errors,...(missing?['活動予定・担当者を確認していない日が '+missing+'日あります']:[]),...result.warnings.map(x=>'注意：'+x)];
+ if(lines.length)txt('problems',lines.map(x=>'・'+x).join('\n'),result.ok&&missing===0?'warn':'bad');
+ else txt('problems','✅ 公開前のコード検査を通過しました。チーム承認と運用の確認にチェックしてください。','good');
+ controls();
+}
+function renderDays(){
+ const people=Object.fromEntries(members.map(m=>[m.id,m.name]));
+ const labels={practice:'練習',game:'試合・当番なし',rest:'休み・当番なし'};
+ $('dates').innerHTML=days.map(d=>'<label class="date tick"><input type="checkbox" data-date="'+esc(d.date)+'" '+
+  (checkedDates.has(d.date)?'checked':'')+'><span><b>'+esc(d.date)+'</b>　'+esc(labels[d.type]||'区分不明')+
+  '<br>元担当：'+esc(d.type==='practice'?(people[d.ownerId]||'未設定'):'なし')+
+  (d.eventLocation?'<br>場所：'+esc(d.eventLocation):'')+'</span></label>').join('');
+ review();
+}
+function clearState(){
+ loaded=false;meta=null;days=[];members=[];roster=null;version=null;signatureMap=new Map();checkedDates=new Set();
+ originalRosterIds='';initialWindow=null;
+ for(const id of ['consent','operations','publish-consent'])$(id).checked=false;
+ $('dates').textContent='下書きを読み込んでください。';controls();
+}
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>txt('auth','Googleログイン失敗：'+(e.code||e.message),'bad'));
+onAuthStateChanged(auth,user=>{
+ clearState();txt('auth',user?'管理者Googleログイン済み。最新の1月下書きを確認してください。':'管理者Googleログインをしてください。');
+},e=>txt('auth','管理者認証に失敗：'+(e.code||e.message),'bad'));
+$('load').onclick=async()=>{
+ const user=auth.currentUser;if(!user||busy)return;
+ busy=true;clearState();controls();txt('status','本番/QAの接続設定・管理者権限・1月下書きを読み込み中…');
+ try{
+  const adm=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!adm.exists()||adm.data()?.enabled!==true)throw Error('管理者の権限がありません');
+  const [m,rosterSnap,ms,daySnaps]=await Promise.all([
+   getDocFromServer(monthRef),getDocFromServer(rosterRef),
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',month,'days'))
+  ]);
+  if(auth.currentUser?.uid!==user.uid)throw Error('ログインが変更されました');
+  if(!m.exists()||!rosterSnap.exists())throw Error('1月下書きまたは公開用名簿がありません');
+  meta=m.data();version=Number(meta.version??-1);
+  roster=rosterSnap.data();members=ms.docs.map(s=>normalizeMember({id:s.id,...s.data()}));
+  days=daySnaps.docs.map(s=>({date:s.id,...s.data()})).sort((a,b)=>a.date.localeCompare(b.date));
+  signatureMap=new Map(days.map(d=>[d.date,januaryDaySignature(d)]));
+  originalRosterIds=JSON.stringify((roster.members||[]).map(m=>m.id).sort());
+  initialWindow=monthState(meta);
+  const open=timestampMillis(meta.openAt),close=timestampMillis(meta.cutoffAt);
+  $('open').value=jstInput(Number.isFinite(open)?open:jstInputOpenMillis(month));
+  $('close').value=jstInput(Number.isFinite(close)?close:jstInputCutoffMillis(month));
+  loaded=true;checkedDates=new Set();
+  txt('status','✅ 2027年1月：'+days.length+'日分の下書きを読み込みました。公開状態：'+meta.publication+'。','good');
+  renderDays();
+ }catch(e){clearState();txt('status','読み込み失敗：'+(e.code||e.message||String(e)),'bad');}
+ finally{busy=false;review();}
+};
+$('dates').addEventListener('change',event=>{
+ const date=event.target.dataset.date;
+ if(!loaded||busy||!date)return;
+ if(event.target.checked)checkedDates.add(date);else checkedDates.delete(date);
+ review();
+});
+for(const id of ['open','close','consent','operations','publish-consent'])$(id).addEventListener('change',review);
+$('defaults').onclick=()=>{
+ if(!loaded||busy)return;
+ $('open').value=jstInput(jstInputOpenMillis(month));
+ $('close').value=jstInput(jstInputCutoffMillis(month));
+ review();
+};
+$('publish').onclick=async()=>{
+ const user=auth.currentUser;if(!user||!loaded||busy)return;
+ const windowStart=selectedMillis('open'),windowEnd=selectedMillis('close');
+ if(!evaluate().ok||checkedDates.size!==calendarDates(month).length||
+    !$('consent').checked||!$('operations').checked||!$('publish-consent').checked){review();return;}
+ if(!confirm('本当に2027年1月の当番表を保護者全員へ公開しますか？\n全19日分を確認済み、チーム責任者の了承済みであることを再確認してください。\n受付締切（日本時間）：'+$('close').value+'\n本番データの公開状態が変更されます。'))return;
+ const uid=user.uid,expectedVersion=version,expectedMonth=initialWindow,expectedRoster=originalRosterIds;
+ const reviewedSignatures=new Map(signatureMap),reviewedDates=new Set(checkedDates);
+ busy=true;controls();txt('result','管理者権限・日別予定・締切をFirebaseトランザクションで再検査中…');
+ try{
+  await runTransaction(db,async tx=>{
+   // Read all inputs before any write. Only January month + public/roster + approval audit are writable.
+   const adminSnap=await tx.get(doc(db,'admins',uid)),mSnap=await tx.get(monthRef),rSnap=await tx.get(rosterRef);
+   if(auth.currentUser?.uid!==uid||!adminSnap.exists()||adminSnap.data()?.enabled!==true)
+    throw Error('Google管理者権限が変更されました');
+   if(!mSnap.exists()||mSnap.data().publication!=='draft'||Number(mSnap.data().version??-1)!==expectedVersion
+    ||monthState(mSnap.data())!==expectedMonth)throw Error('下書きが他の端末で変更されました。再読み込みしてください');
+   if(!rSnap.exists()||JSON.stringify((rSnap.data().members||[]).map(x=>x.id).sort())!==expectedRoster)
+    throw Error('公開用名簿が変更されています。再読み込みしてください');
+   const expectedDays=calendarDates(month);
+   if(reviewedDates.size!==expectedDays.length)throw Error('すべての活動日の確認が必要です');
+   const snaps=[];
+   for(const d of expectedDays)snaps.push(await tx.get(doc(db,'teams',teamId,'months',month,'days',d.date)));
+   const memberIds=(rSnap.data().members||[]).map(x=>x.id);
+   const memberSnaps=[];
+   for(const id of memberIds)memberSnaps.push(await tx.get(doc(db,'teams',teamId,'members',id)));
+   if(memberSnaps.some(s=>!s.exists()))throw Error('管理者名簿に不足があります');
+   const latestDays=snaps.map((s,i)=>({date:expectedDays[i].date,...(s.exists()?s.data():{})}));
+   for(let i=0;i<expectedDays.length;i++){
+    const day=expectedDays[i];
+    if(!snaps[i].exists()||!reviewedDates.has(day.date)
+       ||reviewedSignatures.get(day.date)!==januaryDaySignature(latestDays[i]))
+      throw Error(day.date+' の予定が確認時点から変わっています。再読み込みしてください');
+   }
+   const latestMembers=memberSnaps.map((s,i)=>normalizeMember({id:memberIds[i],...s.data()}));
+   const result=reviewJanuaryForPublication({
+    month,meta:mSnap.data(),days:latestDays,members:latestMembers,roster:rSnap.data(),
+    openMillis:windowStart,cutoffMillis:windowEnd,nowMillis:Date.now()
+   });
+   if(!result.ok)throw Error('公開前チェックに失敗：'+result.errors.slice(0,3).join('／'));
+   const patch=januaryPublicationPatch({meta:mSnap.data(),openMillis:windowStart,
+    cutoffMillis:windowEnd,nowMillis:Date.now()});
+   const now=serverTimestamp();
+   tx.update(monthRef,{...patch,openAt:Timestamp.fromMillis(windowStart),cutoffAt:Timestamp.fromMillis(windowEnd),
+    approvedBy:uid,approvedAt:now,updatedBy:uid,updatedAt:now,version:expectedVersion+1});
+   tx.update(rosterRef,{publishedMonths:[...new Set([...rSnap.data().publishedMonths,month])].sort(),updatedAt:now});
+   const auditRef=doc(collection(db,'teams',teamId,'monthPublicationAudit'));
+   tx.set(auditRef,{month,action:'publish',previousPublication:'draft',approvedBy:uid,approvedAt:now,
+    openAt:Timestamp.fromMillis(windowStart),cutoffAt:Timestamp.fromMillis(windowEnd),
+    reviewedDates:expectedDays.length});
+  });
+  clearState();txt('result','✅ 管理者承認を保存しました。2027年1月の公開月一覧へ反映しました。','good');
+  txt('status','公開済みです。新しい状態を再読み込みして確認してください。','good');
+ }catch(e){txt('result','公開できませんでした：'+(e.code||e.message||String(e))+'。再読み込みして確認してください。','bad');}
+ finally{busy=false;review();}
+};
+controls();
+</script></body></html>
