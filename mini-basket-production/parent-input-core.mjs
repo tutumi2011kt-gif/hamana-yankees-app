@@ -25,6 +25,23 @@ export function decideAnswerAction(existing,kind,uid){
  return 'set';
 }
 
+// One source of truth for calendar tap targets and the action after a tap.
+// A saved ×/○ must remain tappable for cancellation even if its original
+// owner assignment has changed; server-side Security Rules still decide.
+export function answerTapDecision({day,existing,kind,memberId,uid,canWrite}){
+ if(!canWrite||!day||day.type!=='practice'||!day.ownerId||
+    day.confirmedSubstituteId||!memberId||!uid)return {enabled:false,action:'blocked'};
+ const matchingAnswer=existing?.memberId===memberId&&existing?.kind===kind;
+ if(matchingAnswer){
+  const action=decideAnswerAction(existing,kind,uid);
+  return {enabled:true,action}; // A different device gets an explanation, not a silent disabled button.
+ }
+ if(!allowedAnswerKind({kind,ownerId:day.ownerId,memberId,dayType:day.type}))
+  return {enabled:false,action:'blocked'};
+ const action=decideAnswerAction(existing,kind,uid);
+ return {enabled:action!=='blocked',action};
+}
+
 export function defaultCutoffMillis(targetMonth){
  return jstInputCutoffMillis(targetMonth);
 }
