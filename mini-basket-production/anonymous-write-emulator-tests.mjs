@@ -51,6 +51,11 @@ try{
  await env.withSecurityRulesDisabled(ctx=>updateDoc(
   doc(ctx.firestore(),base+'/public/roster'),{publishedMonths:[]}
  ));
+ await assertFails(getDoc(doc(alice,base+'/months/'+month)));
+ await assertFails(getDoc(doc(alice,base+'/months/'+month+'/days/2027-01-06')));
+ await assertFails(getDocs(collection(alice,base+'/months/'+month+'/days')));
+ await assertFails(getDoc(owner));
+ await assertFails(getDocs(collection(alice,base+'/months/'+month+'/answers')));
  await assertFails(setDoc(doc(alice,path('2027-01-06','sawa')),answer('2027-01-06','sawa','o','alice')));
  await assertFails(setDoc(owner,answer('2027-01-06','yui','x','alice')));
  await assertFails(deleteDoc(volunteer));
@@ -59,7 +64,7 @@ try{
  ));
  await assertSucceeds(setDoc(doc(alice,path('2027-01-06','sawa')),answer('2027-01-06','sawa','o','alice')));
  await assertSucceeds(deleteDoc(doc(alice,path('2027-01-06','sawa'))));
- console.log('PASS unlisted January rejects create/update/delete despite published metadata');
+ console.log('PASS unlisted January rejects read/create/update/delete despite published metadata');
  // Additional adversarial checks: do not accept missing days, forged IDs or foreign fields.
  await assertFails(setDoc(doc(alice,path('2027-01-07','haruka')),answer('2027-01-07','haruka','o','alice')));
  await assertFails(setDoc(doc(alice,base+'/months/'+month+'/answers/forged-id'),answer('2027-01-06','sawa','o','alice')));
