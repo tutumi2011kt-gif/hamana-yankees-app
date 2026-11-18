@@ -20,7 +20,7 @@ assert.throws(()=>parseAndCheckStagingFirebaseConfig('not-json'));
 assert.ok(isSafeImportPath('./core.mjs'));
 assert.equal(isSafeImportPath('../firebase-config.mjs'),false);
 assert.equal(isSafeImportPath('https://example.com/x.js'),false);
-const pages=['parent.html','manage-month-approval.html','manage-january-publish.html','manage-swaps.html',
+const pages=['parent.html','manage-month-approval.html','manage-january-publish.html','review-january.html','manage-swaps.html',
  'manage-parent-answers.html','manage-duty-ledger.html','manage-deadline.html','manage-answer-monitor.html','admin-qa-health.html'];
 for(const name of pages){
  const html=await readFile(new URL('./'+name,import.meta.url),'utf8');
@@ -52,4 +52,4 @@ for(const name of pages){
   assert.doesNotMatch(compiled,/from '.\/parent-write-config\.mjs\?v=1'/);
  }
 }
-console.log('PASS staging fail-closed project guard, all 9 isolated pages, script parsing and accountless parent imports');
+console.log('PASS staging fail-closed project guard, all 10 isolated pages, script parsing and accountless parent imports');
