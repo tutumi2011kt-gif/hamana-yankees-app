@@ -63,6 +63,7 @@ jobs:
           grep -q '大竹わかな' dist-staging/annual-admin-demo.html
           grep -q '保護者用QA体験版' dist-staging/annual-parent-demo.html
           grep -q 'Second pass: reduce annual load spread' dist-staging/annual-admin-demo.html
+          grep -q 'Preserve parent responses written' dist-staging/annual-admin-demo.html
           grep -q '村松さわ' dist-staging/annual-admin-demo.html
           grep -q 'id="calendar"' dist-staging/index.html
           grep -q 'id="mark-x"' dist-staging/index.html
