@@ -28,3 +28,26 @@ export function auditItemTitle(event){
 export function recentSuspiciousAnswers(events){
  return (events||[]).filter(x=>x?.needsReview===true);
 }
+
+
+// Manager-only, read-only fallback for currently saved answers. This does not
+// reconstruct changes or deletes and cannot authenticate a selected child.
+// Admin corrections may reuse the same admin UID across children; this is a
+// review hint, never an automatic finding of impersonation.
+export function reviewCurrentAnswerState(answers=[]){
+ const rows=Array.isArray(answers)?answers:[];
+ const byWriter=new Map();
+ for(const a of rows){
+  if(typeof a?.updatedBy!=='string'||!a.updatedBy||typeof a?.memberId!=='string')continue;
+  if(!byWriter.has(a.updatedBy))byWriter.set(a.updatedBy,new Set());
+  byWriter.get(a.updatedBy).add(a.memberId);
+ }
+ return rows.map(a=>{
+  const uid=typeof a?.updatedBy==='string'?a.updatedBy:'';
+  const flags=[];
+  if(!uid||typeof a?.memberId!=='string'||!a.memberId||!['x','o'].includes(a?.kind))
+   flags.push('missing-writer-or-answer');
+  if(uid&&byWriter.get(uid)?.size>1)flags.push('one-writer-multiple-children');
+  return {...a,flags,needsReview:flags.length>0};
+ }).sort((a,b)=>String(a.date??'').localeCompare(String(b.date??''))||String(a.memberId??'').localeCompare(String(b.memberId??'')));
+}
