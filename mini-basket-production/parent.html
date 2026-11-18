@@ -29,7 +29,7 @@ footer{font-size:11px;color:#76889b}.not-available{display:none}
 </main>
 <script type="module">
 import {todayTokyo,monthPlus,dayList} from './core.mjs?v=parent-input-2';
-import {canEditMonth,allowedAnswerKind,decideAnswerAction,answerTapDecision} from './parent-input-core.mjs?v=3';
+import {canEditMonth,answerTapDecision} from './parent-input-core.mjs?v=3';
 import {swapState,canEditSwapAnswer} from './swap-confirmation-core.mjs?v=1';
 import {PARENT_WRITES_ENABLED,ANSWER_PUBLICATION_MODE} from './parent-write-config.mjs?v=1';
 import {firebaseConfig,teamId} from './firebase-config.mjs';
@@ -129,7 +129,7 @@ function draw(){
     (swap.status==='urgent'?'<span class="bad">⚠ 交代候補なし（要調整）</span>':'')+
     (swap.confirmedId?'<span class="confirmed">✅ 管理者確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'（交代）</span>':'');
   const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+
-    (isOwnCancel?' tap-x':eligible?' tap-'+selectedMode:'');
+    (eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
    ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(tap.action==='different-device'?'別端末の回答：管理者に相談':isOwnCancel?(selectedMode==='x'?'×を取り消す':'○を取り消す'):(selectedMode==='x'?'×を登録する':'○を登録する'))+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
    (label?'<span class="owner">'+esc(label)+'</span>':'')+
