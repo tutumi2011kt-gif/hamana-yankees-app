@@ -11,6 +11,7 @@ const out=join(root,'dist-staging');
 const sourcePages=Object.freeze({
  'parent.html':'index.html',
  'manage-month-approval.html':'admin-approve.html',
+ 'manage-january-publish.html':'admin-january-publish.html',
  'manage-swaps.html':'admin-swaps.html',
  'manage-parent-answers.html':'admin-answers.html',
  'manage-duty-ledger.html':'admin-ledger.html',
