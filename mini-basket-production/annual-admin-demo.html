@@ -24,9 +24,9 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px
 .flag{font-weight:800;font-size:11px;color:#a45b22}#selected{scroll-margin-top:15px}footer{padding:14px 0;color:#6b7d91;font-size:11px}
 @media(max-width:420px){.wrap{padding:8px 7px 50px}.card{padding:10px 8px}.day{min-height:63px;padding:3px 1px}.day b{font-size:10px}.day span{font-size:8.5px}.months{gap:4px}.actions{gap:5px}.kpi b{font-size:19px}}
 </style></head><body>
-<div class="qa">🧪 QA体験版：架空の12人・この端末だけに保存・保護者には公開されません</div>
+<div class="qa">🧪 QA体験版：実際の12人の名前と曜日条件・この端末だけに保存・保護者には公開されません</div>
 <main class="wrap"><header class="hero"><h1>🏀 年間当番表管理</h1><p>2027年1月〜11月を一括で仮割当。月ごとの担当変更・日付交換・試合変更・繰越管理を体験できます。</p>
-<p class="tiny">2026年12月の既知の予定回数を参考値として利用。2027年の試合日・休みは未確定のため、1月1〜3日以外は水・金・土・日を仮練習に設定しています。</p></header>
+<p class="tiny">2026年12月の確定当番表の「予定回数」（実施済みではありません）を初期値として使用。2027年1月1〜3日は休み、それ以外の水・金・土・日は仮練習です。実名は反映していますが、Firestoreの2027年1月下書きや今後の試合予定とはまだ同期していません。</p></header>
 <section class="card"><h2>① 月を選ぶ</h2><div id="months" class="months"></div><div class="row" style="margin-top:10px"><span id="monthstate" class="muted"></span><button id="reset" class="btn danger" type="button">体験データを初期化</button></div></section>
 <section class="card"><h2 id="caption">② 当番カレンダー</h2><div id="kpis" class="kpis"></div><div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="calendar"></div>
 <p class="muted">当番のある日をタップすると変更画面が開きます。試合・休みから練習に戻す操作もできます。</p><p id="toast" role="status"></p>
@@ -39,34 +39,34 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px
  <p id="swaphelp" class="tiny"></p><button id="close" class="btn" style="width:100%">閉じる</button>
 </div>
 <div class="actions" style="margin-top:12px"><button id="undo" class="btn">↩ 直前の変更を元に戻す</button><button id="save" class="btn green">💾 下書きを保存</button></div>
-<div class="warn" style="margin-top:12px">公開ボタンは**体験用**です。QA上のこの画面に「公開済み」と表示するだけで、Firebaseや保護者用カレンダーには一切反映しません。</div>
+<div class="warn" style="margin-top:12px">公開ボタンは体験用です。QAのこの画面だけに「公開済み」と表示され、Firebaseや保護者用カレンダーには一切反映しません。</div>
 <label style="font-size:12px;display:flex;align-items:center;gap:9px;margin-top:12px"><input id="reviewed" type="checkbox" style="width:19px;height:19px">この月の活動予定と当番を確認した（体験用）</label>
 <button id="publish" class="btn primary" style="width:100%;margin-top:9px">📣 この月を公開する（体験用）</button>
 </section>
-<section class="card"><h2>③ 12人の年間回数</h2><p class="muted">12月の予定を含む年間予定・2027年1〜11月の予定・体験上の実施済み・繰越待ちを別々に集計します。予定は試合化と担当変更で即更新します。</p>
+<section class="card"><h2>③ 12人の年間回数</h2><p class="muted">2026年12月の確定表に記載された予定回数と、2027年1〜11月の仮配置回数を集計します。12月分を実施済みとして加算しません。体験上の実施済み・繰越待ちは別の数字です。</p>
 <div id="fairness" class="ok"></div><div class="scroll"><table><thead><tr><th>メンバー</th><th>12月予定</th><th>1〜11月</th><th>年間予定</th><th>実施済み</th><th>繰越待ち</th></tr></thead><tbody id="totals"></tbody></table></div>
 </section>
 <section class="card"><h2>④ 繰越と補填状況</h2><p class="muted">試合・休みに変更して消えた当番は、公開前後に関係なく繰越待ちになります。将来の担当日に補填予定として指定しても、実際に実施済みにするまで解消しません。</p>
 <div id="carries"></div></section>
 <section class="card"><h2>⑤ 公平性の補正候補</h2><p class="muted">未公開の将来日で、割当の多い人から少ない人へ変更できる候補を探します。曜日条件を守り、承認するまでは変更しません。</p><div id="suggestion"></div></section>
-<footer>本ページは画面と割当ロジックの試用を目的とした独立デモです。保存先はこのブラウザのlocalStorageで、他の端末とは同期しません。本番の月別公開・交代確定・保護者入力や実績台帳は変更されません。</footer></main>
+<footer>本ページは実際のメンバー名を用いた管理画面の独立デモです。氏名と曜日条件はチームの設定に合わせていますが、年間の割当と繰越は体験用の仮データです。保存先はこのブラウザ内だけで、他の端末とは同期しません。実際の2027年1月下書き、本番の公開・実施台帳・保護者入力は一切変更されません。</footer></main>
 <script>
 (function(){
 'use strict';
-var STORAGE='aritama-qa-annual-demo-v1';
+var STORAGE='aritama-qa-annual-demo-realnames-v2';
 var people=[
- {id:'q01',name:'テスト01',rule:'全曜日可',days:[0,3,5,6],baseline:2},
- {id:'q02',name:'テスト02',rule:'土曜のみ',days:[6],baseline:1},
- {id:'q03',name:'テスト03',rule:'水曜のみ',days:[3],baseline:1},
- {id:'q04',name:'テスト04',rule:'土・日のみ',days:[0,6],baseline:2},
- {id:'q05',name:'テスト05',rule:'水曜優先',days:[0,3,5,6],pref:3,baseline:1},
- {id:'q06',name:'テスト06',rule:'水曜のみ',days:[3],baseline:2},
- {id:'q07',name:'テスト07',rule:'基本水・金／週末は要個別承認',days:[3,5],baseline:1},
- {id:'q08',name:'テスト08',rule:'土曜以外',days:[0,3,5],baseline:2},
- {id:'q09',name:'テスト09',rule:'全曜日可',days:[0,3,5,6],baseline:1},
- {id:'q10',name:'テスト10',rule:'全曜日可',days:[0,3,5,6],baseline:1},
- {id:'q11',name:'テスト11',rule:'水・金のみ',days:[3,5],baseline:1},
- {id:'q12',name:'テスト12',rule:'水・土・日のみ／金曜禁止',days:[0,3,6],baseline:0}
+ {id:'q01',name:'大竹わかな',rule:'全曜日可',days:[0,3,5,6],baseline:2},
+ {id:'q02',name:'みあ',rule:'土曜のみ',days:[6],baseline:1},
+ {id:'q03',name:'ゆい',rule:'水曜のみ',days:[3],baseline:1},
+ {id:'q04',name:'あん',rule:'土・日のみ',days:[0,6],baseline:2},
+ {id:'q05',name:'まい',rule:'水曜優先',days:[0,3,5,6],pref:3,baseline:1},
+ {id:'q06',name:'こはる',rule:'水曜のみ',days:[3],baseline:2},
+ {id:'q07',name:'なぎさ',rule:'基本水・金／週末は要個別承認',days:[3,5],baseline:1},
+ {id:'q08',name:'のどか',rule:'土曜以外',days:[0,3,5],baseline:2},
+ {id:'q09',name:'さやか',rule:'全曜日可',days:[0,3,5,6],baseline:1},
+ {id:'q10',name:'はるか',rule:'全曜日可',days:[0,3,5,6],baseline:1},
+ {id:'q11',name:'かほ',rule:'水・金のみ',days:[3,5],baseline:1},
+ {id:'q12',name:'村松さわ',rule:'水・土・日のみ／金曜禁止',days:[0,3,6],baseline:0}
 ];
 var months=Array.from({length:11},function(_,i){return '2027-'+String(i+1).padStart(2,'0')});
 var byId=Object.fromEntries(people.map(function(p){return [p.id,p]}));
@@ -78,7 +78,7 @@ var activity=function(date){return [0,3,5,6].includes(weekday(date))};
 var allDates=function(month){var y=+month.slice(0,4),m=+month.slice(5,7);return Array.from({length:new Date(Date.UTC(y,m,0)).getUTCDate()},function(_,i){return month+'-'+String(i+1).padStart(2,'0')})};
 var state,selMonth='2027-01',selDate=null,swapDate=null,backup=null,reviewed={};
 function initialize(){
- var data={version:1,months:{},carries:[],changes:[]},counts=Object.fromEntries(people.map(function(p){return [p.id,p.baseline]}));
+ var data={version:2,months:{},carries:[],changes:[]},counts=Object.fromEntries(people.map(function(p){return [p.id,p.baseline]}));
  var dates=[];
  months.forEach(function(month){
   var days={};
@@ -113,7 +113,7 @@ function initialize(){
 }
 function load(){
  try{var saved=JSON.parse(localStorage.getItem(STORAGE)||'null');
-  if(saved&&saved.version===1&&saved.months&&saved.carries&&months.every(function(m){return saved.months[m]&&saved.months[m].days}))return saved;
+  if(saved&&saved.version===2&&saved.months&&saved.carries&&months.every(function(m){return saved.months[m]&&saved.months[m].days}))return saved;
  }catch(err){}
  return initialize();
 }
