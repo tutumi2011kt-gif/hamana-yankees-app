@@ -15,8 +15,7 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day{border:1px solid #e0e8ef;border-radius:7px;background:#fff;min-width:0;min-height:81px;padding:5px 2px;overflow-wrap:anywhere;text-align:left;color:inherit;display:block;width:100%}.day:disabled{cursor:default}.day.tap-x{border:2px solid #c64a66;padding:4px 1px}.day.tap-o{border:2px solid #23865f;padding:4px 1px}.day.tap-x,.day.tap-o{cursor:pointer}
 .day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
-.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}.rowday.urgent{background:#fff1f3;border-left:4px solid #c64a66}
-.rowday{display:grid;grid-template-columns:78px minmax(0,1fr);gap:9px;align-items:center;padding:11px 9px;border-bottom:1px solid #e2eaf1}.rowday:last-child{border-bottom:0}.rowday.game{background:#fffbf5}.rowday b{font-size:14px}.rowday small{font-size:11px;color:#708195;display:block}
+.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
 footer{font-size:11px;color:#76889b}.not-available{display:none}
 </style></head><body><main>
@@ -26,11 +25,10 @@ footer{font-size:11px;color:#76889b}.not-available{display:none}
 <section class="card"><h2>② 月を選ぶ</h2><div id="months" class="months"></div><p id="month-status" class="info">当番表を読み込んでいます。</p></section>
 <section class="card"><h2>③ ×・○の希望入力</h2><p class="small">最初にお子さんの名前を選び、入力する種類を選択してください。<b>カレンダーの日付を直接タップ</b>して登録・取消を行います。</p><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない日</button><button id="mark-o" type="button">⭕ 代わりにできる日</button></div><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。保存した×・○は全員のカレンダーへすぐに反映されます（管理者がまだ有効化していない間は閲覧のみ）。名前の選択だけでは本人確認になりません。間違い・他人名義の入力を見つけたら管理者へ連絡してください。別端末に機種変更した場合も管理者に回答訂正を依頼できます。</p></section>
 <section class="card"><h2 id="calendar-title">当番カレンダー</h2><div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal" aria-label="当番カレンダー"></div><div class="legend"><span>水色：練習日</span><span>薄橙：試合・当番なし</span></div></section>
-<section class="card"><h2>日付ごとの詳しい当番</h2><div id="detail" class="small">読み込み中です。</div></section>
 <footer>この画面では学年・当番可能曜日・個別の不可日などの管理情報は公開しません。共通URLを知る人が閲覧できる形式のため、URLの共有先にはご注意ください。接続エラー時は当番表を推測して表示しません。</footer>
 </main>
 <script type="module">
-import {todayTokyo,monthPlus,DAY_NAMES,dayList} from './core.mjs?v=parent-input-2';
+import {todayTokyo,monthPlus,dayList} from './core.mjs?v=parent-input-2';
 import {canEditMonth,allowedAnswerKind,decideAnswerAction} from './parent-input-core.mjs?v=2';
 import {swapState,canEditSwapAnswer} from './swap-confirmation-core.mjs?v=1';
 import {PARENT_WRITES_ENABLED,ANSWER_PUBLICATION_MODE} from './parent-write-config.mjs?v=1';
@@ -83,7 +81,12 @@ function setMonth(m){
   if(version!==token)return;
   handler(s);ready[field]=true;draw();
  },e=>{
-  if(version!==token)return;monthMessage('当番表を読み込めません：'+(e.code||e.message),'err');$('detail').textContent='データを取得できませんでした。';
+  if(version!==token)return;
+   ready[field]=false;
+   monthMessage('当番表を読み込めません：'+(e.code||e.message),'err');
+   $('reply-status').textContent='⚠ カレンダーの読み込みに失敗しました。再度読み込んでください。';
+   $('reply-status').className='err';
+   $('calendar').textContent='';
  }));
 }
 function draw(){
@@ -93,8 +96,8 @@ function draw(){
  $('calendar-title').textContent=caption(selectedMonth)+' 当番カレンダー';
  const publishedNow=published.includes(selectedMonth);
  const reply=$('reply-status');
- if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';$('detail').textContent='管理者の公開待ちです。';return;}
- if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
+ if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';return;}
+ if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
  const canWrite=PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&lastInputWindowOpen&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
  reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?'Firebaseに保存中です…':lastSaveMessage|| (!lastInputWindowOpen?'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。':!selectedPerson?'まずお子さんの名前を選んでください。':canWrite?'✅ 入力受付中。枠線が付いた日をタップしてください。':'接続確認中です。');
@@ -104,7 +107,7 @@ function draw(){
  const dayMap=Object.fromEntries(days.map(x=>[x.date,x])),people=mapNames();
  const markMap={};
  for(const a of answers)if(a.date&&a.memberId&&['x','o'].includes(a.kind))(markMap[a.date]??=[]).push(a);
- let calendar='',detail='';
+ let calendar='';
  const first=dayList(selectedMonth)[0].weekday;
  for(let x=0;x<first;x++)calendar+='<div class="day empty"></div>';
  for(const day of dayList(selectedMonth)){
@@ -127,17 +130,9 @@ function draw(){
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
    ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(selectedMode==='x'?'×を登録または取消':'○を登録または取消')+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
    (label?'<span class="owner">'+esc(label)+'</span>':'')+(d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+extras+'</button>';
-  if(!isPractice&&!isGame)continue;
-  const dlabel=isGame?'試合・当番なし':owner;
-  const extra=d?.traineeIds?.length?'＋'+d.traineeIds.map(id=>people[id]||id).join('・')+'（教習）':'';
-  const volunteers=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId).map(a=>people[a.memberId]||a.memberId);
-  const needSwap=marks.some(a=>a.kind==='x'&&a.memberId===d?.ownerId);
-  detail+='<div class="rowday '+(isGame?'game':swap.status==='urgent'?'urgent':'')+'"><b>'+n+'日<small>('+DAY_NAMES[day.weekday]+')</small></b><div><b>'+esc(dlabel)+'</b>'+
-    (extra?'<small>'+esc(extra)+'</small>':'')+(isGame&&d.eventLocation?'<small>'+esc(d.eventLocation)+'</small>':'')+
-    (needSwap?'<small style="color:#b54456">元担当者 '+esc(owner)+' × ／ '+(volunteers.length?'交代候補：'+esc(volunteers.join('・'))+' ○':'⚠ 交代募集中（○候補なし）')+'</small>':volunteers.length?'<small style="color:#19805d">交代可能：'+esc(volunteers.join('・'))+' ○</small>':'')+
-    (swap.confirmedId?'<small style="color:#136744;font-weight:800">✅ 管理者確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'さんが交代</small>':'')+'</div></div>';
+
  }
- $('calendar').innerHTML=calendar;$('detail').innerHTML=detail||'<p>当番日がありません。</p>';
+ $('calendar').innerHTML=calendar;
  monthMessage(!PARENT_WRITES_ENABLED?'🗓️ 当番表を閲覧中です。保護者の書き込みは安全確認待ちのため停止中です。':canWrite?'✅ ×・○の入力受付中。登録内容は即時に共有されます。':'🗓️ 閲覧中です。未受付・締切済み、または名前未選択のため入力できません。','info');
 }
 $('person').addEventListener('change',e=>{selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
