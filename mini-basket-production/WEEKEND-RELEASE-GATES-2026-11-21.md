@@ -2,6 +2,12 @@
 
 作成: 2026-11-18 JST。この文書は公開承認ではない。本番Firebase、Hosting、main、既存データを変更しない。
 
+## 11月18日・B案（名前選択だけ）を優先方針として採用
+- 保護者側の操作は共通URL＋子どもの名前選択を維持し、Googleログイン・PIN・招待登録を**現段階では追加しない**。
+- **なりすましの技術的防止はできない**ことを承知したうえで、会長・当番管理者・Firebase管理者の承認と、全保護者への事前周知を公開条件にする。
+- 対策は匿名UIDの更新制限／管理者による回答訂正／○候補者へのLINE等直接確認／不審入力の監視／書込みの一時停止・復旧手順。**保護者回答の変更・削除の監査Cloud Functionsは本番で未稼働**。リスクに関して承認なしに本番書込み解放しない。
+- 詳細：`B-PLAN-NAME-SELECTION-RELEASE-2026-11.md`。
+
 ## 確認済み
 - Draft PR #1 の確認時HEADは a82cdf3c6a1e8d15d7f38100bcab09c6434be82d。CI Mini basket security tests は成功（run 44234700605）。実クラウド試験の成功とは別。
 - 保護者書込みスイッチは無効。firebase.json の既定Rulesは firestore-parent-readonly.rules。
