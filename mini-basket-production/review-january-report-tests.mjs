@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('./review-january.html',import.meta.url),'utf8');
 const js=source.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
 assert.ok(js,'module must be present');
-new Function(js.replace(/^import[^\n]*;\s*$/gm,''),'syntax should parse');
+new Function(js.replace(/^import[^\n]*;\s*$/gm,''));
 assert.match(source,/id="copy-report"/);
 assert.match(source,/id="report" readonly/);
 assert.match(js,/getDocFromServer/);
