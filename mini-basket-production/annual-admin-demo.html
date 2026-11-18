@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><title>🏀 年間当番管理・QA体験版</title>
+<style>
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:#f3f7fb;color:#23364d;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+button,select,input{font:inherit}button{cursor:pointer;touch-action:manipulation}button:disabled{cursor:not-allowed;opacity:.43}
+.wrap{max-width:860px;margin:auto;padding:12px 11px 70px}.hero{background:linear-gradient(115deg,#e4f3ff,#fff1df);padding:17px;border:1px solid #d9e5ef;border-radius:16px}
+h1{font-size:21px;margin:0 0 5px}h2{font-size:17px;margin:0 0 9px}h3{font-size:15px;margin:0 0 7px}p{margin:7px 0}
+.card{background:white;border:1px solid #dce5ed;border-radius:14px;padding:13px;margin-top:12px}.tiny{font-size:11px;color:#65798d}.muted{color:#667c91;font-size:12px}.warn{background:#fff4df;border:1px solid #e9d0a5;border-radius:10px;padding:11px;font-size:12px}.ok{background:#eaf8f0;border:1px solid #bee2cb;border-radius:10px;padding:11px;font-size:12px;color:#166748}
+.qa{background:#a54617;color:#fff;padding:8px 12px;text-align:center;font-weight:900}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.row>*{flex:1 1 auto}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.btn{min-height:43px;border:1px solid #c8d7e4;background:#fff;border-radius:10px;padding:9px 12px;font-weight:800;color:#234057}
+button.primary{background:#245e8e;border-color:#245e8e;color:white}button.danger{background:#fff0f2;color:#a52a43;border-color:#e8bdc5}button.green{background:#e6f5ee;color:#176a47;border-color:#badcc9}
+.months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.month{min-height:53px;padding:5px 2px;border:1px solid #d3dee8;border-radius:9px;background:#fff;font-weight:900;color:#263d54}.month.current{border:2px solid #2b6c9f;background:#e6f2fd}.month small{display:block;font-size:9px;color:#6b8196;line-height:1.2}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.kpi{background:#f3f8fd;padding:11px 4px;border:1px solid #dfeaf3;border-radius:10px;text-align:center}.kpi b{display:block;font-size:22px;color:#285e87}.kpi small{font-size:10px;color:#64798c}
+.week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.week{margin:12px 0 5px}.week span{text-align:center;font-size:12px;font-weight:800;color:#65798f}
+.day{min-width:0;min-height:68px;padding:4px 2px;border:1px solid #dce5ed;border-radius:7px;background:#fff;text-align:center;color:#20384f;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px}
+.day.rest{background:#eff2f6;color:#667c8d}.day.game{background:#fff1d9;color:#89571d}.day.practice{background:#edf6ff}.day.picked{outline:3px solid #255b8c;outline-offset:-3px}.day.swapstart{outline:3px solid #db8832;outline-offset:-3px}.day:disabled{opacity:1}.day b{font-size:11px}.day span{font-size:9px;line-height:1.1;overflow-wrap:anywhere}.day em{font-size:9px;color:#a03b56;font-style:normal}.empty{min-height:68px}
+.panel{border:2px solid #d4e5f5;border-radius:12px;padding:12px;margin-top:12px;background:#fbfdff}.panel label{display:block;font-size:12px;font-weight:800;margin:10px 0 4px}
+select,input[type="text"]{min-height:45px;width:100%;border:1px solid #c2d3e1;border-radius:9px;background:#fff;padding:9px;color:#233b53}
+.toggle{display:flex;gap:6px;flex-wrap:wrap}.toggle button{flex:1 1 100px}.toggle .chosen{background:#e2f0fd;border-color:#4382b4}
+#toast{min-height:23px;color:#235e43;font-size:12px;font-weight:700;margin-top:5px;white-space:pre-wrap}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #e4eaf1;padding:8px 3px;text-align:center;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:#526f89;font-size:11px}tbody tr:nth-child(odd){background:#fafcfe}.scroll{overflow-x:auto}.highlight{font-weight:900;color:#945e1d}
+.carryitem{border:1px solid #e6e9ec;border-radius:9px;padding:9px 10px;margin-top:7px;font-size:12px}.carryitem b{color:#a64d29}.carryitem.resolved{background:#f1f7f2}.carryitem small{display:block;color:#617588}
+.flag{font-weight:800;font-size:11px;color:#a45b22}#selected{scroll-margin-top:15px}footer{padding:14px 0;color:#6b7d91;font-size:11px}
+@media(max-width:420px){.wrap{padding:8px 7px 50px}.card{padding:10px 8px}.day{min-height:63px;padding:3px 1px}.day b{font-size:10px}.day span{font-size:8.5px}.months{gap:4px}.actions{gap:5px}.kpi b{font-size:19px}}
+</style></head><body>
+<div class="qa">🧪 QA体験版：架空の12人・この端末だけに保存・保護者には公開されません</div>
+<main class="wrap"><header class="hero"><h1>🏀 年間当番表管理</h1><p>2027年1月〜11月を一括で仮割当。月ごとの担当変更・日付交換・試合変更・繰越管理を体験できます。</p>
+<p class="tiny">2026年12月の既知の予定回数を参考値として利用。2027年の試合日・休みは未確定のため、1月1〜3日以外は水・金・土・日を仮練習に設定しています。</p></header>
+<section class="card"><h2>① 月を選ぶ</h2><div id="months" class="months"></div><div class="row" style="margin-top:10px"><span id="monthstate" class="muted"></span><button id="reset" class="btn danger" type="button">体験データを初期化</button></div></section>
+<section class="card"><h2 id="caption">② 当番カレンダー</h2><div id="kpis" class="kpis"></div><div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="calendar"></div>
+<p class="muted">当番のある日をタップすると変更画面が開きます。試合・休みから練習に戻す操作もできます。</p><p id="toast" role="status"></p>
+<div id="selected" class="panel" hidden>
+ <h3 id="selectedtitle"></h3><div id="selectedstatus" class="muted"></div>
+ <div class="toggle" style="margin-top:8px"><button class="btn" data-type="practice">🏀 練習</button><button class="btn" data-type="game">🏆 試合</button><button class="btn" data-type="rest">🌙 休み</button></div>
+ <label for="owner">担当者を変更（条件に合う人のみ表示）</label><select id="owner"></select><button id="change" class="btn primary" style="width:100%;margin-top:8px">担当者を変更</button>
+ <div class="actions" style="margin-top:8px"><button id="swap" class="btn">⇄ 日付交換を開始</button><button id="finish" class="btn green">✅ 実施済みにする（体験）</button></div>
+ <button id="supplement" class="btn" style="width:100%;margin-top:8px">🔖 この当番を繰越の補填予定に指定</button>
+ <p id="swaphelp" class="tiny"></p><button id="close" class="btn" style="width:100%">閉じる</button>
+</div>
+<div class="actions" style="margin-top:12px"><button id="undo" class="btn">↩ 直前の変更を元に戻す</button><button id="save" class="btn green">💾 下書きを保存</button></div>
+<div class="warn" style="margin-top:12px">公開ボタンは**体験用**です。QA上のこの画面に「公開済み」と表示するだけで、Firebaseや保護者用カレンダーには一切反映しません。</div>
+<label style="font-size:12px;display:flex;align-items:center;gap:9px;margin-top:12px"><input id="reviewed" type="checkbox" style="width:19px;height:19px">この月の活動予定と当番を確認した（体験用）</label>
+<button id="publish" class="btn primary" style="width:100%;margin-top:9px">📣 この月を公開する（体験用）</button>
+</section>
+<section class="card"><h2>③ 12人の年間回数</h2><p class="muted">12月の予定を含む年間予定・2027年1〜11月の予定・体験上の実施済み・繰越待ちを別々に集計します。予定は試合化と担当変更で即更新します。</p>
+<div id="fairness" class="ok"></div><div class="scroll"><table><thead><tr><th>メンバー</th><th>12月予定</th><th>1〜11月</th><th>年間予定</th><th>実施済み</th><th>繰越待ち</th></tr></thead><tbody id="totals"></tbody></table></div>
+</section>
+<section class="card"><h2>④ 繰越と補填状況</h2><p class="muted">試合・休みに変更して消えた当番は、公開前後に関係なく繰越待ちになります。将来の担当日に補填予定として指定しても、実際に実施済みにするまで解消しません。</p>
+<div id="carries"></div></section>
+<section class="card"><h2>⑤ 公平性の補正候補</h2><p class="muted">未公開の将来日で、割当の多い人から少ない人へ変更できる候補を探します。曜日条件を守り、承認するまでは変更しません。</p><div id="suggestion"></div></section>
+<footer>本ページは画面と割当ロジックの試用を目的とした独立デモです。保存先はこのブラウザのlocalStorageで、他の端末とは同期しません。本番の月別公開・交代確定・保護者入力や実績台帳は変更されません。</footer></main>
+<script>
+(function(){
+'use strict';
+var STORAGE='aritama-qa-annual-demo-v1';
+var people=[
+ {id:'q01',name:'テスト01',rule:'全曜日可',days:[0,3,5,6],baseline:2},
+ {id:'q02',name:'テスト02',rule:'土曜のみ',days:[6],baseline:1},
+ {id:'q03',name:'テスト03',rule:'水曜のみ',days:[3],baseline:1},
+ {id:'q04',name:'テスト04',rule:'土・日のみ',days:[0,6],baseline:2},
+ {id:'q05',name:'テスト05',rule:'水曜優先',days:[0,3,5,6],pref:3,baseline:1},
+ {id:'q06',name:'テスト06',rule:'水曜のみ',days:[3],baseline:2},
+ {id:'q07',name:'テスト07',rule:'基本水・金／週末は要個別承認',days:[3,5],baseline:1},
+ {id:'q08',name:'テスト08',rule:'土曜以外',days:[0,3,5],baseline:2},
+ {id:'q09',name:'テスト09',rule:'全曜日可',days:[0,3,5,6],baseline:1},
+ {id:'q10',name:'テスト10',rule:'全曜日可',days:[0,3,5,6],baseline:1},
+ {id:'q11',name:'テスト11',rule:'水・金のみ',days:[3,5],baseline:1},
+ {id:'q12',name:'テスト12',rule:'水・土・日のみ／金曜禁止',days:[0,3,6],baseline:0}
+];
+var months=Array.from({length:11},function(_,i){return '2027-'+String(i+1).padStart(2,'0')});
+var byId=Object.fromEntries(people.map(function(p){return [p.id,p]}));
+var $=function(id){return document.getElementById(id)};
+var safe=function(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&#39;'}[c]})};
+var weekday=function(date){return new Date(date+'T00:00:00Z').getUTCDay()};
+var allowed=function(id,date){return byId[id]&&byId[id].days.includes(weekday(date))};
+var activity=function(date){return [0,3,5,6].includes(weekday(date))};
+var allDates=function(month){var y=+month.slice(0,4),m=+month.slice(5,7);return Array.from({length:new Date(Date.UTC(y,m,0)).getUTCDate()},function(_,i){return month+'-'+String(i+1).padStart(2,'0')})};
+var state,selMonth='2027-01',selDate=null,swapDate=null,backup=null,reviewed={};
+function initialize(){
+ var data={version:1,months:{},carries:[],changes:[]},counts=Object.fromEntries(people.map(function(p){return [p.id,p.baseline]}));
+ var dates=[];
+ months.forEach(function(month){
+  var days={};
+  allDates(month).forEach(function(date){
+   if(!activity(date))return;
+   var rest=date>='2027-01-01'&&date<='2027-01-03';
+   days[date]={type:rest?'rest':'practice',owner:null,formerOwner:null,completed:false};
+   if(!rest)dates.push(date);
+  });
+  data.months[month]={published:false,days:days};
+ });
+ // Allocate across the full year. Hard weekday eligibility is checked before scoring.
+ // A small penalty for short gaps prevents unnecessary back-to-back duties.
+ var last=Object.fromEntries(people.map(function(p){return [p.id,null]}));
+ dates.sort(function(a,b){return a.localeCompare(b)});
+ dates.forEach(function(date){
+  var candidates=people.filter(function(p){return allowed(p.id,date)});
+  if(!candidates.length)return;
+  candidates.sort(function(a,b){
+   var score=function(p){
+    var gap=last[p.id]?Math.abs((Date.parse(date)-Date.parse(last[p.id]))/86400000):60;
+    return counts[p.id]*100+Math.max(0,8-gap)*16-(p.pref===weekday(date)?9:0);
+   };
+   return score(a)-score(b)||a.id.localeCompare(b.id);
+  });
+  var pick=candidates[0];
+  data.months[date.slice(0,7)].days[date].owner=pick.id;
+  counts[pick.id]++;
+  last[pick.id]=date;
+ });
+ return data;
+}
+function load(){
+ try{var saved=JSON.parse(localStorage.getItem(STORAGE)||'null');
+  if(saved&&saved.version===1&&saved.months&&saved.carries&&months.every(function(m){return saved.months[m]&&saved.months[m].days}))return saved;
+ }catch(err){}
+ return initialize();
+}
+function persist(){try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch(err){alert('端末に保存できませんでした：'+err.message)}}
+function toast(message){$('toast').textContent=message}
+function totals(){
+ var rows=Object.fromEntries(people.map(function(p){return [p.id,{base:p.baseline,planned:0,done:0,carry:0}]}));
+ months.forEach(function(m){Object.values(state.months[m].days).forEach(function(d){
+  if(d.type==='practice'&&d.owner){
+   rows[d.owner].planned++;
+   if(d.completed)rows[d.owner].done++;
+  }
+ })});
+ state.carries.filter(function(c){return !c.resolved}).forEach(function(c){if(rows[c.member])rows[c.member].carry++});
+ return rows;
+}
+function snapshot(){backup=JSON.stringify(state)}
+function mutation(action,fn){snapshot();fn();state.changes.push({action:action,time:new Date().toISOString()});persist();render();toast('✅ '+action+'（この端末の体験データに反映済み）')}
+function getDay(date){return state.months[date.slice(0,7)]?.days[date]}
+function changeType(date,type){
+ var d=getDay(date);
+ if(!d||!['practice','game','rest'].includes(type))return;
+ if(d.type===type)return toast('この日はすでに'+(type==='game'?'試合':type==='rest'?'休み':'練習')+'です。');
+ if(d.completed)return toast('実施済みの記録があるため、先に管理者台帳での訂正が必要です。');
+ if(type==='practice'){
+  var former=d.formerOwner;
+  var c=state.carries.find(function(x){return x.date===date&&x.member===former});
+  if(c&&c.resolved)return toast('解消済みの繰越があります。復元する前に記録を確認してください。');
+  mutation('練習に戻す',function(){
+   if(c)state.carries=state.carries.filter(function(x){return x!==c});
+   d.type='practice';d.owner=former&&allowed(former,date)?former:null;d.formerOwner=null;
+  });
+  return;
+ }
+ if(!confirm(date+' を'+(type==='game'?'試合':'休み')+'に変更しますか？\n担当予定は取り消され、元担当者に繰越待ちが1回発生します。'))return;
+ mutation((type==='game'?'試合':'休み')+'に変更',function(){
+  if(d.owner&&!state.carries.some(function(x){return x.date===date&&x.member===d.owner})){
+   state.carries.push({id:'carry-'+date+'-'+d.owner,date:date,member:d.owner,reason:type,
+    replacement:null,resolved:false});
+  }
+  d.formerOwner=d.owner;d.owner=null;d.type=type;
+ });
+}
+function changeOwner(){
+ if(!selDate)return;
+ var d=getDay(selDate),next=$('owner').value;
+ if(!d||d.type!=='practice')return toast('練習日だけ担当者を変更できます。');
+ if(!allowed(next,selDate))return toast('その人はこの曜日に担当できません。');
+ if(d.completed)return toast('実施済みの担当は変更できません。');
+ if(d.owner===next)return toast('同じ担当者です。');
+ var old=d.owner;
+ mutation('担当者を'+(byId[old]?.name||'未設定')+'から'+byId[next].name+'に変更',function(){
+  d.owner=next;
+  state.carries.forEach(function(c){if(c.replacement===selDate&&c.member!==next&&!c.resolved)c.replacement=null});
+ });
+}
+function exchange(dateA,dateB){
+ var a=getDay(dateA),b=getDay(dateB);
+ if(!a||!b||a.type!=='practice'||b.type!=='practice'||!a.owner||!b.owner||
+  a.completed||b.completed)return toast('交換できるのは未実施の練習当番2日です。');
+ if(!allowed(a.owner,dateB)||!allowed(b.owner,dateA))
+  return toast('⚠ 両方の曜日条件を満たさないため、交換できません。');
+ if(a.owner===b.owner)return toast('同じ担当者同士の交換です。');
+ mutation(dateA+' と '+dateB+' の当番交換',function(){
+  var old=a.owner;a.owner=b.owner;b.owner=old;
+  state.carries.forEach(function(c){
+   if(!c.resolved&&c.replacement===dateA&&c.member!==a.owner)c.replacement=null;
+   if(!c.resolved&&c.replacement===dateB&&c.member!==b.owner)c.replacement=null;
+  });
+ });
+ swapDate=null;
+}
+function finishDuty(){
+ if(!selDate)return;
+ var d=getDay(selDate);
+ if(!d||d.type!=='practice'||!d.owner)return toast('実施済みは当番のある練習日だけに設定できます。');
+ if(d.completed)return toast('この日はすでに実施済みです。');
+ if(!confirm('体験用として'+selDate+' '+byId[d.owner].name+'を実施済みにしますか？\n実際の当番記録には反映しません。'))return;
+ mutation('実施済みを記録（体験）',function(){
+  d.completed=true;
+  state.carries.forEach(function(c){if(!c.resolved&&c.replacement===selDate&&c.member===d.owner)c.resolved=true});
+ });
+}
+function supplement(){
+ if(!selDate)return;
+ var d=getDay(selDate);
+ if(!d||d.type!=='practice'||!d.owner)return toast('補填予定を指定する練習当番を選んでください。');
+ var available=state.carries.filter(function(c){return !c.resolved&&c.member===d.owner&&c.date<selDate});
+ if(!available.length)return toast('この担当者に、これより前の未解消の繰越はありません。');
+ var carry=available.find(function(c){return c.replacement===selDate})||available.find(function(c){return !c.replacement})||available[0];
+ mutation('繰越補填予定を指定（まだ解消しない）',function(){
+  carry.replacement=selDate;
+  if(d.completed)carry.resolved=true;
+ });
+}
+function selectDate(date){
+ if(swapDate){
+  if(date===swapDate){swapDate=null;toast('日付交換を中止しました。');render();return}
+  exchange(swapDate,date);return;
+ }
+ selDate=date;render();
+}
+function renderMonths(){
+ $('months').innerHTML=months.map(function(m){
+  var label=+m.slice(-2)+'月',published=state.months[m].published;
+  return '<button class="month '+(m===selMonth?'current':'')+'" data-month="'+m+'">'+label+
+   '<small>'+(published?'公開済み※':'仮案')+'</small></button>';
+ }).join('');
+}
+function renderCalendar(){
+ var all=allDates(selMonth),dayRows=state.months[selMonth].days;
+ var practice=Object.values(dayRows).filter(function(d){return d.type==='practice'}).length,
+ game=Object.values(dayRows).filter(function(d){return d.type==='game'}).length,
+ rest=Object.values(dayRows).filter(function(d){return d.type==='rest'}).length;
+ $('caption').textContent='② '+Number(selMonth.slice(-2))+'月の当番カレンダー';
+ $('monthstate').textContent='この月：'+(state.months[selMonth].published?'公開済み（体験上の表示のみ）':'未公開の仮案');
+ $('kpis').innerHTML='<div class="kpi"><b>'+practice+'</b><small>練習・当番</small></div>'+
+  '<div class="kpi"><b>'+game+'</b><small>試合</small></div>'+
+  '<div class="kpi"><b>'+rest+'</b><small>休み</small></div>';
+ var html='<div class="empty"></div>'.repeat(weekday(all[0]));
+ all.forEach(function(date){
+  var d=dayRows[date],number=+date.slice(-2);
+  if(!d){html+='<div class="day" style="opacity:.45"><b>'+number+'</b></div>';return}
+  var content=d.type==='practice'?(d.owner?byId[d.owner].name:'⚠ 未設定'):
+   d.type==='game'?'🏀 試合':'休み';
+  html+='<button class="day '+d.type+(selDate===date?' picked':'')+(swapDate===date?' swapstart':'')+
+   '" data-date="'+date+'"><b>'+number+'</b><span>'+safe(content)+'</span>'+
+   (d.completed?'<em>✅実施</em>':'')+'</button>';
+ });
+ $('calendar').innerHTML=html;
+ $('reviewed').checked=reviewed[selMonth]===true;
+}
+function renderSelected(){
+ var d=selDate&&getDay(selDate);
+ $('selected').hidden=!d;
+ if(!d)return;
+ $('selectedtitle').textContent=selDate+'（'+['日','月','火','水','木','金','土'][weekday(selDate)]+'）';
+ $('selectedstatus').textContent='現在：'+(d.type==='practice'?(d.owner?byId[d.owner].name:'未設定'):d.type==='game'?'🏀 試合・当番なし':'休み・当番なし')+
+  (d.completed?'／実施済み':'');
+ document.querySelectorAll('[data-type]').forEach(function(button){button.classList.toggle('chosen',button.dataset.type===d.type)});
+ var choices=people.filter(function(p){return allowed(p.id,selDate)}).sort(function(a,b){return a.name.localeCompare(b.name)});
+ $('owner').innerHTML=choices.map(function(p){return '<option value="'+p.id+'">'+p.name+'（'+safe(p.rule)+'）</option>'}).join('');
+ $('owner').value=d.owner||choices[0]?.id||'';
+ $('owner').disabled=d.type!=='practice'||d.completed;
+ $('change').disabled=d.type!=='practice'||d.completed;
+ $('swap').disabled=d.type!=='practice'||d.completed||!d.owner;
+ $('finish').disabled=d.type!=='practice'||!d.owner||d.completed;
+ $('supplement').disabled=d.type!=='practice'||!d.owner;
+ $('swaphelp').textContent=swapDate?'🔄 交換先の日付をカレンダーでタップしてください。月ボタンで別の月にも移動できます。':'日付交換は2日とも必須曜日条件を満たすときのみ実行できます。';
+}
+function renderTotals(){
+ var t=totals(),nums=people.map(function(p){return p.baseline+t[p.id].planned});
+ var mn=Math.min.apply(null,nums),mx=Math.max.apply(null,nums);
+ $('fairness').textContent='年間予定回数の最大差：'+(mx-mn)+'回（最多 '+mx+'回／最少 '+mn+'回）。必須曜日を優先します。';
+ $('totals').innerHTML=people.map(function(p){
+  var v=t[p.id],num=p.baseline+v.planned;
+  return '<tr><td><b>'+p.name+'</b><br><span class="tiny">'+safe(p.rule)+'</span></td><td>'+p.baseline+
+   '</td><td>'+v.planned+'</td><td class="'+(num===mn?'highlight':'')+'">'+num+
+   '</td><td>'+v.done+'</td><td>'+(v.carry?'<b class="highlight">'+v.carry+'</b>':'0')+'</td></tr>';
+ }).join('');
+}
+function renderCarries(){
+ var carry=state.carries.slice().sort(function(a,b){return a.date.localeCompare(b.date)});
+ $('carries').innerHTML=carry.length?carry.map(function(c){
+  return '<div class="carryitem '+(c.resolved?'resolved':'')+'"><b>'+byId[c.member]?.name+
+    '｜'+c.date+' の'+(c.reason==='game'?'試合':'休み')+'化</b>'+
+    '<small>元担当者：'+byId[c.member]?.name+'／'+
+    (c.resolved?'✅ 当番実施により解消':c.replacement?'補填予定：'+c.replacement+'（実施までは繰越待ち）':'⏳ 繰越待ち・補填未定')+
+    '</small></div>';
+ }).join(''):'<p class="muted">現在、試合・休みによる繰越待ちはありません。</p>';
+}
+function fairnessSuggestion(){
+ var t=totals(),future=[];
+ months.forEach(function(m){
+  if(state.months[m].published)return;
+  Object.entries(state.months[m].days).forEach(function(pair){
+   var date=pair[0],d=pair[1];
+   if(d.type!=='practice'||!d.owner||d.completed)return;
+   people.forEach(function(p){
+    if(p.id===d.owner||!allowed(p.id,date))return;
+    var gain=(p.baseline+t[p.id].planned),lose=(byId[d.owner].baseline+t[d.owner].planned);
+    if(lose-gain<2)return;
+    var c=state.carries.find(function(x){return !x.resolved&&!x.replacement&&x.member===p.id&&date>x.date});
+    future.push({date:date,old:d.owner,next:p.id,impact:lose-gain,carry:!!c});
+   });
+  });
+ });
+ future.sort(function(a,b){return (+b.carry)-(+a.carry)||b.impact-a.impact||a.date.localeCompare(b.date)});
+ return future[0]||null;
+}
+function renderSuggestion(){
+ var item=fairnessSuggestion();
+ if(!item){$('suggestion').textContent='大きな回数差を改善できる候補はありません。';return}
+ $('suggestion').innerHTML='<p><b>'+item.date+'</b>：'+byId[item.old].name+' → '+byId[item.next].name+
+  '（年間回数の差 '+item.impact+'回）'+(item.carry?' 🔖繰越補填の候補':'')+'</p>'+
+  '<button class="btn green" id="apply-suggestion">この変更案を採用（体験用）</button>';
+}
+function render(){
+ renderMonths();renderCalendar();renderSelected();renderTotals();renderCarries();renderSuggestion();
+}
+$('months').addEventListener('click',function(e){var b=e.target.closest('[data-month]');if(!b)return;selMonth=b.dataset.month;selDate=null;render();toast('')});
+$('calendar').addEventListener('click',function(e){var b=e.target.closest('[data-date]');if(b)selectDate(b.dataset.date)});
+document.querySelectorAll('[data-type]').forEach(function(b){b.addEventListener('click',function(){if(selDate)changeType(selDate,b.dataset.type)})});
+$('change').onclick=changeOwner;
+$('swap').onclick=function(){if(!selDate)return;swapDate=selDate;selDate=null;render();toast('⇄ 交換先の日付を選んでください。別の月へ移動しても選択を維持します。')};
+$('finish').onclick=finishDuty;
+$('supplement').onclick=supplement;
+$('close').onclick=function(){selDate=null;swapDate=null;render()};
+$('undo').onclick=function(){
+ if(!backup)return toast('まだ戻せる変更がありません。');
+ var prev=JSON.parse(backup);backup=null;state=prev;persist();render();toast('↩ 直前の変更を元に戻しました。');
+};
+$('save').onclick=function(){persist();toast('✅ 11か月分の仮当番表をこの端末に保存しました。再読み込みしても残ります。Firebaseには保存しません。')};
+$('reviewed').onchange=function(e){reviewed[selMonth]=e.target.checked};
+$('publish').onclick=function(){
+ if(!reviewed[selMonth])return toast('⚠ 先に「この月の活動予定と当番を確認した」にチェックしてください。');
+ var all=Object.entries(state.months[selMonth].days),errors=all.filter(function(x){return x[1].type==='practice'&&(!x[1].owner||!allowed(x[1].owner,x[0]))});
+ if(errors.length)return toast('⚠ 担当者の未設定・必須曜日違反が'+errors.length+'件あります。');
+ if(!confirm(selMonth+' を「公開済み」にしますか？\nこれは端末内の体験用表示で、実際の保護者画面には公開されません。'))return;
+ mutation(selMonth+' を公開済みに設定（体験のみ）',function(){state.months[selMonth].published=true});
+};
+$('reset').onclick=function(){
+ if(!confirm('この端末の年間仮当番・繰越・公開体験データを初期化しますか？\n実際のFirebaseデータは変わりません。'))return;
+ state=initialize();backup=null;selDate=null;swapDate=null;reviewed={};persist();render();toast('✅ 11か月分を必須曜日条件に従って再生成しました。');
+};
+$('suggestion').addEventListener('click',function(e){
+ if(!e.target.closest('#apply-suggestion'))return;
+ var a=fairnessSuggestion();if(!a)return;
+ if(!confirm(a.date+' を '+byId[a.old].name+' → '+byId[a.next].name+' に変更しますか？'))return;
+ mutation('年間公平性に基づく担当者変更',function(){
+  getDay(a.date).owner=a.next;
+  state.carries.forEach(function(c){if(!c.resolved&&c.replacement===a.date&&c.member!==a.next)c.replacement=null});
+ });
+ selMonth=a.date.slice(0,7);selDate=a.date;render();
+});
+state=load();persist();render();
+})();
+</script></body></html>
