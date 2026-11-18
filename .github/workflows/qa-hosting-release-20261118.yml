@@ -1,4 +1,4 @@
-name: Mini basket QA Hosting only (calendar and x/o cancellation)
+name: Mini basket QA Hosting only (stable rapid x/o taps)
 on:
   workflow_dispatch:
   push:
@@ -51,6 +51,8 @@ jobs:
           set -euo pipefail
           STAGING_FIREBASE_CONFIG_JSON="$(cat "$RUNNER_TEMP/qa-config.json")" node build-staging-site.mjs
           node staging-build-tests.mjs
+          node parent-input-tests.mjs
+          node parent-clock-tests.mjs
           test -s dist-staging/index.html
           grep -q 'id="calendar"' dist-staging/index.html
           grep -q 'id="mark-x"' dist-staging/index.html
@@ -58,12 +60,16 @@ jobs:
           grep -q '×取消' dist-staging/index.html
           grep -q '○取消' dist-staging/index.html
           grep -q 'answerTapDecision' dist-staging/index.html
+          grep -q 'sameAnswerTap' dist-staging/index.html
+          grep -q 'overlayParentAnswers' dist-staging/index.html
+          grep -q 'pendingTap.queuedToggle' dist-staging/index.html
+          grep -q 'Keep the tapped button node alive' dist-staging/index.html
           grep -q '🧪 検証版' dist-staging/index.html
           if grep -qE '日付ごとの詳しい当番|id="detail"|rowday' dist-staging/index.html; then
             echo 'ERROR: outdated detailed duty section remains; QA release refused' >&2
             exit 1
           fi
-          echo 'PASS: QA parent displays calendar and explicit x/o second-tap cancellation; daily detail section is absent'
+          echo 'PASS: QA parent has stable mobile tap target, queued rapid cancel, and committed-state overlay'
       - name: Deploy ONLY QA Firebase Hosting when authorized QA credentials exist
         env:
           QA_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ARITAMA_MINI_BASKET_QA }}
@@ -95,7 +101,7 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --location --max-redirs 2 \
             --retry 3 --retry-delay 2 -H 'Cache-Control: no-cache' \
-            'https://aritama-mini-basket-qa.web.app/?verify=calendar-only-20261118' \
+            'https://aritama-mini-basket-qa.web.app/?verify=stable-rapid-tap-20261118' \
             -o "$RUNNER_TEMP/qa-after.html"
           grep -q '🧪 検証版' "$RUNNER_TEMP/qa-after.html"
           grep -q 'id="calendar"' "$RUNNER_TEMP/qa-after.html"
@@ -104,8 +110,11 @@ jobs:
           grep -q '×取消' "$RUNNER_TEMP/qa-after.html"
           grep -q '○取消' "$RUNNER_TEMP/qa-after.html"
           grep -q 'answerTapDecision' "$RUNNER_TEMP/qa-after.html"
+          grep -q 'sameAnswerTap' "$RUNNER_TEMP/qa-after.html"
+          grep -q 'overlayParentAnswers' "$RUNNER_TEMP/qa-after.html"
+          grep -q 'Keep the tapped button node alive' "$RUNNER_TEMP/qa-after.html"
           if grep -qE '日付ごとの詳しい当番|id="detail"|rowday' "$RUNNER_TEMP/qa-after.html"; then
             echo 'QA site still contains the removed detail list; deployment verification failed' >&2
             exit 1
           fi
-          echo 'PASS: live QA Hosting serves calendar-only layout and second-tap x/o cancel; no Firebase data or security rules touched'
+          echo 'PASS: live QA Hosting serves stable rapid tap/cancel UI; no Firebase data or security rules touched'
