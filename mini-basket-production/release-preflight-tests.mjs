@@ -42,7 +42,7 @@ assert.match(swaps,/runTransaction/);
 assert.match(swaps,/confirmedSubstituteId/);
 assert.match(monitor,/reviewCurrentAnswerState/);
 assert.match(monitor,/履歴ではありません/);
-assert.match(doc,/なりすましの技術的防止はできない/);
+assert.match(doc,/名前選択によるなりすましを防止できない/);
 assert.match(doc,/会長/);
 console.log('PASS B-plan source readiness: no production writes enabled; manager correction, swap and Jan approval guards present.');
 console.log('NOT VERIFIED: live production rules/deployment, Cloud Functions audit, QA cloud writes, chair approval and actual iPhone operation.');
