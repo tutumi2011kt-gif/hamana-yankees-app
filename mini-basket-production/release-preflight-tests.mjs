@@ -12,7 +12,8 @@ const config=JSON.parse(firebase);
 assert.equal(config.firestore.rules,'firestore-parent-readonly.rules','live default must be read-only until signed off');
 assert.match(flag,/PARENT_WRITES_ENABLED=false/,'live parent inputs must remain disabled');
 assert.match(flag,/ACCOUNT_REQUIRED=false/,'B plan must not add a parent account');
-assert.match(readonly,/allow\s+write\s*:\s*if\s+false/,'default Firestore rules must deny parent writes');
+assert.match(readonly,/allow read, write: if isAdmin\(\)/,'only Google administrator may write in the default rule');
+assert.doesNotMatch(readonly,/allow\s+(?:create|update|delete)\s*:/,'no parent write grant in default rules');
 assert.match(candidate,/DO NOT DEPLOY/,'candidate must be explicitly labelled experimental');
 for(const guard of [
  /request\.time\s*>=/,
