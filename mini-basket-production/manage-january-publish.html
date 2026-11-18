@@ -46,7 +46,7 @@ label{display:block;margin:10px 0}.tick{display:flex;gap:11px;align-items:flex-s
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {normalizeMember,calendarDates} from './month-draft-core.mjs';
-import {reviewJanuaryForPublication,januaryPublicationPatch,januaryDaySignature,JANUARY_PUBLICATION_MONTH,timestampMillis} from './january-publication-core.mjs';
+import {reviewJanuaryForPublication,januaryPublicationPatch,januaryDaySignature,januaryMembersReviewSignature,JANUARY_PUBLICATION_MONTH,timestampMillis} from './january-publication-core.mjs';
 import {jstInputOpenMillis,jstInputCutoffMillis} from './month-rollover-core.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
@@ -56,9 +56,14 @@ const month=JANUARY_PUBLICATION_MONTH,monthRef=doc(db,'teams',teamId,'months',mo
 const rosterRef=doc(db,'teams',teamId,'public','roster');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const txt=(id,value,cls='muted')=>{$(id).textContent=value;$(id).className=cls};
-let loaded=false,busy=false,meta=null,days=[],members=[],roster=null,version=null,signatureMap=new Map(),checkedDates=new Set(),initialWindow=null,originalRosterIds='';
+let loaded=false,busy=false,meta=null,days=[],members=[],roster=null,version=null,signatureMap=new Map(),checkedDates=new Set(),initialWindow=null,originalRosterSignature='',originalMembersSignature='';
 const jstInput=millis=>Number.isFinite(millis)?new Date(millis+9*3600000).toISOString().slice(0,16):'';
 const selectedMillis=id=>{const value=$(id).value;return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)?Date.parse(value+':00+09:00'):NaN};
+const rosterReviewSignature=r=>JSON.stringify([
+  (Array.isArray(r?.publishedMonths)?[...r.publishedMonths].sort():null),
+  (Array.isArray(r?.members)?r.members.map(m=>[m?.id??null,m?.name??null,m?.kana??null,m?.status??null])
+   .sort((a,b)=>String(a[0]).localeCompare(String(b[0]))):null)
+ ]);
 const monthState=x=>JSON.stringify([x?.publication??null,x?.inputState??null,Number(x?.version??-1),timestampMillis(x?.openAt)||null,timestampMillis(x?.cutoffAt)||null]);
 const customWindow=()=>selectedMillis('open')!==jstInputOpenMillis(month)||selectedMillis('close')!==jstInputCutoffMillis(month);
 const customWindowApproved=()=>!customWindow()||$('custom-window-ack').checked;
@@ -105,7 +110,7 @@ function renderDays(){
 }
 function clearState(){
  loaded=false;meta=null;days=[];members=[];roster=null;version=null;signatureMap=new Map();checkedDates=new Set();
- originalRosterIds='';initialWindow=null;
+ originalRosterSignature='';originalMembersSignature='';initialWindow=null;
  for(const id of ['consent','operations','publish-consent','custom-window-ack'])$(id).checked=false;
  $('dates').textContent='下書きを読み込んでください。';controls();
 }
@@ -130,7 +135,8 @@ $('load').onclick=async()=>{
   roster=rosterSnap.data();members=ms.docs.map(s=>normalizeMember({id:s.id,...s.data()}));
   days=daySnaps.docs.map(s=>({date:s.id,...s.data()})).sort((a,b)=>a.date.localeCompare(b.date));
   signatureMap=new Map(days.map(d=>[d.date,januaryDaySignature(d)]));
-  originalRosterIds=JSON.stringify((roster.members||[]).map(m=>m.id).sort());
+  originalRosterSignature=rosterReviewSignature(roster);
+  originalMembersSignature=januaryMembersReviewSignature(members);
   initialWindow=monthState(meta);
   const open=timestampMillis(meta.openAt),close=timestampMillis(meta.cutoffAt);
   $('open').value=jstInput(Number.isFinite(open)?open:jstInputOpenMillis(month));
@@ -165,7 +171,7 @@ $('publish').onclick=async()=>{
     !$('consent').checked||!$('operations').checked||!$('publish-consent').checked
     ||!customWindowApproved()){review();return;}
  if(!confirm('本当に2027年1月の当番表を保護者全員へ公開しますか？\n全19日分を確認済み、チーム責任者の了承済みであることを再確認してください。\n受付締切（日本時間）：'+$('close').value+'\n本番データの公開状態が変更されます。'))return;
- const uid=user.uid,expectedVersion=version,expectedMonth=initialWindow,expectedRoster=originalRosterIds;
+ const uid=user.uid,expectedVersion=version,expectedMonth=initialWindow,expectedRoster=originalRosterSignature,expectedMembers=originalMembersSignature;
  const reviewedSignatures=new Map(signatureMap),reviewedDates=new Set(checkedDates);
  busy=true;controls();txt('result','管理者権限・日別予定・締切をFirebaseトランザクションで再検査中…');
  try{
@@ -176,7 +182,7 @@ $('publish').onclick=async()=>{
     throw Error('Google管理者権限が変更されました');
    if(!mSnap.exists()||mSnap.data().publication!=='draft'||Number(mSnap.data().version??-1)!==expectedVersion
     ||monthState(mSnap.data())!==expectedMonth)throw Error('下書きが他の端末で変更されました。再読み込みしてください');
-   if(!rSnap.exists()||JSON.stringify((rSnap.data().members||[]).map(x=>x.id).sort())!==expectedRoster)
+   if(!rSnap.exists()||rosterReviewSignature(rSnap.data())!==expectedRoster)
     throw Error('公開用名簿が変更されています。再読み込みしてください');
    const expectedDays=calendarDates(month);
    if(reviewedDates.size!==expectedDays.length)throw Error('すべての活動日の確認が必要です');
@@ -194,6 +200,8 @@ $('publish').onclick=async()=>{
       throw Error(day.date+' の予定が確認時点から変わっています。再読み込みしてください');
    }
    const latestMembers=memberSnaps.map((s,i)=>normalizeMember({id:memberIds[i],...s.data()}));
+   if(januaryMembersReviewSignature(latestMembers)!==expectedMembers)
+    throw Error('在籍状態・曜日条件・保護者名が確認時点から変更されました。再読み込みしてください');
    const result=reviewJanuaryForPublication({
     month,meta:mSnap.data(),days:latestDays,members:latestMembers,roster:rSnap.data(),
     openMillis:windowStart,cutoffMillis:windowEnd,nowMillis:Date.now()
