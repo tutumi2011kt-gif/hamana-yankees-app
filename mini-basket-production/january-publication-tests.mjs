@@ -105,6 +105,13 @@ check('reviewed day signature detects owner, type, location, updated timestamp c
  assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,confirmedSubstituteId:'haruka'}));
  assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,updatedAt:{toMillis:()=>2000}}));
 });
+const checklist=await readFile(new URL('./JANUARY-2027-22-ITEM-REVIEW.md',import.meta.url),'utf8');
+check('manual checklist covers all 19 actual January candidate dates plus 3 approvals',()=>{
+ const checks=checklist.split('\n').filter(line=>line.startsWith('- [ ]'));
+ assert.equal(checks.length,22);
+ const actualDates=checks.map(line=>line.match(/2027-01-\d{2}/)?.[0]).filter(Boolean).sort();
+ assert.deepEqual(actualDates,calendarDates('2027-01').map(d=>d.date).sort());
+});
 const ui=await readFile(new URL('./manage-january-publish.html',import.meta.url),'utf8');
 check('January publisher must reject changed manager member or public roster state before transaction writes',()=>{
  assert.match(ui,/januaryMembersReviewSignature\(members\)/);
@@ -112,6 +119,17 @@ check('January publisher must reject changed manager member or public roster sta
  assert.match(ui,/rosterReviewSignature\(rSnap\.data\(\)\)!==expectedRoster/);
 });
 
+check('January publication requires 22 reviewed items before enabling action',()=>{
+ assert.match(ui,/id="open-reviewed"/);
+ assert.match(ui,/id="cutoff-reviewed"/);
+ assert.match(ui,/id="publish-consent"/);
+ assert.match(ui,/const totalReviews=calendarDates\(month\)\.length\+3/);
+ assert.match(ui,/checkedDates\.size\+Number\(\$\('open-reviewed'\)\.checked\)/);
+ assert.match(ui,/&&\$\('open-reviewed'\)\.checked&&\$\('cutoff-reviewed'\)\.checked/);
+ assert.match(ui,/!\$\('open-reviewed'\)\.checked\|\|!\$\('cutoff-reviewed'\)\.checked/);
+ assert.match(ui,/\$\('open-reviewed'\)\.checked=false/);
+ assert.match(ui,/\$\('cutoff-reviewed'\)\.checked=false/);
+});
 const builder=await readFile(new URL('./build-staging-site.mjs',import.meta.url),'utf8');
 const script=ui.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script);new Function(script.replace(/^import[^\n]*;\s*$/gm,''));
