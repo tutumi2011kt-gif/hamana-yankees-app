@@ -2,7 +2,7 @@
 // A Firebase web API key is not a secret, but project identity must be isolated.
 // The guard is a safety net, not proof that a malicious account cannot connect.
 export const PRODUCTION_FIREBASE_PROJECT_ID = 'aritama-mini-basket';
-const SAFE_STAGE_SUFFIX=/(?:-staging|-qa|-test)(?:-[a-z0-9]+)?$/;
+const SAFE_STAGE_SUFFIX=/(?:-staging|-qa|-test)$/;
 export function assertStagingFirebaseConfig(config) {
  if (!config || typeof config!=='object') throw new Error('検証版Firebaseの設定がありません');
  const id=config.projectId,auth=config.authDomain;
