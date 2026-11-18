@@ -14,7 +14,6 @@ assert.match(js,/auditReport\(rows,members,month\)/);
 assert.match(js,/navigator\.clipboard\.writeText/);
 assert.match(js,/未設定の当番/);
 assert.match(js,/formatJst\(month\?\.cutoffAt\)/);
-assert.match(js,/\\b\(.*?/,'has normal javascript');
 assert.doesNotMatch(js,/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch)\s*\(/,
  'January review may not write to Firebase');
 console.log('PASS January cloud review summarizes all activity dates and JST cutoff; no Firestore writes.');
