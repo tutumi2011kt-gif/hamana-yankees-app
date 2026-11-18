@@ -35,6 +35,27 @@ jobs:
           test -f dist-staging/admin-qa-health.html
           test -f dist-staging/firebase-config-staging.mjs
           ! grep -R "aritama-mini-basket.firebaseapp.com" dist-staging/
+      - name: Probe public QA Hosting (read-only; informational)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-redirs 2 --connect-timeout 8 --max-time 20 \
+            -H 'Cache-Control: no-cache' \
+            'https://aritama-mini-basket-qa.web.app/' -o /tmp/mini-basket-live-qa.html
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const html=readFileSync('/tmp/mini-basket-live-qa.html','utf8');
+          const labels=['② 月を選ぶ','③ ×・○の希望入力','❌ 当番ができない日','⭕ 代わりにできる日','id="calendar-title"'];
+          const positions=labels.map(label=>html.indexOf(label));
+          const qaBadge=html.includes('🧪 検証版');
+          console.log('QA Hosting HTML: bytes='+Buffer.byteLength(html)+'; QA badge='+qaBadge+'; labels='+JSON.stringify(positions));
+          if(!qaBadge||positions.some(position=>position<0)||positions.some((position,i)=>i>0&&position<=positions[i-1])){
+            console.error('QA Hosting is not showing the latest verified parent UI (or is unavailable).');
+            process.exitCode=1;
+          }else{
+            console.log('PASS: deployed QA parent UI shows the new mode controls between month selection and calendar.');
+          }
+          NODE
       - name: Verify QA read-only doctor refuses production and needs no credentials in dry-run
         run: |
           node firebase-functions/verify-qa.mjs --project basket-staging-qa | tee /tmp/qa-verify-dryrun.txt
