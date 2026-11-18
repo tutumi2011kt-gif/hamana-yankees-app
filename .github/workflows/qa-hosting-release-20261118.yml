@@ -1,4 +1,4 @@
-name: Mini basket QA Hosting only (real member name annual preview)
+name: Mini basket QA Hosting only (annual admin and parent linked preview)
 on:
   workflow_dispatch:
   push:
@@ -54,11 +54,14 @@ jobs:
           node parent-input-tests.mjs
           node parent-clock-tests.mjs
           node annual-admin-demo-tests.mjs
+          node annual-parent-demo-tests.mjs
           test -s dist-staging/index.html
           test -s dist-staging/annual-admin-demo.html
+          test -s dist-staging/annual-parent-demo.html
           grep -q '年間当番表管理' dist-staging/annual-admin-demo.html
           grep -q 'aritama-qa-annual-demo-realnames-v2' dist-staging/annual-admin-demo.html
           grep -q '大竹わかな' dist-staging/annual-admin-demo.html
+          grep -q '保護者用QA体験版' dist-staging/annual-parent-demo.html
           grep -q '村松さわ' dist-staging/annual-admin-demo.html
           grep -q 'id="calendar"' dist-staging/index.html
           grep -q 'id="mark-x"' dist-staging/index.html
@@ -132,4 +135,12 @@ jobs:
           grep -q '大竹わかな' "$RUNNER_TEMP/qa-annual-after.html"
           grep -q '村松さわ' "$RUNNER_TEMP/qa-annual-after.html"
           grep -q 'Firebaseや保護者用カレンダーには一切反映しません' "$RUNNER_TEMP/qa-annual-after.html"
+          curl --fail --silent --show-error --location --max-redirs 2 \
+            --retry 3 --retry-delay 2 -H 'Cache-Control: no-cache' \
+            'https://aritama-mini-basket-qa.web.app/annual-parent-demo.html?verify=parent-qa-20261119' \
+            -o "$RUNNER_TEMP/qa-parent-after.html"
+          grep -q '保護者用QA体験版' "$RUNNER_TEMP/qa-parent-after.html"
+          grep -q 'aritama-qa-annual-demo-realnames-v2' "$RUNNER_TEMP/qa-parent-after.html"
+          grep -q '当番ができない日' "$RUNNER_TEMP/qa-parent-after.html"
+          grep -q '代わりにできる日' "$RUNNER_TEMP/qa-parent-after.html"
           echo 'PASS: live QA Hosting serves annual demo and x/o parent; no Firebase data or security rules touched'
