@@ -56,6 +56,32 @@ jobs:
             console.log('PASS: deployed QA parent UI shows the new mode controls between month selection and calendar.');
           }
           NODE
+      - name: Verify published QA Web config and admin pages (read-only)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          base='https://aritama-mini-basket-qa.web.app'
+          curl --fail --silent --show-error --location --max-redirs 2 --connect-timeout 8 --max-time 20 \
+            -H 'Cache-Control: no-cache' "$base/firebase-config-staging.mjs" -o /tmp/mini-basket-live-qa-config.mjs
+          for page in admin-swaps.html admin-qa-health.html; do
+            curl --fail --silent --show-error --location --max-redirs 2 --connect-timeout 8 --max-time 20 \
+              -H 'Cache-Control: no-cache' "$base/$page" -o "/tmp/mini-basket-live-$page"
+          done
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const source=readFileSync('/tmp/mini-basket-live-qa-config.mjs','utf8');
+          const match=source.match(/export const firebaseConfig = (\{[\s\S]*?\});/);
+          if(!match)throw Error('QA public Firebase Web config missing');
+          const config=JSON.parse(match[1]);
+          if(config.projectId!=='aritama-mini-basket-qa'||config.authDomain!=='aritama-mini-basket-qa.firebaseapp.com')
+            throw Error('QA public Web app does not point exclusively to the approved QA project');
+          for(const page of ['admin-swaps.html','admin-qa-health.html']){
+            const html=readFileSync('/tmp/mini-basket-live-'+page,'utf8');
+            if(!html.includes('🧪 検証版')||!html.includes('firebase-config-staging.mjs'))
+              throw Error('QA admin page is missing or not isolated: '+page);
+          }
+          console.log('PASS: live QA public projectId='+config.projectId+', QA admin pages are isolated. No login or write was attempted.');
+          NODE
       - name: Capture live QA HTML at mobile width without logging in (read-only)
         continue-on-error: true
         run: |
