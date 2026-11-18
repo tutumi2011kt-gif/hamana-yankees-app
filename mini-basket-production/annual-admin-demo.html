@@ -161,7 +161,14 @@ function totals(){
  return rows;
 }
 function snapshot(){backup=JSON.stringify(state)}
-function mutation(action,fn){snapshot();fn();state.changes.push({action:action,time:new Date().toISOString()});persist();render();toast('✅ '+action+'（この端末の体験データに反映済み）')}
+function mutation(action,fn){
+ // Parent and admin can be open in different tabs in the same browser.
+ // Preserve parent responses written since the manager tab last rendered.
+ var current=load();
+ months.forEach(function(m){state.months[m].answers=current.months[m].answers||{}});
+ snapshot();fn();state.changes.push({action:action,time:new Date().toISOString()});persist();render();
+ toast('✅ '+action+'（この端末の体験データに反映済み）');
+}
 function getDay(date){return state.months[date.slice(0,7)]?.days[date]}
 function changeType(date,type){
  var d=getDay(date);
