@@ -7,7 +7,7 @@ import {reviewJanuaryForPublication,januaryPublicationPatch,januaryDaySignature,
  JANUARY_PUBLICATION_MONTH} from './january-publication-core.mjs';
 
 const month=JANUARY_PUBLICATION_MONTH,now=Date.parse('2026-11-18T19:00:00+09:00');
-const members=ROSTER.map(normalizeMember),roster={members:members.map(({id,name,kana})=>({id,name,kana})),publishedMonths:['2026-12']};
+const members=ROSTER.map(normalizeMember),roster={members:members.map(({id,name,kana,status})=>({id,name,kana,status})),publishedMonths:['2026-12']};
 const meta={publication:'draft',inputState:'closed',version:2};
 const openMillis=jstInputOpenMillis(month),cutoffMillis=jstInputCutoffMillis(month);
 const days=()=>calendarDates(month).map(d=>({...d,type:'practice',
@@ -59,6 +59,12 @@ check('missing or duplicate days are rejected',()=>{
 check('public roster must be the same 12 distinct members',()=>{
  assert.equal(evaluate({roster:{members:[],publishedMonths:['2026-12']}}).ok,false);
  assert.equal(evaluate({roster:{...roster,members:[...roster.members.slice(0,11),{...roster.members[0]}]}}).ok,false);
+});
+check('stale public name or membership status blocks January release',()=>{
+ const wrongName={...roster,members:roster.members.map((m,i)=>i===0?{...m,name:'古い表示名'}:m)};
+ assert.equal(evaluate({roster:wrongName}).ok,false);
+ const wrongStatus={...roster,members:roster.members.map((m,i)=>i===0?{...m,status:'inactive'}:m)};
+ assert.equal(evaluate({roster:wrongStatus}).ok,false);
 });
 check('do not publish January a second time',()=>{
  assert.equal(evaluate({roster:{...roster,publishedMonths:['2026-12','2027-01']}}).ok,false);
