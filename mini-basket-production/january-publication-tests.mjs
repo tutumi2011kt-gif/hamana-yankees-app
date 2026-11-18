@@ -4,7 +4,7 @@ import {ROSTER} from './core.mjs';
 import {normalizeMember,calendarDates} from './month-draft-core.mjs';
 import {jstInputOpenMillis,jstInputCutoffMillis} from './month-rollover-core.mjs';
 import {reviewJanuaryForPublication,januaryPublicationPatch,januaryDaySignature,
- JANUARY_PUBLICATION_MONTH} from './january-publication-core.mjs';
+ JANUARY_PUBLICATION_MONTH,januaryMembersReviewSignature} from './january-publication-core.mjs';
 
 const month=JANUARY_PUBLICATION_MONTH,now=Date.parse('2026-11-18T19:00:00+09:00');
 const members=ROSTER.map(normalizeMember),roster={members:members.map(({id,name,kana,status})=>({id,name,kana,status})),publishedMonths:['2026-12']};
@@ -66,6 +66,19 @@ check('stale public name or membership status blocks January release',()=>{
  const wrongStatus={...roster,members:roster.members.map((m,i)=>i===0?{...m,status:'inactive'}:m)};
  assert.equal(evaluate({roster:wrongStatus}).ok,false);
 });
+check('member review snapshot rejects name, status, weekday and seniority changes',()=>{
+ const before=januaryMembersReviewSignature(members);
+ assert.equal(before,januaryMembersReviewSignature([...members].reverse()));
+ for(const override of [
+  {name:'別の名前'}, {status:'inactive'}, {start:'2028-01-01'},
+  {days:[5]}, {weekdayRule:'changed'}, {preferredWeekdays:[2]},
+  {approvedWeekendDates:['2027-01-31']}
+ ]){
+  const edited=members.map((m,i)=>i===0?{...m,...override}:m);
+  assert.notEqual(before,januaryMembersReviewSignature(edited),
+   'changed member field must invalidate approval');
+ }
+});
 check('do not publish January a second time',()=>{
  assert.equal(evaluate({roster:{...roster,publishedMonths:['2026-12','2027-01']}}).ok,false);
 });
@@ -91,6 +104,12 @@ check('reviewed day signature detects owner, type, location, updated timestamp c
  assert.notEqual(januaryDaySignature(d),januaryDaySignature({...d,updatedAt:{toMillis:()=>2000}}));
 });
 const ui=await readFile(new URL('./manage-january-publish.html',import.meta.url),'utf8');
+check('January publisher must reject changed manager member or public roster state before transaction writes',()=>{
+ assert.match(ui,/januaryMembersReviewSignature\(members\)/);
+ assert.match(ui,/januaryMembersReviewSignature\(latestMembers\)!==expectedMembers/);
+ assert.match(ui,/rosterReviewSignature\(rSnap\.data\(\)\)!==expectedRoster/);
+});
+
 const builder=await readFile(new URL('./build-staging-site.mjs',import.meta.url),'utf8');
 const script=ui.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script);new Function(script.replace(/^import[^\n]*;\s*$/gm,''));
