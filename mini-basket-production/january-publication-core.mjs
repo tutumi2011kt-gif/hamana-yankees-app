@@ -18,6 +18,17 @@ export function januaryDaySignature(day){
  ]);
 }
 
+// Compare all manager-reviewed assignment eligibility fields, independent of document order.
+// Reject a publication if names, statuses, entry periods or weekday constraints changed.
+export function januaryMembersReviewSignature(members){
+ if(!Array.isArray(members))return '';
+ return JSON.stringify(members.map(m=>[
+  m?.id??null,m?.name??null,m?.status??null,m?.start??null,m?.end??null,
+  m?.days??null,m?.weekdayRule??null,m?.preferredWeekdays??null,
+  m?.approvedWeekendDates??null
+ ]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));
+}
+
 export function reviewJanuaryForPublication({month=JANUARY_PUBLICATION_MONTH,meta,days,members,roster,openMillis,cutoffMillis,nowMillis=Date.now()}){
  const errors=[],warnings=[];
  const add=(condition,message)=>{if(!condition)errors.push(message);};
