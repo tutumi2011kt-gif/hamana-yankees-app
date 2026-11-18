@@ -72,6 +72,14 @@ async function main(){
    throw new Error('Annual demo must be a local-only, Firebase-free QA preview');
  await writeFile(join(out,'annual-admin-demo.html'),annualDemo);
  pagesWritten.push('annual-admin-demo.html');
+ // Parent companion uses the same browser-only storage key as the annual preview.
+ // This is a local-only simulation, not the Firebase-backed parent application.
+ const parentDemo=await readFile(join(root,'annual-parent-demo.html'),'utf8');
+ if(!parentDemo.includes('保護者用QA体験版')||!parentDemo.includes('aritama-qa-annual-demo-realnames-v2')
+   ||/firebasejs|https?:\/\/|fetch\s*\(|getFirestore|initializeApp\s*\(/i.test(parentDemo))
+   throw new Error('Parent demo must be a local-only, Firebase-free QA preview');
+ await writeFile(join(out,'annual-parent-demo.html'),parentDemo);
+ pagesWritten.push('annual-parent-demo.html');
  // Staging config is generated only from the separately selected isolated project.
  await writeFile(join(out,'firebase-config-staging.mjs'),
   '// Generated for dedicated QA Firebase only. This config contains public Firebase Web identifiers.\n'+
@@ -104,6 +112,7 @@ async function main(){
  '<title>検証用メニュー</title><style>body{font:16px sans-serif;max-width:500px;margin:40px auto;padding:16px}a{display:block;padding:14px;margin:8px 0;border-radius:9px;border:1px solid #ccc}h1{font-size:20px}</style>'+
  '<h1>🏀 有玉ミニバス 検証専用メニュー</h1><p>検証用プロジェクト '+project+' に接続します。本番とは別です。</p>'+
  '<a href="./annual-admin-demo.html">🏀 年間当番管理：端末内デモ（2027年1〜11月）</a>'+
+ '<a href="./annual-parent-demo.html">👪 保護者用：×・○入力の端末内デモ</a>'+ 
  Object.values(sourcePages).map(p=>'<a href="./'+p+'">'+p+'</a>').join('')+'</html>';
  await writeFile(join(out,'qa-menu.html'),pageIndex);
  console.log('STAGING BUILD SUCCESS: '+project+' ('+generatedFiles.length+' core files plus imported modules), output=dist-staging');
