@@ -9,7 +9,7 @@ assert.equal(assertStagingFirebaseConfig(config),'basket-staging-qa');
 assert.equal(parseAndCheckStagingFirebaseConfig(JSON.stringify(config)).projectId,'basket-staging-qa');
 for(const id of [
  'aritama-mini-basket','aritama-mini-basket-staging-prod/../../',
- 'aritamamini-basket','some-other-production',''
+ 'aritamamini-basket','some-other-production','unsafe-qa-prod','unsafe-test-extra','unsafe-staging-1',''
 ]){
  assert.throws(()=>assertStagingFirebaseConfig({...config,projectId:id}));
 }
