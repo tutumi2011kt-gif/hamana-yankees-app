@@ -33,6 +33,11 @@ assert.equal(filled.rows.find(x=>x.date===secondWed.date).type,'practice');
 assert.equal(filled.allocated.koharu>=1,true,'previously saved owner counts toward fairness');
 assert.equal(filled.rows[0].ownerId,null);
 assert.equal(filled.rows[1].ownerId,null);
+const corruptGame=structuredClone(january);
+corruptGame[0].ownerId='sawa';
+assert.throws(()=>generateAutomaticDraft({...input,rows:corruptGame,preserveExisting:true}),
+ /試合・休みの日に既存担当者/,
+ 'do not silently erase an incorrectly assigned game day');
 const ordinary=generateAutomaticDraft({...input,rows:january,preserveExisting:false});
 assert.notEqual(ordinary.rows.find(x=>x.date===firstWed.date).ownerId,'not-a-person',
  'ordinary future-month recalculation remains independent of pinned January mode');
