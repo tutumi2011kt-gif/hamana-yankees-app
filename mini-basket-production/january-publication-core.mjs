@@ -37,8 +37,13 @@ export function reviewJanuaryForPublication({month=JANUARY_PUBLICATION_MONTH,met
   '1月がすでに公開されているか、公開月一覧が不正です');
  if(Array.isArray(members)&&Array.isArray(roster?.members)&&
     members.length===12&&roster.members.length===12){
-  const rosterIds=new Set(roster.members.map(x=>x.id));
-  add(members.every(m=>rosterIds.has(m.id)),'公開用名簿と管理者名簿が一致しません');
+  const publicById=new Map(roster.members.map(x=>[x.id,x]));
+  add(members.every(m=>publicById.has(m.id)),'公開用名簿と管理者名簿のIDが一致しません');
+  add(members.every(m=>{
+   const visible=publicById.get(m.id);
+   return visible&&typeof visible.name==='string'&&visible.name===m.name
+    &&visible.status===m.status;
+  }),'公開用名簿の名前・在籍状態が管理者名簿と異なります。公開用名簿の更新内容を確認してください');
  }
  const expected=calendarDates(JANUARY_PUBLICATION_MONTH);
  const rows=Array.isArray(days)?days:[];
