@@ -15,7 +15,7 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day{border:1px solid #e0e8ef;border-radius:7px;background:#fff;min-width:0;min-height:81px;padding:5px 2px;overflow-wrap:anywhere;text-align:left;color:inherit;display:block;width:100%}.day:disabled{cursor:default}.day.tap-x{border:2px solid #c64a66;padding:4px 1px}.day.tap-o{border:2px solid #23865f;padding:4px 1px}.day.tap-x,.day.tap-o{cursor:pointer}
 .day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
-.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}
+.day .cancel-hint{font-size:9px;display:block;color:#9d2747;font-weight:800;line-height:1.3;margin-top:4px}.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
 footer{font-size:11px;color:#76889b}.not-available{display:none}
 </style></head><body><main>
@@ -29,7 +29,7 @@ footer{font-size:11px;color:#76889b}.not-available{display:none}
 </main>
 <script type="module">
 import {todayTokyo,monthPlus,dayList} from './core.mjs?v=parent-input-2';
-import {canEditMonth,allowedAnswerKind,decideAnswerAction} from './parent-input-core.mjs?v=2';
+import {canEditMonth,allowedAnswerKind,decideAnswerAction,answerTapDecision} from './parent-input-core.mjs?v=3';
 import {swapState,canEditSwapAnswer} from './swap-confirmation-core.mjs?v=1';
 import {PARENT_WRITES_ENABLED,ANSWER_PUBLICATION_MODE} from './parent-write-config.mjs?v=1';
 import {firebaseConfig,teamId} from './firebase-config.mjs';
@@ -117,19 +117,24 @@ function draw(){
   const owner=isPractice?(people[d.ownerId]||'担当未登録'):'';
   const label=isGame?'🏀 試合':owner;
   const existing=marks.find(a=>a.memberId===selectedPerson);
-  const eligible=canWrite&&canEditSwapAnswer(d)&&selectedPerson&&allowedAnswerKind({kind:selectedMode,ownerId:d?.ownerId,memberId:selectedPerson,dayType:d?.type})
-    &&(!existing||existing.updatedBy===auth.currentUser?.uid);
-  const selectedMark=existing?.kind===selectedMode?' ✓':'';
+  const tap=answerTapDecision({day:d,existing,kind:selectedMode,memberId:selectedPerson,
+    uid:auth.currentUser?.uid,canWrite});
+  const eligible=tap.enabled;
+  const isOwnCancel=tap.action==='delete';
+  const selectedMark=isOwnCancel?'（取消）':'';
   const volunteerMarks=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId);
   const extras=marks.filter(a=>a.kind==='x'&&a.memberId===d?.ownerId).map(a=>'<span class="bad">'+esc(people[a.memberId]||'')+' ×</span>').join('')+
     volunteerMarks.slice(0,2).map(a=>'<span class="good">'+esc(people[a.memberId]||'')+' ○</span>').join('')+
     (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'')+
     (swap.status==='urgent'?'<span class="bad">⚠ 交代候補なし（要調整）</span>':'')+
     (swap.confirmedId?'<span class="confirmed">✅ 管理者確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'（交代）</span>':'');
-  const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+(eligible?' tap-'+selectedMode:'');
+  const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+
+    (isOwnCancel?' tap-x':eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
-   ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(selectedMode==='x'?'×を登録または取消':'○を登録または取消')+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
-   (label?'<span class="owner">'+esc(label)+'</span>':'')+(d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+extras+'</button>';
+   ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(tap.action==='different-device'?'別端末の回答：管理者に相談':isOwnCancel?(selectedMode==='x'?'×を取り消す':'○を取り消す'):(selectedMode==='x'?'×を登録する':'○を登録する'))+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
+   (label?'<span class="owner">'+esc(label)+'</span>':'')+
+   (d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+
+   extras+(isOwnCancel?'<span class="cancel-hint">'+(selectedMode==='x'?'×取消':'○取消')+'（再タップ）</span>':'')+'</button>';
 
  }
  $('calendar').innerHTML=calendar;
@@ -144,11 +149,14 @@ $('calendar').addEventListener('click',async event=>{
  if(!target||target.disabled||writing)return;
  const date=target.dataset.day,month=selectedMonth,person=selectedPerson,kind=selectedMode;
  const day=days.find(d=>d.date===date);
- if(!PARENT_WRITES_ENABLED||ANSWER_PUBLICATION_MODE!=='instant'||auth.currentUser?.isAnonymous!==true||!canEditSwapAnswer(day)||!canEditMonth(monthData)||!published.includes(month)||!person
-   ||!allowedAnswerKind({kind,ownerId:day?.ownerId,memberId:person,dayType:day?.type}))return;
  const old=answers.find(a=>a.date===date&&a.memberId===person);
  const uid=auth.currentUser?.uid;
- const action=decideAnswerAction(old,kind,uid);
+ const decision=answerTapDecision({day,existing:old,kind,memberId:person,uid,
+   canWrite:PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&
+    auth.currentUser?.isAnonymous===true&&canEditMonth(monthData)&&
+    published.includes(month)&&!writing});
+ if(!decision.enabled)return;
+ const action=decision.action;
  if(action==='different-device'){alert('この回答は別の端末から登録されています。変更が必要な場合は管理者に連絡してください。');return;}
  if(action==='blocked'||!uid){alert('Firebaseの認証状態を確認してください。');return;}
  const name=names.find(x=>x.id===person)?.name||person,mark=kind==='x'?'×':'○';
@@ -160,21 +168,28 @@ $('calendar').addEventListener('click',async event=>{
  const refRoster=doc(db,'teams',teamId,'public','roster');
  writing=true;draw();
  try{
-  await runTransaction(db,async tx=>{
+  const committedAction=await runTransaction(db,async tx=>{
    const [mSnap,dSnap,rSnap,aSnap]=await Promise.all([
     tx.get(refMonth),tx.get(refDay),tx.get(refRoster),tx.get(ref)
    ]);
    if(!mSnap.exists()||!canEditMonth(mSnap.data()))throw Error('この月は入力締切です。');
-   if(!dSnap.exists()||!canEditSwapAnswer(dSnap.data())||!allowedAnswerKind({kind,ownerId:dSnap.data().ownerId,memberId:person,dayType:dSnap.data().type}))throw Error('この日は交代確定済み、または入力できません。');
+   if(!dSnap.exists()||dSnap.data().type!=='practice'||!dSnap.data().ownerId||
+      !canEditSwapAnswer(dSnap.data()))throw Error('この日は交代確定済み、または入力できません。');
    if(!rSnap.exists()||!(rSnap.data().members||[]).some(x=>x.id===person&&x.status==='active'))throw Error('メンバー情報を確認してください。');
    const existing=aSnap.exists()?aSnap.data():null;
-   const actualAction=decideAnswerAction(existing,kind,uid);
+   const actualDecision=answerTapDecision({day:dSnap.data(),existing,kind,
+      memberId:person,uid,canWrite:true});
+   if(!actualDecision.enabled)throw Error('この日の回答は変更できません。');
+   const actualAction=actualDecision.action;
    if(actualAction==='different-device')throw Error('別の端末がこの回答を登録済みです。管理者に連絡してください。');
    if(actualAction==='blocked')throw Error('認証状態を確認してください。');
    if(actualAction==='delete'){tx.delete(ref);}
    else tx.set(ref,{date,memberId:person,kind,updatedAt:serverTimestamp(),updatedBy:uid});
+   return actualAction;
   });
-  lastSaveMessage='✅ Firebaseに保存しました。全員の画面に反映されます。';
+  lastSaveMessage=committedAction==='delete'?
+    '✅ '+mark+'を取り消しました。カレンダーにも反映されます。':
+    '✅ '+mark+'を登録しました。全員のカレンダーに反映されます。';
  }catch(err){
   lastSaveMessage='';
   const msg=err?.code==='permission-denied'?'セキュリティルールにより書き込みが拒否されました。管理者へ連絡してください。':(err?.message||err?.code||String(err));
