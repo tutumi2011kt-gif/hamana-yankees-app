@@ -13,6 +13,10 @@ try{
  await env.withSecurityRulesDisabled(async c=>{
   const db=c.firestore();
   await api.setDoc(api.doc(db,'admins/ledger-admin'),{enabled:true});
+  // A visible month must also appear in the public roster; otherwise parent reads are denied.
+  await api.setDoc(api.doc(db,root+'/public/roster'),{
+   publishedMonths:['2027-01'],members:ids.map(id=>({id,name:id,status:'active'}))
+  });
   await api.setDoc(api.doc(db,root+'/months/2027-01'),{publication:'published',inputState:'open',openAt:api.Timestamp.fromMillis(0),cutoffAt:api.Timestamp.fromMillis(Date.now()+3600000)});
   for(const id of ids)await api.setDoc(api.doc(db,root+'/members/'+id),{status:'active',startDate:'2026-12-01'});
   await api.setDoc(api.doc(db,dayPath),{date,type:'practice',ownerId:'qa01',confirmedSubstituteId:null,activityVerified:true});
