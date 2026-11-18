@@ -1,0 +1,103 @@
+name: Mini basket QA Hosting only (one-time calendar-only update)
+on:
+  push:
+    branches: [development/mini-basket-release-preparation]
+    paths:
+      - .github/workflows/qa-hosting-release-20261118.yml
+permissions:
+  contents: read
+concurrency:
+  group: aritama-mini-basket-qa-hosting-one-shot
+  cancel-in-progress: false
+jobs:
+  deploy_qa_ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: mini-basket-production
+    steps:
+      - name: Checkout only the reviewed development branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Firebase CLI
+        run: npm install --ignore-scripts
+      - name: Read deployed QA Web app configuration without changing any cloud data
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-redirs 2 \
+            --retry 2 --connect-timeout 10 --max-time 25 \
+            https://aritama-mini-basket-qa.web.app/firebase-config-staging.mjs \
+            -o "$RUNNER_TEMP/current-qa-config.mjs"
+          QA_CONFIG_PATH="$RUNNER_TEMP/current-qa-config.mjs" QA_OUTPUT_PATH="$RUNNER_TEMP/qa-config.json" node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {parseGeneratedQaConfig} from './deploy-qa.mjs';
+          const c=parseGeneratedQaConfig(readFileSync(process.env.QA_CONFIG_PATH,'utf8'));
+          if(c.projectId!=='aritama-mini-basket-qa'
+              ||c.authDomain!=='aritama-mini-basket-qa.firebaseapp.com')
+            throw Error('Public QA app configuration is not the approved QA Firebase project');
+          writeFileSync(process.env.QA_OUTPUT_PATH,JSON.stringify(c),{mode:0o600});
+          console.log('PASS: approved QA project ID and auth domain, no production Firebase');
+          NODE
+      - name: Build QA web site and confirm calendar-only parent UI
+        run: |
+          set -euo pipefail
+          STAGING_FIREBASE_CONFIG_JSON="$(cat "$RUNNER_TEMP/qa-config.json")" node build-staging-site.mjs
+          node staging-build-tests.mjs
+          test -s dist-staging/index.html
+          grep -q 'id="calendar"' dist-staging/index.html
+          grep -q 'id="mark-x"' dist-staging/index.html
+          grep -q 'id="mark-o"' dist-staging/index.html
+          grep -q '🧪 検証版' dist-staging/index.html
+          if grep -qE '日付ごとの詳しい当番|id="detail"|rowday' dist-staging/index.html; then
+            echo 'ERROR: outdated detailed duty section remains; QA release refused' >&2
+            exit 1
+          fi
+          echo 'PASS: QA parent displays calendar, answer controls; daily detail section is absent'
+      - name: Deploy ONLY QA Firebase Hosting when authorized QA credentials exist
+        env:
+          QA_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ARITAMA_MINI_BASKET_QA }}
+          QA_FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN_QA }}
+          LEGACY_FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          CI: 'true'
+        run: |
+          set -euo pipefail
+          if [ -n "${QA_SERVICE_ACCOUNT_JSON:-}" ]; then
+            umask 077
+            printf '%s' "$QA_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/qa-service-account.json"
+            export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/qa-service-account.json"
+            echo 'QA-only service account credential available'
+          elif [ -n "${QA_FIREBASE_TOKEN:-}" ]; then
+            export FIREBASE_TOKEN="$QA_FIREBASE_TOKEN"
+            echo 'QA-specific Firebase CLI credential available'
+          elif [ -n "${LEGACY_FIREBASE_TOKEN:-}" ]; then
+            export FIREBASE_TOKEN="$LEGACY_FIREBASE_TOKEN"
+            echo 'Firebase CLI credential available; QA project is strictly enforced by deploy guard'
+          else
+            echo 'BLOCKED: no QA Firebase deployment credentials in GitHub Actions. No hosting, rules or data changed.'
+            exit 1
+          fi
+          # Wrapper only permits --only hosting; checks deployed config and QA default site.
+          node deploy-qa-hosting-only.mjs --project aritama-mini-basket-qa \
+            --confirm aritama-mini-basket-qa --apply
+      - name: Read back QA Hosting to confirm detailed list is removed
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-redirs 2 \
+            --retry 3 --retry-delay 2 -H 'Cache-Control: no-cache' \
+            'https://aritama-mini-basket-qa.web.app/?verify=calendar-only-20261118' \
+            -o "$RUNNER_TEMP/qa-after.html"
+          grep -q '🧪 検証版' "$RUNNER_TEMP/qa-after.html"
+          grep -q 'id="calendar"' "$RUNNER_TEMP/qa-after.html"
+          grep -q 'id="mark-x"' "$RUNNER_TEMP/qa-after.html"
+          grep -q 'id="mark-o"' "$RUNNER_TEMP/qa-after.html"
+          if grep -qE '日付ごとの詳しい当番|id="detail"|rowday' "$RUNNER_TEMP/qa-after.html"; then
+            echo 'QA site still contains the removed detail list; deployment verification failed' >&2
+            exit 1
+          fi
+          echo 'PASS: live QA Hosting now serves calendar-only layout; no Firebase data or security rules touched'
