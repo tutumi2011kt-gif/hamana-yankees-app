@@ -20,7 +20,7 @@ assert.throws(()=>parseAndCheckStagingFirebaseConfig('not-json'));
 assert.ok(isSafeImportPath('./core.mjs'));
 assert.equal(isSafeImportPath('../firebase-config.mjs'),false);
 assert.equal(isSafeImportPath('https://example.com/x.js'),false);
-const pages=['parent.html','manage-month-approval.html','manage-swaps.html',
+const pages=['parent.html','manage-month-approval.html','manage-january-publish.html','manage-swaps.html',
  'manage-parent-answers.html','manage-duty-ledger.html','manage-deadline.html','manage-answer-monitor.html','admin-qa-health.html'];
 for(const name of pages){
  const html=await readFile(new URL('./'+name,import.meta.url),'utf8');
@@ -31,6 +31,11 @@ for(const name of pages){
  assert.match(compiled,/🧪 検証版/);
  const js=compiled.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];assert.ok(js);
  new Function(js.replace(/^import[^\n]*;\s*$/gm,''));
+ if(name==='manage-january-publish.html'){
+  assert.match(compiled,/2027年1月・公開承認/);
+  assert.match(compiled,/reviewJanuaryForPublication/);
+  assert.match(compiled,/runTransaction/);
+ }
  if(name==='parent.html'){
   // Prevent the answer mode controls from slipping below the long calendar on mobile.
   const nameHeading=compiled.indexOf('① お子さんの名前を選ぶ');
@@ -47,4 +52,4 @@ for(const name of pages){
   assert.doesNotMatch(compiled,/from '.\/parent-write-config\.mjs\?v=1'/);
  }
 }
-console.log('PASS staging fail-closed project guard, all 8 isolated pages, script parsing and accountless parent imports');
+console.log('PASS staging fail-closed project guard, all 9 isolated pages, script parsing and accountless parent imports');
