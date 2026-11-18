@@ -42,8 +42,13 @@ for(const name of pages){
   const monthHeading=compiled.indexOf('② 月を選ぶ');
   const modeHeading=compiled.indexOf('③ ×・○の希望入力');
   const calendarHeading=compiled.indexOf('id="calendar-title"');
-  const detailHeading=compiled.indexOf('日付ごとの詳しい当番');
-  assert.ok(nameHeading>=0&&nameHeading<monthHeading&&monthHeading<modeHeading&&modeHeading<calendarHeading&&calendarHeading<detailHeading);
+  assert.ok(nameHeading>=0&&nameHeading<monthHeading&&monthHeading<modeHeading&&modeHeading<calendarHeading);
+  assert.doesNotMatch(compiled,/日付ごとの詳しい当番|id="detail"|rowday/,'redundant daily detail list must be absent');
+  assert.match(compiled,/id="calendar"/,'calendar is still the single view for duties');
+  assert.match(compiled,/class="owner"/,'calendar still displays original duty owners');
+  assert.match(compiled,/class="bad"/,'calendar still displays owner × marks');
+  assert.match(compiled,/class="good"/,'calendar still displays ○ volunteer marks');
+  assert.match(compiled,/class="confirmed"/,'confirmed substitute is still visible in calendar');
   assert.match(compiled,/<button id="mark-x"[^>]*>❌ 当番ができない日<[/]button>/);
   assert.match(compiled,/<button id="mark-o"[^>]*>⭕ 代わりにできる日<[/]button>/);
   assert.equal((compiled.match(/id="mark-x"/g)||[]).length,1);
