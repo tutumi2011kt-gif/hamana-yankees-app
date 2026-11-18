@@ -46,6 +46,22 @@ try{
  await assertFails(getDoc(doc(alice,'admins/admin-1')));
  await assertSucceeds(setDoc(owner,answer('2027-01-06','yui','x','alice')));
  await assertSucceeds(setDoc(volunteer,answer('2027-01-06','haruka','o','bob')));
+ // Additional adversarial checks: do not accept missing days, forged IDs or foreign fields.
+ await assertFails(setDoc(doc(alice,path('2027-01-07','haruka')),answer('2027-01-07','haruka','o','alice')));
+ await assertFails(setDoc(doc(alice,base+'/months/'+month+'/answers/forged-id'),answer('2027-01-06','sawa','o','alice')));
+ await assertFails(setDoc(doc(alice,path('2027-01-06','sawa')),{...answer('2027-01-06','sawa','o','alice'),date:'2027-02-06'}));
+ await assertFails(setDoc(doc(alice,path('2027-01-06','sawa')),{...answer('2027-01-06','sawa','o','alice'),kind:'maybe'}));
+ await assertFails(setDoc(doc(alice,path('2027-01-06','sawa')),{...answer('2027-01-06','sawa','o','alice'),updatedAt:Timestamp.fromMillis(Date.now())}));
+ // A previously active member cannot submit after their status changes.
+ await env.withSecurityRulesDisabled(ctx=>updateDoc(doc(ctx.firestore(),base+'/members/sawa'),{status:'inactive'}));
+ await assertFails(setDoc(doc(alice,path('2027-01-06','sawa')),answer('2027-01-06','sawa','o','alice')));
+ await env.withSecurityRulesDisabled(ctx=>updateDoc(doc(ctx.firestore(),base+'/members/sawa'),{status:'active'}));
+ // A future opening time must be enforced by server time, not the client's clock.
+ await env.withSecurityRulesDisabled(ctx=>updateDoc(doc(ctx.firestore(),base+'/months/'+month),{openAt:Timestamp.fromMillis(Date.now()+3600000)}));
+ await assertFails(setDoc(doc(alice,path('2027-01-06','sawa')),answer('2027-01-06','sawa','o','alice')));
+ await env.withSecurityRulesDisabled(ctx=>updateDoc(doc(ctx.firestore(),base+'/months/'+month),{openAt:Timestamp.fromMillis(Date.now()-3600000),inputState:'closed'}));
+ await assertFails(setDoc(doc(alice,path('2027-01-06','sawa')),answer('2027-01-06','sawa','o','alice')));
+ await env.withSecurityRulesDisabled(ctx=>updateDoc(doc(ctx.firestore(),base+'/months/'+month),{inputState:'open'}));
  // Both update and cancellation from original device only.
  await assertSucceeds(setDoc(owner,answer('2027-01-06','yui','x','alice')));
  await assertFails(setDoc(doc(bob,path('2027-01-06','yui')),answer('2027-01-06','yui','x','bob')));
