@@ -118,6 +118,26 @@ function draw(){
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
  $('mark-o').className=selectedMode==='o'?'selected-o':'';
+ // Keep the tapped button node alive while Firestore commits.
+ // Replacing the entire calendar during an iPhone touch can drop its click event.
+ if(writing&&pendingTap){
+  for(const button of $('calendar').querySelectorAll('button[data-day]')){
+   const same=button.dataset.day===pendingTap.date&&selectedMonth===pendingTap.month&&
+    selectedPerson===pendingTap.person&&selectedMode===pendingTap.kind;
+   button.disabled=!same;
+   if(same){
+    let hint=button.querySelector('.pending-hint');
+    if(!hint){
+     hint=document.createElement('span');
+     hint.className='pending-hint';
+     button.appendChild(hint);
+    }
+    hint.textContent=pendingTap.queuedToggle?'逆操作を予約済み':'保存中・再タップ可';
+   }
+  }
+  monthMessage('⏳ 登録・取消を保存中です。操作した日付は再タップできます。');
+  return;
+ }
  const dayMap=Object.fromEntries(days.map(x=>[x.date,x])),people=mapNames();
  const markMap={};
  for(const a of overlayParentAnswers(answers,answerOverlay))if(a.date&&a.memberId&&['x','o'].includes(a.kind))(markMap[a.date]??=[]).push(a);
