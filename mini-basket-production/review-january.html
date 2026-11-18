@@ -20,6 +20,11 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #e5ebf0;
 <section class="card"><h2>③ 公開前のチェック結果</h2><p id="summary" role="status" aria-live="polite" class="note">保存済みの内容を読み込んでいます。</p><div id="issues" class="issues"></div>
 <p class="small">曜日条件を確認していない場合や、確定していない試合・休み・担当者が残る場合は、内容を修正してください。「練習予定」は実際に練習が確定した意味ではありません。</p>
 <div class="row"><button type="button" id="edit" class="primary">1月の下書きを編集する</button><button type="button" id="members">メンバーの曜日条件を確認</button></div></section>
+<section class="card"><h2>④ 管理者用・1月公開前の確認結果をコピー</h2>
+<p class="small">保存されている1月の担当者と日程、受付開始・締切を1回で照合できます。読み取り専用です。コピーした内容には子どもの名前が含まれるため、共有先は管理者・チーム内に限定してください。</p>
+<textarea id="report" readonly rows="9" style="width:100%;padding:10px;border-radius:9px;border:1px solid #c5d6e4;font:13px/1.6 monospace"></textarea>
+<button id="copy-report" type="button" disabled>この確認結果をコピー</button>
+<p id="copy-status" class="small"></p></section>
 <footer>管理者のFirestore認証でのみ読み込みます。12月の確定当番表は変更しません。公開前に保護者の希望入力締切も確認する必要があります。</footer></main>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
@@ -34,6 +39,36 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let loading=false,session=0;
 const status=(message,kind='small')=>{$('connection').textContent=message;$('connection').className=kind};
 const fmt=(value)=>value===undefined?'未設定':String(value);
+const formatJst=value=>{
+ const millis=value?.toMillis?.();
+ return Number.isFinite(millis)?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',
+  year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(millis):'未設定';
+};
+function auditReport(rows,members,month){
+ const names=Object.fromEntries(members.map(m=>[m.id,m.name]));
+ const draftAudit=auditDraft(DRAFT_MONTH,rows,members);
+ const missing=rows.filter(r=>r.type==='practice'&&!r.ownerId).map(r=>r.date);
+ const report=[
+  '🏀 2027年1月 当番表公開前チェック（Firestore読み取り専用）',
+  'Firebaseプロジェクト：'+firebaseConfig.projectId,
+  '保存状態：'+fmt(month?.publication)+'／入力状態：'+fmt(month?.inputState)+'／版：'+fmt(month?.version),
+  '入力受付開始：'+formatJst(month?.openAt),
+  '入力締切：'+formatJst(month?.cutoffAt)+'（日本時間）',
+  '練習：'+draftAudit.practice+'日／試合：'+draftAudit.game+'日／休み：'+draftAudit.rest+'日',
+  '未設定の当番：'+missing.length+'日'+(missing.length?'（'+missing.join('、')+'）':''),
+  '要確認：'+(draftAudit.problems.length+draftAudit.warnings.length)+'件',
+  ...[...draftAudit.problems,...draftAudit.warnings].map(x=>' ⚠ '+x),
+  '--- 日別一覧 ---',
+  ...rows.map(r=>r.date+' '+(r.type==='practice'?'練習':r.type==='game'?'試合':r.type==='rest'?'休み':'不明')+
+   '／当番 '+(r.type==='practice'?(names[r.ownerId]||'未設定'):'なし'))
+ ];
+ return report.join('\n');
+}
+$('copy-report').onclick=async()=>{
+ if(!$('report').value)return;
+ try{await navigator.clipboard.writeText($('report').value);$('copy-status').textContent='✅ 確認結果をコピーしました。';}
+ catch(e){$('report').select();$('copy-status').textContent='自動コピーできませんでした。選択された文章を手動でコピーしてください。';}
+};
 const draw=(rows,members,month)=>{
  const names=Object.fromEntries(members.map(m=>[m.id,m.name]));
  const lookup=Object.fromEntries(rows.map(r=>[r.date,r]));
@@ -60,11 +95,14 @@ const draw=(rows,members,month)=>{
  $('summary').className=hasIssues||!month||month.publication!=='draft'?'note':'ok';
  $('issues').textContent=[...audit.problems,...audit.warnings].map(x=>'・'+x).join('\n')||'登録済みの割当内容は整合しています。試合日・休み・日程の確定は別途確認してください。';
  $('meta').textContent='保存済みの状態：'+fmt(month?.publication)+'／入力：'+fmt(month?.inputState)+'／バージョン：'+fmt(month?.version);
+ $('report').value=auditReport(rows,members,month);
+ $('copy-report').disabled=false;
 };
 async function load(){
  const user=auth.currentUser;
  if(!user||loading)return;
  const revision=++session;loading=true;
+ $('report').value='';$('copy-report').disabled=true;$('copy-status').textContent='';
  $('refresh').disabled=true;status('Firestoreから1月の下書きを確認中…');
  try{
   const admin=await getDocFromServer(doc(db,'admins',user.uid));
