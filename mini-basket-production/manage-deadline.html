@@ -3,7 +3,8 @@
 <h1>入力締切管理</h1><button id="login">管理者Googleログイン</button>
 <label>対象月<input id="month" type="month" min="2027-01"></label><button id="load">読み込む</button>
 <label>受付開始（日本時間）<input id="open" type="datetime-local"></label>
-<label>締切（日本時間・この時刻から入力不可）<input id="close" type="datetime-local"></label>
+<label>締切（日本時間・前月1日00:00固定）<input id="close" type="datetime-local" readonly></label>
+<p>🏀 正式設定：毎月1日00:00に翌月分の×・○受付をロックします。閲覧は可能です。管理者は受付開始日時を調整できますが、締切を延長することはできません。</p>
 <button id="default">標準設定：3か月前の月初から受付・前月1日0時に締切</button><button id="save" disabled>確認して締切を保存</button><p id="status" role="status"></p>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
@@ -31,14 +32,19 @@ $('load').onclick=async()=>{
  const data=snap.data();
  $('open').value=data.openAt?local(data.openAt):'';
  $('close').value=data.cutoffAt?local(data.cutoffAt):'';
+ if($('close').value!==local(Timestamp.fromMillis(defaultCutoffMillis(month))))
+  $('status').textContent='⚠ 現在の保存値が正式締切と異なります。標準設定を選び直し、確認して保存してください。';
  loaded={ref,uid:auth.currentUser.uid,open:data.openAt?.toMillis()??null,close:data.cutoffAt?.toMillis()??null};
- $('save').disabled=false;$('status').textContent='現在の締切を読み込みました';
+ $('save').disabled=false;
+ if($('close').value===local(Timestamp.fromMillis(defaultCutoffMillis(month))))
+  $('status').textContent='✅ 正式締切と一致しています。';
  }catch(e){report(e);}
 };
 $('save').onclick=async()=>{
  if(!loaded)return;
  const baseline=loaded,open=Date.parse($('open').value+':00+09:00'),close=Date.parse($('close').value+':00+09:00');
  if(!Number.isFinite(open)||!Number.isFinite(close)||open>=close)return report(Error('受付開始より後の締切を指定してください'));
+ if(close!==defaultCutoffMillis($('month').value))return report(Error('締切は対象月の前月1日00:00（日本時間）固定です。「標準設定」を押して再確認してください'));
  if(!confirm('表示中の受付開始・締切を日本時間で保存しますか？'))return;
  $('save').disabled=true;
  try{
