@@ -84,6 +84,8 @@ check('do not publish January a second time',()=>{
 });
 check('invalid or expired cutoff cannot authorize publication',()=>{
  assert.equal(evaluate({cutoffMillis:openMillis}).ok,false);
+ assert.equal(evaluate({cutoffMillis:cutoffMillis+9*3600000}).ok,false,'09:00 JST must not replace midnight lock');
+ assert.equal(evaluate({cutoffMillis:cutoffMillis-60000}).ok,false,'nonstandard early lock also requires fixed policy');
  assert.equal(evaluate({cutoffMillis:now-1}).ok,false);
  assert.equal(evaluate({openMillis:NaN}).ok,false);
 });
@@ -93,6 +95,7 @@ check('patch does not override December or other months and respects closed inpu
  assert.deepEqual(meta,copy);assert.equal(patch.publication,'published');
  assert.equal(patch.inputState,'open');assert.equal(patch.scheduleVerified,true);
  assert.equal(januaryPublicationPatch({meta,openMillis:now+1000,cutoffMillis,nowMillis:now}).inputState,'closed');
+ assert.throws(()=>januaryPublicationPatch({meta,openMillis,cutoffMillis:cutoffMillis+9*3600000,nowMillis:now}));
  assert.throws(()=>januaryPublicationPatch({meta:{...meta,publication:'published'},openMillis,cutoffMillis,nowMillis:now}));
  assert.throws(()=>januaryPublicationPatch({meta,openMillis,cutoffMillis,nowMillis:cutoffMillis}));
 });
