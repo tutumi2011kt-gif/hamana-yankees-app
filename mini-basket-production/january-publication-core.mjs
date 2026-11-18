@@ -2,6 +2,7 @@
 // This module is read-only. It cannot deploy, seed, or publish a month.
 import {calendarDates,auditDraft} from './month-draft-core.mjs';
 import {isDayAllowed} from './weekday-conditions.mjs';
+import {jstInputCutoffMillis} from './month-rollover-core.mjs';
 
 export const JANUARY_PUBLICATION_MONTH='2027-01';
 
@@ -38,6 +39,7 @@ export function reviewJanuaryForPublication({month=JANUARY_PUBLICATION_MONTH,met
  add(meta?.inputState==='closed','公開前の下書きは入力受付を閉じた状態である必要があります');
  add(Number.isInteger(meta?.version)&&meta.version>=0,'下書きのバージョンが確認できません');
  add(Number.isFinite(openMillis)&&Number.isFinite(cutoffMillis)&&openMillis<cutoffMillis,'受付開始・締切の日本時間が不正です');
+ add(cutoffMillis===jstInputCutoffMillis(JANUARY_PUBLICATION_MONTH),'1月の締切は2026年12月1日00:00（日本時間）に固定されています');
  add(Number.isFinite(nowMillis)&&nowMillis<cutoffMillis,'入力締切がすでに過ぎています。公開前に管理者が締切を確認してください');
  add(Array.isArray(members)&&members.length===12&&new Set(members.map(m=>m.id)).size===12,
   'メンバーが12人ではありません');
@@ -84,6 +86,8 @@ export function januaryPublicationPatch({meta,openMillis,cutoffMillis,nowMillis=
  if(!Number.isFinite(openMillis)||!Number.isFinite(cutoffMillis)||openMillis>=cutoffMillis
   ||!Number.isFinite(nowMillis)||nowMillis>=cutoffMillis)
   throw Error('入力期間が不正、または締切済みです');
+ if(cutoffMillis!==jstInputCutoffMillis(JANUARY_PUBLICATION_MONTH))
+  throw Error('1月の締切は2026年12月1日00:00（日本時間）固定です');
  return {
   publication:'published',scheduleStatus:'provisional-published',scheduleVerified:true,
   inputState:nowMillis>=openMillis?'open':'closed'
