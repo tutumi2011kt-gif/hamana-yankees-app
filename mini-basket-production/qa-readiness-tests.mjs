@@ -53,6 +53,29 @@ test('open January requires a valid time window',()=>{
  const x=checkQaReadiness({projectId,snapshot,nowMillis:Date.parse('2026-12-01T00:00:00+09:00')});
  assert.ok(x.blockers.includes('inputWindow'));
 });
+test('a QA cutoff customized to 09:00 JST is reported as a warning, not silently accepted as standard',()=>{
+ const jan=snapshot.months['2027-01'];
+ const shifted={...jan,openAt:{toMillis:()=>jan.openAt.toMillis()+9*3600000},
+  cutoffAt:{toMillis:()=>jan.cutoffAt.toMillis()+9*3600000}};
+ const x=check({...snapshot,months:{...snapshot.months,'2027-01':shifted}});
+ assert.equal(x.pass,true);
+ assert.ok(x.warnings.includes('customInputWindow'));
+ assert.ok(!x.blockers.includes('windowOrder'));
+ assert.match(qaReadinessReport(x),/標準と異なる場合/);
+ assert.match(qaReadinessReport(x),/9:00/);
+});
+test('QA cutoff before opening is blocked even if an administrator customized the window',()=>{
+ const jan=snapshot.months['2027-01'];
+ const inverted={...jan,cutoffAt:{toMillis:()=>jan.openAt.toMillis()-1}};
+ const x=check({...snapshot,months:{...snapshot.months,'2027-01':inverted}});
+ assert.ok(x.blockers.includes('windowOrder'));
+ assert.ok(x.warnings.includes('customInputWindow'));
+});
+test('the unmodified QA fixture has no cutoff override warning',()=>{
+ const x=check();
+ assert.equal(x.checks.find(c=>c.code==='customInputWindow').ok,true);
+ assert.ok(!x.warnings.includes('customInputWindow'));
+});
 test('March cannot be prematurely published',()=>{
  const x=check({...snapshot,months:{...snapshot.months,'2027-03':{...snapshot.months['2027-03'],publication:'published'}}});
  assert.ok(x.blockers.includes('march'));
