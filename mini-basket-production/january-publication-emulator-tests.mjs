@@ -102,11 +102,11 @@ try{
  await assertFails(getDoc(doc(parent,base+'/months/2027-03')));
  await assertFails(getDoc(doc(intruder,pathMonth)));
  await assertFails(setDoc(doc(parent,base+'/months/2026-12/days/2026-12-02'),{type:'practice',ownerId:'mia'}));
- await assertFails(runTransaction(admin,async tx=>{
+ await assert.rejects(runTransaction(admin,async tx=>{
   const snap=await tx.get(doc(admin,pathMonth));
   if(snap.data().publication!=='draft')throw Error('already published');
   tx.update(doc(admin,pathMonth),{version:999});
- }));
+ }),/already published/);
  const audit=await assertSucceeds(getDocs(collection(admin,base+'/monthPublicationAudit')));
  assert.equal(audit.size,1,'approval must produce an admin audit event');
  console.log('PASS emulator: January 19-day manager publication atomic, anonymous reads only afterwards, December untouched, March hidden, duplicate approval blocked');
