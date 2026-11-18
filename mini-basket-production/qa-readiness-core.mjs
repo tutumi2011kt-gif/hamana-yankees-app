@@ -41,8 +41,19 @@ export function checkQaReadiness({projectId,snapshot,nowMillis=Date.now()}){
  add('publishedMonths',Array.isArray(visible)&&visible.length===1&&visible[0]===QA_PUBLISHED_MONTH,
    '公開対象は2027年1月のみ（未承認の3月は含まない）');
  const jan=s.months?.[QA_PUBLISHED_MONTH],mar=s.months?.[QA_DRAFT_MONTH];
+ const expectedJanuary=expected.entries.find(x=>x.path==='teams/'+QA_TEAM_ID+'/months/'+QA_PUBLISHED_MONTH)?.data;
+ const janOpen=toMillis(jan?.openAt),janCutoff=toMillis(jan?.cutoffAt);
+ const tokyoTime=millis=>Number.isFinite(millis)
+  ?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',dateStyle:'short',timeStyle:'short',hour12:false}).format(millis)
+  :'未設定';
  add('january',jan?.publication==='published'&&jan?.inputState==='open',
    '2027年1月が公開済み・入力受付状態であること');
+ add('windowOrder',Number.isFinite(janOpen)&&Number.isFinite(janCutoff)&&janOpen<janCutoff,
+   '1月の受付開始・締切が有効で、開始時刻が締切より前であること');
+ add('customInputWindow',janOpen===expectedJanuary.openAtMillis&&janCutoff===expectedJanuary.cutoffAtMillis,
+   '1月の入力期間の標準設定：受付開始 '+tokyoTime(expectedJanuary.openAtMillis)+'／締切 '+tokyoTime(expectedJanuary.cutoffAtMillis)+
+   '。現在：開始 '+tokyoTime(janOpen)+'／締切 '+tokyoTime(janCutoff)+'。標準と異なる場合は管理者変更の意図を確認してください',
+   'warning');
  add('inputWindow',jan?.publication==='published'
    &&toMillis(jan.openAt)<=nowMillis&&nowMillis<toMillis(jan.cutoffAt),
    'サーバーの現在時刻が1月分の入力受付期間にあること');
