@@ -111,6 +111,31 @@ function initialize(){
   counts[pick.id]++;
   last[pick.id]=date;
  });
+ // Second pass: reduce annual load spread when a hard-weekday-compliant move
+ // can transfer a duty from a most-assigned member to a least-assigned member.
+ // Keep all practice days staffed; never relax hard eligibility.
+ for(var attempt=0;attempt<60;attempt++){
+  var numbers=Object.values(counts),high=Math.max.apply(null,numbers),low=Math.min.apply(null,numbers);
+  if(high-low<=1)break;
+  var options=[];
+  dates.forEach(function(date){
+   var day=data.months[date.slice(0,7)].days[date],old=day.owner;
+   if(counts[old]!==high)return;
+   people.forEach(function(p){
+    if(counts[p.id]!==low||!allowed(p.id,date))return;
+    // Prefer a larger gap around the receiving member's existing duties.
+    var gaps=dates.filter(function(x){return x!==date&&data.months[x.slice(0,7)].days[x].owner===p.id})
+      .map(function(x){return Math.abs((Date.parse(x)-Date.parse(date))/86400000)});
+    var gap=gaps.length?Math.min.apply(null,gaps):30;
+    options.push({date:date,old:old,next:p.id,gap:gap});
+   });
+  });
+  if(!options.length)break;
+  options.sort(function(a,b){return b.gap-a.gap||a.date.localeCompare(b.date)||a.next.localeCompare(b.next)});
+  var best=options[0];
+  data.months[best.date.slice(0,7)].days[best.date].owner=best.next;
+  counts[best.old]--;counts[best.next]++;
+ }
  return data;
 }
 function load(){
