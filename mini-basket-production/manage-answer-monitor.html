@@ -9,22 +9,27 @@ main{max-width:740px;margin:auto;padding:12px 10px 60px}header{background:linear
 .row{display:flex;flex-wrap:wrap;gap:8px}.row>*{flex:1 1 170px}button{font:inherit;min-height:44px;padding:9px 12px;border:1px solid #c7d7e5;border-radius:9px;background:white;color:inherit;font-weight:700}button.primary{background:#255d88;color:white;border-color:#255d88}button:disabled{opacity:.5}
 .event{border:1px solid #dde7f1;padding:11px;border-radius:11px;margin:9px 0}.event.flag{border-color:#e9adb9;background:#fff7f9}.event h3{font-size:14px;margin:0 0 7px}
 </style></head><body><main><header><h1>🏀 ×・○回答の監査</h1><p>有玉女子ミニバス｜管理者専用</p>
-<div class="warn"><b>A方式：入力直後に全員へ反映します。</b> 複数の子ども名を同じ匿名端末が使った場合などを「確認推奨」として表示します。ただし、なりすましを確実に検出・防止できるものではありません。</div></header>
+<div class="warn"><b>名前選択方式：入力直後に全員へ反映します。</b> 複数の子ども名を同じ匿名端末が使った場合などを「確認推奨」として表示します。ただし、なりすましを確実に検出・防止できるものではありません。</div></header>
 <section class="card"><h2>① ログイン・最新の回答履歴</h2>
 <p id="auth" class="small">管理者ログイン状態を確認中…</p>
-<div class="row"><button id="login" class="primary">管理者Googleログイン</button><button id="load">最新の100件を確認</button></div>
+<div class="row"><button id="login" class="primary">管理者Googleログイン</button><button id="load">履歴100件と選択月の最新回答を確認</button></div>
 <p id="status" class="small">まだ読み込んでいません。</p></section>
 <section class="card"><h2>② 確認が必要な操作</h2>
 <div id="flagged" class="small">ログインして履歴を読み込んでください。</div></section>
-<section class="card"><h2>③ 最近の回答履歴</h2>
+<section class="card"><h2>③ 現在登録されている回答（履歴ではありません）</h2>
+<p class="small">Cloud Functionsの監査履歴が未稼働でも、管理者権限で現在の回答を読み取ります。削除済みの回答や過去の変更は確認できません。同じ識別子が複数名にある場合は管理者訂正や共用端末の可能性もあるため、本人へ確認してください。</p>
+<label for="current-month">確認月</label>
+<input id="current-month" type="month" min="2027-01" max="2027-11" value="2027-01" style="min-height:44px;width:100%;font:inherit">
+<div id="current" class="small">未読み込み</div></section>
+<section class="card"><h2>④ 最近の回答履歴</h2>
 <p class="small">記録・変更・削除を表示します。削除した人の端末は、削除前の記録だけでは特定できません。表示上の「最終登録者」は削除操作を行った人とは限りません。</p>
 <div id="history" class="small">未読み込み</div></section>
 <section class="card"><h2>間違いを見つけたら</h2>
 <p>保護者本人へLINE等で確認し、管理者用の「回答の訂正」画面で正しい内容に変更します。交代確定済みの場合は先に交代確定を解除し、再確認後に確定してください。</p>
-<p class="small">回答履歴の収集はCloud Functions候補のデプロイが必要です。現在の開発ブランチ上ではまだ本番の監査イベントは発生しません。100件より前はこの画面では表示しません。</p></section>
+<p class="small">変更・削除履歴の収集はCloud Functions候補の配信が必要です。現時点では本番の監査イベント収集は未確認です。現在の回答を読み取っても、削除済みの記録は復元できません。履歴の表示は直近100件に限られます。</p></section>
 </main><script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
-import {auditItemTitle,recentSuspiciousAnswers} from './answer-monitor-core.mjs?v=1';
+import {auditItemTitle,recentSuspiciousAnswers,reviewCurrentAnswerState} from './answer-monitor-core.mjs?v=1';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,query,orderBy,limit} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
@@ -50,18 +55,36 @@ $('load').onclick=async()=>{
  try{
   const adm=await getDocFromServer(doc(db,'admins',user.uid));
   if(!adm.exists()||adm.data().enabled!==true)throw Error('管理者権限がありません');
-  const [snap,ms]=await Promise.all([
+  const chosen=$('current-month').value;
+  if(!/^2027-(0[1-9]|1[01])$/.test(chosen))throw Error('2027年1〜11月を指定してください');
+  const [snap,ms,meta,currentDocs]=await Promise.all([
    getDocsFromServer(query(collection(db,'teams',teamId,'answerAudit'),orderBy('observedAt','desc'),limit(100))),
-   getDocsFromServer(collection(db,'teams',teamId,'members'))
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocFromServer(doc(db,'teams',teamId,'months',chosen)),
+   getDocsFromServer(collection(db,'teams',teamId,'months',chosen,'answers'))
   ]);
+  if(!meta.exists()||meta.data()?.publication!=='published')throw Error('指定月は未公開、または存在しません');
+  if($('current-month').value!==chosen)throw Error('読込中に対象月が変更されました。再読み込みしてください');
   if(auth.currentUser?.uid!==user.uid)throw Error('ログイン状態が変更されました');
   const names=Object.fromEntries(ms.docs.map(d=>[d.id,d.data().name]));
   const entries=snap.docs.map(d=>({id:d.id,...d.data()}));
   const suspected=recentSuspiciousAnswers(entries);
+  const current=reviewCurrentAnswerState(currentDocs.docs.map(d=>({id:d.id,...d.data()})));
+  const currentFlags=current.filter(a=>a.needsReview);
+  $('current').innerHTML=current.length?current.map(a=>{
+   const name=esc(names[a.memberId]||a.memberId||'不明'),date=esc(a.date||'日付不明');
+   const mark=a.kind==='x'?'×':a.kind==='o'?'○':'不明';
+   const when=a.updatedAt?.toDate?.()?.toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})||'日時不明';
+   const hint=a.flags?.includes('one-writer-multiple-children')?'⚠ 同じ識別子が複数の子ども名に使用されています（管理者訂正も含む可能性）':
+    a.needsReview?'⚠ 登録情報の不足を確認してください':'';
+   return '<div class="event '+(a.needsReview?'flag':'')+'">'+
+    date+'｜'+name+'｜'+mark+'<div class="small">最終更新：'+esc(when)+(hint?' ／ '+esc(hint):'')+'</div></div>';
+  }).join(''):'この月に現在登録されている回答はありません。削除履歴はここには表示されません。';
   $('flagged').innerHTML=suspected.length?suspected.map(e=>renderEvent(e,names)).join(''):
    '<div class="good">最新100件の中に自動判定の要確認記録はありません。ただし、なりすましがなかったことの証明にはなりません。</div>';
   $('history').innerHTML=entries.length?entries.map(e=>renderEvent(e,names)).join(''):'監査履歴はまだありません。';
-  status('✅ 最新'+entries.length+'件を確認／要確認'+suspected.length+'件。必要に応じて本人に確認してください。','good');
+  status('✅ 履歴'+entries.length+'件／現在の回答'+current.length+'件／現在の要確認'+currentFlags.length+'件。'+
+   (!entries.length?'監査履歴0件は未稼働の可能性があり、変更・削除を追跡できません。':'変更履歴と現在の回答は別に確認してください。'),'good');
  }catch(e){status('読み込み失敗：'+(e.code||e.message||String(e)),'bad');}
  finally{busy=false;controls();}
 };
