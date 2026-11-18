@@ -14,6 +14,7 @@ export function januaryDaySignature(day){
  return JSON.stringify([
   day?.date??null,day?.weekday??null,day?.type??null,day?.ownerId??null,
   day?.eventLocation??'',Array.isArray(day?.traineeIds)?day.traineeIds:null,
+  day?.activityVerified??null,day?.confirmedSubstituteId??null,
   timestampMillis(day?.updatedAt)||null
  ]);
 }
