@@ -28,7 +28,7 @@ footer{font-size:11px;color:#718296;margin:14px 0 0}
 <p class="small">実績の完成記録がない過去当番は回数に含めません。下の累計実施回数・未消化の繰越を確認し、必要に応じて修正してください。12月9日の当番練習は除外します。</p>
 <div id="history-inputs"></div>
 <label class="checkbox"><input id="history-confirmed" type="checkbox">過去の実施回数・中止・繰越を確認しました</label>
-<button id="automatic" type="button">確認した条件で自動仮割当</button>
+<button id="automatic" type="button">未設定の日だけ自動で仮割当</button>
 <p id="automatic-status" role="status"></p>
 <div id="days" class="rows"><div class="small" style="padding:12px">Firebaseからの読み込み後に表示します。</div></div></section>
 <section class="card"><h2>③ 内容の確認と下書き保存</h2><p class="small">担当者未設定や曜日条件の未確認は、警告として表示します。未完成の状態でも「下書き」として保存できますが、保護者には見えません。</p>
@@ -123,7 +123,7 @@ $('load').addEventListener('click',async()=>{
 $('automatic').addEventListener('click',async()=>{
  if(!loaded||working||!auth.currentUser)return;
  if(!$('calendar-confirmed').checked||!$('history-confirmed').checked)return status('活動予定と実績・繰越の確認にチェックしてください。','error');
- if(rows.some(r=>r.ownerId)&&!confirm('画面上の担当者を再計算します。保存は別途確認が必要です。続けますか？'))return;
+ // Existing January duty owners are preserved. Never recalculate already assigned dates here.
  working=true;update();
  try{
   const latest=await getDocsFromServer(collection(db,'teams',teamId,'members'));
@@ -132,9 +132,9 @@ $('automatic').addEventListener('click',async()=>{
   const counts={},carry={};
   for(const el of document.querySelectorAll('[data-count]'))counts[el.dataset.count]=el.value===''?NaN:Number(el.value);
   for(const el of document.querySelectorAll('[data-carry]'))carry[el.dataset.carry]=el.value===''?NaN:Number(el.value);
-  const result=generateAutomaticDraft({month:DRAFT_MONTH,rows,members,history,counts,carry,calendarConfirmed:true});
+  const result=generateAutomaticDraft({month:DRAFT_MONTH,rows,members,history,counts,carry,calendarConfirmed:true,preserveExisting:true});
   rows=result.rows;$('agree').checked=false;render();
-  $('automatic-status').textContent='仮割当（未保存） '+members.map(m=>m.name+' '+(result.allocated[m.id]||0)+'回').join('／')+' '+result.warnings.join(' ');
+  $('automatic-status').textContent='既存の担当者を維持して空欄だけ仮割当（未保存） '+members.map(m=>m.name+' '+(result.allocated[m.id]||0)+'回').join('／')+' '+result.warnings.join(' ');
  }catch(e){status(e.message,'error');}finally{working=false;update();}
 });
 $('history-inputs').addEventListener('input',()=>{$('history-confirmed').checked=false;});
