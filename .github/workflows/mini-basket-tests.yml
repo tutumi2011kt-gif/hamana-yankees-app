@@ -56,6 +56,26 @@ jobs:
             console.log('PASS: deployed QA parent UI shows the new mode controls between month selection and calendar.');
           }
           NODE
+      - name: Capture live QA HTML at mobile width without logging in (read-only)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          test -s /tmp/mini-basket-live-qa.html
+          mkdir -p qa-evidence
+          if command -v google-chrome >/dev/null 2>&1; then
+            browser=google-chrome
+          elif command -v chromium >/dev/null 2>&1; then
+            browser=chromium
+          else
+            echo 'No headless Chrome/Chromium on the runner; mobile capture unavailable.'
+            exit 1
+          fi
+          # Render the downloaded QA HTML with JS disabled: never create a QA Auth user or write Firestore.
+          "$browser" --headless=new --disable-javascript --no-sandbox --disable-dev-shm-usage \
+            --disable-gpu --hide-scrollbars --window-size=390,844 \
+            --screenshot=qa-evidence/qa-static-mobile-390.png file:///tmp/mini-basket-live-qa.html
+          test -s qa-evidence/qa-static-mobile-390.png
+          echo 'Saved QA public HTML screenshot at 390px. Static layout only; dynamic Firebase UI remains unverified.'
       - name: Verify QA read-only doctor refuses production and needs no credentials in dry-run
         run: |
           node firebase-functions/verify-qa.mjs --project basket-staging-qa | tee /tmp/qa-verify-dryrun.txt
@@ -103,3 +123,4 @@ jobs:
           path: |
             mini-basket-production/*debug.log
             mini-basket-production/audit-results.json
+            mini-basket-production/qa-evidence/qa-static-mobile-390.png
