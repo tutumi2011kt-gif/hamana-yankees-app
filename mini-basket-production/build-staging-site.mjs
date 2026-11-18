@@ -67,7 +67,7 @@ async function main(){
  // Additional isolated, client-only annual planning demo. Never imports Firebase,
  // never writes Firestore, and is served only from the QA Hosting site.
  const annualDemo=await readFile(join(root,'annual-admin-demo.html'),'utf8');
- if(!annualDemo.includes('QA体験版')||!annualDemo.includes('aritama-qa-annual-demo-v1')
+ if(!annualDemo.includes('QA体験版')||!annualDemo.includes('aritama-qa-annual-demo-realnames-v2')
    ||/firebasejs|https?:\/\/|fetch\s*\(|getFirestore|initializeApp\s*\(/i.test(annualDemo))
    throw new Error('Annual demo must be a local-only, Firebase-free QA preview');
  await writeFile(join(out,'annual-admin-demo.html'),annualDemo);
