@@ -49,6 +49,13 @@ for(const name of pages){
   assert.match(compiled,/class="bad"/,'calendar still displays owner × marks');
   assert.match(compiled,/class="good"/,'calendar still displays ○ volunteer marks');
   assert.match(compiled,/class="confirmed"/,'confirmed substitute is still visible in calendar');
+  assert.match(compiled,/const tap=answerTapDecision\(\{day:d,existing,kind:selectedMode/,'calendar always uses shared cancel-aware tap logic');
+  assert.match(compiled,/const eligible=tap\.enabled/,'calendar button does not use its own stale eligibility');
+  assert.match(compiled,/cancel-hint/,'own saved answer shows explicit second-tap cancel hint');
+  assert.match(compiled,/action==='different-device'/,'other-device registration must show an alert');
+  assert.match(compiled,/committedAction==='delete'/,'cancel success status differs from registration');
+  assert.doesNotMatch(compiled,/\(!existing\|\|existing\.updatedBy===auth\.currentUser\?\.uid\)/,
+    'a different anonymous UID must not silently disable the entire calendar day');
   assert.match(compiled,/<button id="mark-x"[^>]*>❌ 当番ができない日<[/]button>/);
   assert.match(compiled,/<button id="mark-o"[^>]*>⭕ 代わりにできる日<[/]button>/);
   assert.equal((compiled.match(/id="mark-x"/g)||[]).length,1);
