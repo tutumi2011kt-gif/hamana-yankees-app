@@ -14,12 +14,22 @@ export function historyTotals(members,history,month){
  }
  return {counts,dates,carry};
 }
-export function generateAutomaticDraft({month,rows,members,history=[],counts={},carry={},historyDates={},calendarConfirmed=false}){
+export function generateAutomaticDraft({month,rows,members,history=[],counts={},carry={},historyDates={},calendarConfirmed=false,preserveExisting=false}){
  if(month<='2026-12')throw Error('2026年12月以前の確定表は自動作成対象外です');
  if(!calendarConfirmed)throw Error('活動予定の確認が必要です');
- const blank=rows.map(row=>({...row,ownerId:null}));
+ // January's existing manual assignments must never be silently overwritten.
+ // A future month's explicit "recalculate all" action keeps the prior behavior.
+ const blank=rows.map(row=>({...row,ownerId:preserveExisting&&row.type==='practice'?(row.ownerId??null):null}));
  const audit=auditDraft(month,blank,members);
  if(!audit.ok)throw Error(audit.problems.join('\n'));
+ if(preserveExisting){
+  for(const row of blank.filter(r=>r.type==='practice'&&r.ownerId)){
+   const member=members.find(m=>m.id===row.ownerId);
+   if(!member||!isDayAllowed(member,row.date,weekdayOf(row.date))
+    ||(member.unavailableDates||[]).includes(row.date))
+    throw Error(row.date+' の既存担当者が当番条件と矛盾しています。変更せず管理者が確認してください');
+  }
+ }
  const totals=historyTotals(members,history,month);
  for(const m of members){
   if(counts[m.id]!==undefined)totals.counts[m.id]=counts[m.id];
@@ -28,11 +38,16 @@ export function generateAutomaticDraft({month,rows,members,history=[],counts={},
   if(!Number.isInteger(totals.counts[m.id])||totals.counts[m.id]<0||!Number.isInteger(totals.carry[m.id])||totals.carry[m.id]<0)throw Error('実施回数・繰越は0以上の整数で入力してください');
  }
  const candidates=row=>members.filter(m=>isDayAllowed(m,row.date,weekdayOf(row.date))&&!(m.unavailableDates||[]).includes(row.date));
- const work=blank.filter(r=>r.type==='practice');
+ const work=blank.filter(r=>r.type==='practice'&&!r.ownerId);
  // Scarce weekdays are allocated first. Every comparison keeps hard constraints.
  work.sort((a,b)=>candidates(a).length-candidates(b).length||a.date.localeCompare(b.date));
  const allocated=Object.fromEntries(members.map(m=>[m.id,0]));
  const assignedDates=Object.fromEntries(members.map(m=>[m.id,[...totals.dates[m.id]]]));
+ // Existing January owners count towards this month's fairness and spacing.
+ for(const row of blank.filter(r=>r.type==='practice'&&r.ownerId)){
+  allocated[row.ownerId]++;
+  assignedDates[row.ownerId].push(row.date);
+ }
  const warnings=[];
  const dayNumber=date=>Date.parse(date+'T00:00:00Z')/86400000;
  const score=(m,row)=>{
