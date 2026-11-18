@@ -17,6 +17,8 @@ export function historyTotals(members,history,month){
 export function generateAutomaticDraft({month,rows,members,history=[],counts={},carry={},historyDates={},calendarConfirmed=false,preserveExisting=false}){
  if(month<='2026-12')throw Error('2026年12月以前の確定表は自動作成対象外です');
  if(!calendarConfirmed)throw Error('活動予定の確認が必要です');
+ if(preserveExisting&&rows.some(row=>row.type!=='practice'&&row.ownerId))
+  throw Error('試合・休みの日に既存担当者が登録されています。自動変更せず管理者が確認してください');
  // January's existing manual assignments must never be silently overwritten.
  // A future month's explicit "recalculate all" action keeps the prior behavior.
  const blank=rows.map(row=>({...row,ownerId:preserveExisting&&row.type==='practice'?(row.ownerId??null):null}));
