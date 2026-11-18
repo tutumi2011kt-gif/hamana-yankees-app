@@ -15,7 +15,7 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day{border:1px solid #e0e8ef;border-radius:7px;background:#fff;min-width:0;min-height:81px;padding:5px 2px;overflow-wrap:anywhere;text-align:left;color:inherit;display:block;width:100%}.day:disabled{cursor:default}.day.tap-x{border:2px solid #c64a66;padding:4px 1px}.day.tap-o{border:2px solid #23865f;padding:4px 1px}.day.tap-x,.day.tap-o{cursor:pointer}
 .day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
-.day .cancel-hint{font-size:9px;display:block;color:#9d2747;font-weight:800;line-height:1.3;margin-top:4px}.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}
+.day .cancel-hint{font-size:9px;display:block;color:#9d2747;font-weight:800;line-height:1.3;margin-top:4px}.day .pending-hint{font-size:9px;display:block;color:#6d4c16;font-weight:800;line-height:1.3;margin-top:4px}.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
 footer{font-size:11px;color:#76889b}.not-available{display:none}
 </style></head><body><main>
@@ -29,7 +29,7 @@ footer{font-size:11px;color:#76889b}.not-available{display:none}
 </main>
 <script type="module">
 import {todayTokyo,monthPlus,dayList} from './core.mjs?v=parent-input-2';
-import {canEditMonth,answerTapDecision} from './parent-input-core.mjs?v=3';
+import {canEditMonth,answerTapDecision,sameAnswerTap,overlayParentAnswers} from './parent-input-core.mjs?v=4';
 import {swapState,canEditSwapAnswer} from './swap-confirmation-core.mjs?v=1';
 import {PARENT_WRITES_ENABLED,ANSWER_PUBLICATION_MODE} from './parent-write-config.mjs?v=1';
 import {firebaseConfig,teamId} from './firebase-config.mjs';
@@ -43,7 +43,16 @@ const key='mini-basket-parent-name-1';
 // A方式：回答は保存後に即時全員へ反映。公開まで書き込みスイッチは無効。
 let displayedClockMonth=todayTokyo().slice(0,7);
 let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
-let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false},lastInputWindowOpen=null;
+let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,pendingTap=null,lastSaveMessage='',ready={meta:false,days:false,answers:false},lastInputWindowOpen=null;
+const answerOverlay=new Map();
+const answerId=(date,person)=>date+'_'+person;
+function reconcileAnswerOverlay(){
+ for(const [id,expected] of answerOverlay){
+  const actual=answers.find(a=>a.id===id);
+  if(expected===null?!actual:actual?.kind===expected.kind&&actual.updatedBy===expected.updatedBy)
+   answerOverlay.delete(id);
+ }
+}
 const caption=m=>Number(m.slice(0,4))+'年'+Number(m.slice(5,7))+'月';
 const mapNames=()=>Object.fromEntries(names.map(m=>[m.id,m.name]));
 function connection(text,type='notice'){$('connection').textContent=text;$('connection').className=type}
@@ -63,7 +72,7 @@ function drawMonths(){
 const rosterRef=doc(db,'teams',teamId,'public','roster');
 function resetMonthListeners(){
  token++;unsubscribeMonth.forEach(f=>f());unsubscribeMonth=[];
- monthData=null;days=[];answers=[];ready={meta:false,days:false,answers:false};
+ monthData=null;days=[];answers=[];answerOverlay.clear();ready={meta:false,days:false,answers:false};
 }
 function setMonth(m){
  if(!options.includes(m))return;
@@ -79,7 +88,9 @@ function setMonth(m){
  ];
  for(const [ref,field,handler] of refs)unsubscribeMonth.push(onSnapshot(ref,s=>{
   if(version!==token)return;
-  handler(s);ready[field]=true;draw();
+  handler(s);
+  if(field==='answers'&&!s.metadata.hasPendingWrites)reconcileAnswerOverlay();
+  ready[field]=true;draw();
  },e=>{
   if(version!==token)return;
    ready[field]=false;
@@ -100,13 +111,16 @@ function draw(){
  if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
  const canWrite=PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&lastInputWindowOpen&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
- reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?'Firebaseに保存中です…':lastSaveMessage|| (!lastInputWindowOpen?'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。':!selectedPerson?'まずお子さんの名前を選んでください。':canWrite?'✅ 入力受付中。枠線が付いた日をタップしてください。':'接続確認中です。');
+ $('person').disabled=writing;
+ $('mark-x').disabled=writing;
+ $('mark-o').disabled=writing;
+ reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?(pendingTap?.queuedToggle?'⏳ 取消／再登録を予約しました。保存が完了するまでお待ちください。':'⏳ Firebaseに保存中。同じ日をもう一度タップすると逆操作を予約できます。'):lastSaveMessage|| (!lastInputWindowOpen?'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。':!selectedPerson?'まずお子さんの名前を選んでください。':canWrite?'✅ 入力受付中。枠線が付いた日をタップしてください。':'接続確認中です。');
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
  $('mark-o').className=selectedMode==='o'?'selected-o':'';
  const dayMap=Object.fromEntries(days.map(x=>[x.date,x])),people=mapNames();
  const markMap={};
- for(const a of answers)if(a.date&&a.memberId&&['x','o'].includes(a.kind))(markMap[a.date]??=[]).push(a);
+ for(const a of overlayParentAnswers(answers,answerOverlay))if(a.date&&a.memberId&&['x','o'].includes(a.kind))(markMap[a.date]??=[]).push(a);
  let calendar='';
  const first=dayList(selectedMonth)[0].weekday;
  for(let x=0;x<first;x++)calendar+='<div class="day empty"></div>';
@@ -119,7 +133,8 @@ function draw(){
   const existing=marks.find(a=>a.memberId===selectedPerson);
   const tap=answerTapDecision({day:d,existing,kind:selectedMode,memberId:selectedPerson,
     uid:auth.currentUser?.uid,canWrite});
-  const eligible=tap.enabled;
+  const pendingHere=writing&&sameAnswerTap(pendingTap,{month:selectedMonth,date,person:selectedPerson,kind:selectedMode});
+  const eligible=tap.enabled||pendingHere;
   const isOwnCancel=tap.action==='delete';
   const selectedMark=isOwnCancel?'（取消）':'';
   const volunteerMarks=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId);
@@ -134,20 +149,28 @@ function draw(){
    ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(tap.action==='different-device'?'別端末の回答：管理者に相談':isOwnCancel?(selectedMode==='x'?'×を取り消す':'○を取り消す'):(selectedMode==='x'?'×を登録する':'○を登録する'))+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
    (label?'<span class="owner">'+esc(label)+'</span>':'')+
    (d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+
-   extras+(isOwnCancel?'<span class="cancel-hint">'+(selectedMode==='x'?'×取消':'○取消')+'（再タップ）</span>':'')+'</button>';
+   extras+(pendingHere?'<span class="pending-hint">'+(pendingTap.queuedToggle?'逆操作を予約済み':'保存中・再タップ可')+'</span>':
+    isOwnCancel?'<span class="cancel-hint">'+(selectedMode==='x'?'×取消':'○取消')+'（再タップ）</span>':'')+'</button>';
 
  }
  $('calendar').innerHTML=calendar;
  monthMessage(!PARENT_WRITES_ENABLED?'🗓️ 当番表を閲覧中です。保護者の書き込みは安全確認待ちのため停止中です。':canWrite?'✅ ×・○の入力受付中。登録内容は即時に共有されます。':'🗓️ 閲覧中です。未受付・締切済み、または名前未選択のため入力できません。','info');
 }
-$('person').addEventListener('change',e=>{selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
-$('mark-x').addEventListener('click',()=>{selectedMode='x';lastSaveMessage='';draw()});
-$('mark-o').addEventListener('click',()=>{selectedMode='o';lastSaveMessage='';draw()});
-$('months').addEventListener('click',e=>{const target=e.target.closest('button[data-month]');if(target)setMonth(target.dataset.month)});
+$('person').addEventListener('change',e=>{if(writing)return;selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
+$('mark-x').addEventListener('click',()=>{if(writing)return;selectedMode='x';lastSaveMessage='';draw()});
+$('mark-o').addEventListener('click',()=>{if(writing)return;selectedMode='o';lastSaveMessage='';draw()});
+$('months').addEventListener('click',e=>{if(writing)return;const target=e.target.closest('button[data-month]');if(target)setMonth(target.dataset.month)});
 $('calendar').addEventListener('click',async event=>{
  const target=event.target.closest('button[data-day]');
- if(!target||target.disabled||writing)return;
+ if(!target||target.disabled)return;
  const date=target.dataset.day,month=selectedMonth,person=selectedPerson,kind=selectedMode;
+ if(writing){
+  if(sameAnswerTap(pendingTap,{month,date,person,kind})){
+   pendingTap.queuedToggle=!pendingTap.queuedToggle;
+   draw();
+  }
+  return;
+ }
  const day=days.find(d=>d.date===date);
  const old=answers.find(a=>a.date===date&&a.memberId===person);
  const uid=auth.currentUser?.uid;
@@ -166,35 +189,56 @@ $('calendar').addEventListener('click',async event=>{
  const refMonth=doc(db,'teams',teamId,'months',month);
  const refDay=doc(db,'teams',teamId,'months',month,'days',date);
  const refRoster=doc(db,'teams',teamId,'public','roster');
- writing=true;draw();
- try{
-  const committedAction=await runTransaction(db,async tx=>{
+ writing=true;
+ pendingTap={month,date,person,kind,uid,queuedToggle:false};
+ draw();
+ const transaction=async()=>{
+  return runTransaction(db,async tx=>{
    const [mSnap,dSnap,rSnap,aSnap]=await Promise.all([
     tx.get(refMonth),tx.get(refDay),tx.get(refRoster),tx.get(ref)
    ]);
    if(!mSnap.exists()||!canEditMonth(mSnap.data()))throw Error('この月は入力締切です。');
    if(!dSnap.exists()||dSnap.data().type!=='practice'||!dSnap.data().ownerId||
       !canEditSwapAnswer(dSnap.data()))throw Error('この日は交代確定済み、または入力できません。');
-   if(!rSnap.exists()||!(rSnap.data().members||[]).some(x=>x.id===person&&x.status==='active'))throw Error('メンバー情報を確認してください。');
+   if(!rSnap.exists()||!(rSnap.data().members||[]).some(x=>x.id===person&&x.status==='active'))
+    throw Error('メンバー情報を確認してください。');
    const existing=aSnap.exists()?aSnap.data():null;
    const actualDecision=answerTapDecision({day:dSnap.data(),existing,kind,
       memberId:person,uid,canWrite:true});
    if(!actualDecision.enabled)throw Error('この日の回答は変更できません。');
    const actualAction=actualDecision.action;
-   if(actualAction==='different-device')throw Error('別の端末がこの回答を登録済みです。管理者に連絡してください。');
+   if(actualAction==='different-device')throw Error('別端末が登録した回答です。管理者へ連絡してください。');
    if(actualAction==='blocked')throw Error('認証状態を確認してください。');
-   if(actualAction==='delete'){tx.delete(ref);}
+   if(actualAction==='delete')tx.delete(ref);
    else tx.set(ref,{date,memberId:person,kind,updatedAt:serverTimestamp(),updatedBy:uid});
    return actualAction;
   });
-  lastSaveMessage=committedAction==='delete'?
+ };
+ try{
+  let committedAction;
+  // Repeat taps during a save are queued, not lost. Two extra taps cancel
+  // each other, and each cloud commit is serialized through a transaction.
+  do {
+   pendingTap.queuedToggle=false;
+   committedAction=await transaction();
+   if(month===selectedMonth){
+    answerOverlay.set(answerId(date,person),committedAction==='delete'?null:
+      {date,memberId:person,kind,updatedBy:uid});
+   }
+   lastSaveMessage=committedAction==='delete'?
     '✅ '+mark+'を取り消しました。カレンダーにも反映されます。':
     '✅ '+mark+'を登録しました。全員のカレンダーに反映されます。';
+   draw();
+  } while(pendingTap.queuedToggle);
  }catch(err){
   lastSaveMessage='';
-  const msg=err?.code==='permission-denied'?'セキュリティルールにより書き込みが拒否されました。管理者へ連絡してください。':(err?.message||err?.code||String(err));
+  const msg=err?.code==='permission-denied'?
+    'セキュリティルールにより書き込みが拒否されました。管理者へ連絡してください。':
+    (err?.message||err?.code||String(err));
   alert('保存できませんでした：'+msg);
- }finally{writing=false;draw()}
+ }finally{
+  pendingTap=null;writing=false;draw();
+ }
 });
 drawMonths();
 async function start(){
