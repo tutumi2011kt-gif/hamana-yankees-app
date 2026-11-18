@@ -1,3 +1,22 @@
+## 2026-11-18：保護者画面だけをQA再配信する場合（Hosting-only）
+
+**UI修正のみの再配信では、従来の `deploy-qa.mjs` を使わないでください。**
+従来のスクリプトは `--only hosting,firestore:rules` を指定しており、QAのFirestoreルールも更新します。
+現在のQA回答・管理者権限・公開月・締切を維持するには、**Hostingだけを対象にした `deploy-qa-hosting-only.mjs`** を使用します。
+
+1. 開発ブランチ `development/mini-basket-release-preparation` の最新コードを取得し、GitHub Actionsが成功していることを確認。
+2. 検証用FirebaseのWeb設定（公開識別子）を安全な環境変数 `STAGING_FIREBASE_CONFIG_JSON` に設定し、実際のQAプロジェクトIDが `aritama-mini-basket-qa` と一致することを確認。秘密鍵は配置しない。
+3. `mini-basket-production` で `npm install --ignore-scripts` の後、`node build-staging-site.mjs` を実行。
+4. 書込みなしで確認：`node deploy-qa-hosting-only.mjs --project aritama-mini-basket-qa`。
+5. QA Hostingのデフォルトサイト・配信権限を確認し、QAであることを確認できる場合に限り次を実行：
+
+`node deploy-qa-hosting-only.mjs --project aritama-mini-basket-qa --confirm aritama-mini-basket-qa --apply`
+
+このスクリプトは、QA Web設定と配信先IDの一致、検証版バナー、最新ボタン文言と配置、QA専用Hosting設定、QAデフォルトHostingサイトを確認します。Firebase CLIの配信対象は **`--only hosting` 固定**。Firestoreルール・データ・Cloud Functions・本番サイトを更新しません。
+
+**注意：** GitHub Actionsの純粋テスト合格と、QA Hosting実配信の成功は別です。Firebaseの認証済み配信環境がない場合は配信を中止し、権限不足として報告してください。既存QAデータは再登録・初期化しません。
+
+---
 ## 【重要・2026年11月確認】Firebase新規プロジェクトのHosting初期設定
 
 2026年10月15日以降の新規Firebaseプロジェクトは、**デフォルトHostingサイトをプロジェクト作成時には自動作成しない**仕様になっています。Firebase公式：https://firebase.google.com/docs/hosting/default-site
