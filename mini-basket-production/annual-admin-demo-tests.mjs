@@ -47,6 +47,19 @@ assert.match(html,/Firestoreの2027年1月下書きや今後の試合予定と�
 assert.match(html,/12月分を実施済みとして加算しません/);
 const generated=data();
 assert.equal(Object.keys(generated.months).length,11);
+// The initial twelve-person plan must be as even as possible across the whole
+// Dec 2026–Nov 2027 year without relaxing any hard weekday constraints.
+const baseline={q01:2,q02:1,q03:1,q04:2,q05:1,q06:2,q07:1,q08:2,q09:1,q10:1,q11:1,q12:0};
+const yearlyTotals=Object.fromEntries(Object.entries(baseline).map(([id,n])=>[id,n]));
+for(const month of months){
+ for(const day of Object.values(generated.months[month].days)){
+  if(day.type==='practice'&&day.owner)yearlyTotals[day.owner]++;
+ }
+}
+const allYear=Object.values(yearlyTotals);
+assert.equal(allYear.reduce((sum,n)=>sum+n,0),203,'15 December duties plus 188 provisional future duties');
+assert.ok(Math.max(...allYear)-Math.min(...allYear)<=1,'initial 12-person full-year plan should differ by at most one duty');
+assert.equal(yearlyTotals.q12,17,'member starting in Jan 2027 joins the 11-month equalization');
 const holiday=['2027-01-01','2027-01-02','2027-01-03'];
 assert.ok(holiday.every(d=>generated.months['2027-01'].days[d].type==='rest'));
 assert.equal(Object.values(generated.months['2027-01'].days).filter(d=>d.type==='practice').length,16);
