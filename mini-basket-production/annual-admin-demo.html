@@ -42,6 +42,8 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px
 <div class="warn" style="margin-top:12px">公開ボタンは体験用です。QAのこの画面だけに「公開済み」と表示され、Firebaseや保護者用カレンダーには一切反映しません。</div>
 <label style="font-size:12px;display:flex;align-items:center;gap:9px;margin-top:12px"><input id="reviewed" type="checkbox" style="width:19px;height:19px">この月の活動予定と当番を確認した（体験用）</label>
 <button id="publish" class="btn primary" style="width:100%;margin-top:9px">📣 この月を公開する（体験用）</button>
+<a href="./annual-parent-demo.html" style="display:block;text-align:center;margin-top:12px;padding:12px;border-radius:9px;background:#e9f6ee;border:1px solid #b9dfca;color:#16674b;font-weight:900">👪 保護者用カレンダーを開いて×・○を試す</a>
+<p class="muted">この端末の同じSafari（ブラウザ）で開いてください。体験公開した月だけ表示されます。</p>
 </section>
 <section class="card"><h2>③ 12人の年間回数</h2><p class="muted">2026年12月の確定表に記載された予定回数と、2027年1〜11月の仮配置回数を集計します。12月分を実施済みとして加算しません。体験上の実施済み・繰越待ちは別の数字です。</p>
 <div id="fairness" class="ok"></div><div class="scroll"><table><thead><tr><th>メンバー</th><th>12月予定</th><th>1〜11月</th><th>年間予定</th><th>実施済み</th><th>繰越待ち</th></tr></thead><tbody id="totals"></tbody></table></div>
@@ -88,7 +90,7 @@ function initialize(){
    days[date]={type:rest?'rest':'practice',owner:null,formerOwner:null,completed:false};
    if(!rest)dates.push(date);
   });
-  data.months[month]={published:false,days:days};
+  data.months[month]={published:false,days:days,answers:{}};
  });
  // Allocate across the full year. Hard weekday eligibility is checked before scoring.
  // A small penalty for short gaps prevents unnecessary back-to-back duties.
@@ -113,7 +115,10 @@ function initialize(){
 }
 function load(){
  try{var saved=JSON.parse(localStorage.getItem(STORAGE)||'null');
-  if(saved&&saved.version===2&&saved.months&&saved.carries&&months.every(function(m){return saved.months[m]&&saved.months[m].days}))return saved;
+  if(saved&&saved.version===2&&saved.months&&saved.carries&&months.every(function(m){return saved.months[m]&&saved.months[m].days})){
+   months.forEach(function(m){if(!saved.months[m].answers)saved.months[m].answers={}});
+   return saved;
+  }
  }catch(err){}
  return initialize();
 }
@@ -224,7 +229,7 @@ function renderMonths(){
  }).join('');
 }
 function renderCalendar(){
- var all=allDates(selMonth),dayRows=state.months[selMonth].days;
+ var all=allDates(selMonth),dayRows=state.months[selMonth].days,answers=state.months[selMonth].answers||{};
  var practice=Object.values(dayRows).filter(function(d){return d.type==='practice'}).length,
  game=Object.values(dayRows).filter(function(d){return d.type==='game'}).length,
  rest=Object.values(dayRows).filter(function(d){return d.type==='rest'}).length;
@@ -239,8 +244,12 @@ function renderCalendar(){
   if(!d){html+='<div class="day" style="opacity:.45"><b>'+number+'</b></div>';return}
   var content=d.type==='practice'?(d.owner?byId[d.owner].name:'⚠ 未設定'):
    d.type==='game'?'🏀 試合':'休み';
+  var marks=answers[date]||{},ownerX=d.type==='practice'&&marks[d.owner]==='x',
+   candidates=d.type==='practice'?Object.keys(marks).filter(function(id){return id!==d.owner&&marks[id]==='o'&&byId[id]}):[];
+  var marksText=ownerX?'<em>元担当 ×</em>':'';
+  if(candidates.length)marksText+='<em style="color:#1c7955">○候補 '+candidates.length+'人</em>';
   html+='<button class="day '+d.type+(selDate===date?' picked':'')+(swapDate===date?' swapstart':'')+
-   '" data-date="'+date+'"><b>'+number+'</b><span>'+safe(content)+'</span>'+
+   '" data-date="'+date+'"><b>'+number+'</b><span>'+safe(content)+'</span>'+marksText+
    (d.completed?'<em>✅実施</em>':'')+'</button>';
  });
  $('calendar').innerHTML=html;
@@ -348,6 +357,10 @@ $('suggestion').addEventListener('click',function(e){
   state.carries.forEach(function(c){if(!c.resolved&&c.replacement===a.date&&c.member!==a.next)c.replacement=null});
  });
  selMonth=a.date.slice(0,7);selDate=a.date;render();
+});
+if(typeof window!=='undefined')window.addEventListener('storage',function(event){
+ if(event.key!==STORAGE)return;
+ state=load();render();toast('👪 保護者画面で登録された×・○を読み込みました。');
 });
 state=load();persist();render();
 })();
