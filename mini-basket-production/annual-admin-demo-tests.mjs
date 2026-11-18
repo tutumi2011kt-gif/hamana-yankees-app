@@ -32,13 +32,19 @@ const ctx={
  Date,Array,Object,Math,JSON,String,Number,Set,Map,Intl,console
 };
 vm.runInNewContext(script,ctx,{timeout:5000});
-const data=()=>JSON.parse(memory['aritama-qa-annual-demo-v1']);
+const data=()=>JSON.parse(memory['aritama-qa-annual-demo-realnames-v2']);
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
 const rules={
  q01:[0,3,5,6],q02:[6],q03:[3],q04:[0,6],q05:[0,3,5,6],q06:[3],
  q07:[3,5],q08:[0,3,5],q09:[0,3,5,6],q10:[0,3,5,6],q11:[3,5],q12:[0,3,6]
 };
 const weekday=d=>new Date(d+'T00:00:00Z').getUTCDay();
+const expectedNames=['大竹わかな','みあ','ゆい','あん','まい','こはる','なぎさ','のどか','さやか','はるか','かほ','村松さわ'];
+assert.ok(expectedNames.every(name=>fakeElement('totals').innerHTML.includes('>'+name+'</b>')),'all 12 real member labels must render');
+assert.doesNotMatch(fakeElement('totals').innerHTML,/テスト0[1-9]|テスト1[0-2]/,'QA placeholder names must not appear');
+assert.match(html,/実際の12人の名前と曜日条件/);
+assert.match(html,/Firestoreの2027年1月下書きや今後の試合予定とはまだ同期していません/);
+assert.match(html,/12月分を実施済みとして加算しません/);
 const generated=data();
 assert.equal(Object.keys(generated.months).length,11);
 const holiday=['2027-01-01','2027-01-02','2027-01-03'];
