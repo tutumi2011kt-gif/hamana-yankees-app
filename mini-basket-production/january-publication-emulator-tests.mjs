@@ -17,6 +17,8 @@ const memberIds=ROSTER.map(m=>m.id);
 const admin=env.authenticatedContext('january-manager',{firebase:{sign_in_provider:'google.com'}}).firestore();
 const parent=env.authenticatedContext('new-parent-phone',{firebase:{sign_in_provider:'anonymous'}}).firestore();
 const intruder=env.unauthenticatedContext().firestore();
+const unapprovedGoogle=env.authenticatedContext('not-in-admin-list',{firebase:{sign_in_provider:'google.com'}}).firestore();
+const disabledGoogle=env.authenticatedContext('disabled-january-admin',{firebase:{sign_in_provider:'google.com'}}).firestore();
 const pathMonth=base+'/months/'+jan,rosterPath=base+'/public/roster';
 const activity=calendarDates(jan);
 function choose(d){return d.weekday===3?'yui':d.weekday===5?'kaho':d.weekday===6?'mia':'an'}
@@ -27,6 +29,7 @@ try{
  await env.withSecurityRulesDisabled(async ctx=>{
   const db=ctx.firestore();
   await setDoc(doc(db,'admins/january-manager'),{enabled:true});
+  await setDoc(doc(db,'admins/disabled-january-admin'),{enabled:false});
   await setDoc(doc(db,rosterPath),{publishedMonths:['2026-12'],
    members:ROSTER.map(m=>({id:m.id,name:m.name,kana:m.kana,status:'active'}))});
   await setDoc(doc(db,base+'/months/2026-12'),{publication:'published',inputState:'closed',scheduleStatus:'confirmed',version:11});
@@ -44,6 +47,24 @@ try{
   }
   for(const d of activity)await setDoc(doc(db,pathMonth+'/days/'+d.date),row(d));
  });
+ // Before a manager approves January, only an enabled Google admin can update it.
+ await assertFails(setDoc(doc(parent,pathMonth),{
+  publication:'published',inputState:'open',version:999
+ }));
+ await assertFails(setDoc(doc(unapprovedGoogle,pathMonth),{
+  publication:'published',inputState:'open',version:999
+ }));
+ await assertFails(setDoc(doc(disabledGoogle,pathMonth),{
+  publication:'published',inputState:'open',version:999
+ }));
+ await assertFails(setDoc(doc(parent,rosterPath),{
+  publishedMonths:['2026-12',jan],members:[]
+ }));
+ await assertFails(setDoc(doc(parent,base+'/monthPublicationAudit/spoof'),{
+  month:jan,action:'publish',approvedBy:'new-parent-phone'
+ }));
+ await assertFails(getDoc(doc(parent,'admins/january-manager')));
+ await assertFails(getDocs(collection(parent,base+'/members')));
  await assertFails(getDoc(doc(parent,pathMonth)),'anonymous visitors must not see January before approval');
  await assertFails(getDocs(collection(parent,pathMonth+'/days')));
  await assertSucceeds(getDoc(doc(parent,base+'/months/2026-12')));
@@ -109,5 +130,14 @@ try{
  }),/already published/);
  const audit=await assertSucceeds(getDocs(collection(admin,base+'/monthPublicationAudit')));
  assert.equal(audit.size,1,'approval must produce an admin audit event');
+ await assertFails(getDocs(collection(parent,base+'/monthPublicationAudit')),
+  'parent must not read internal approval audit');
+ await assertFails(setDoc(doc(unapprovedGoogle,rosterPath),{
+  publishedMonths:[jan],members:[]
+ }));
+ await assertFails(setDoc(doc(parent,pathMonth),{
+  publication:'draft',inputState:'closed',version:1234
+ }));
+
  console.log('PASS emulator: January 19-day manager publication atomic, anonymous reads only afterwards, December untouched, March hidden, duplicate approval blocked');
 }finally{await env.cleanup();}
