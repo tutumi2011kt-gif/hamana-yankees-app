@@ -118,7 +118,7 @@ function renderCalendar(){
   var className=self?' mine-'+self:'';
   html+='<button class="day '+d.type+className+'" data-date="'+date+'"'+
    (d.type==='practice'&&d.owner?'':' disabled')+'><b>'+i+'</b><span>'+esc(title)+'</span>'+details+
-   (self?'<span class="'+self+'">自分：'+(self==='x'?'×':'○')+'</span>':'')+'</button>';
+   '</button>';
  }
  $('calendar').innerHTML=html;
  $('summary').textContent=names[person]+'の回答　×：'+summary.x+'日 ／ ○：'+summary.o+'日\n'+
