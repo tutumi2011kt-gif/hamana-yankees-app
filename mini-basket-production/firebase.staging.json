@@ -1,0 +1,24 @@
+{
+  "hosting": {
+    "public": "dist-staging",
+    "ignore": [
+      "firebase.staging.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          }
+        ]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore-parent-anonymous-write-candidate.rules"
+  }
+}

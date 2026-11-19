@@ -1,0 +1,156 @@
+// EXPERIMENTAL ANONYMOUS WRITE CANDIDATE — DO NOT DEPLOY. Name selection cannot authenticate parent.
+// This deliberately exposes a MINIMAL public roster only to signed-in clients,
+// including anyone who can visit the link and sign in anonymously.
+// Do not publish before obtaining team consent to anonymous-viewer access.
+// Private members (grade, unavailable dates, etc.) remain admin-only.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+
+    function publishedMonth(monthId) {
+      return listedForParents(monthId)
+        && exists(monthPath(monthId))
+        && get(monthPath(monthId)).data.publication == 'published';
+    }
+
+
+    function anonymousParent() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+    function monthPath(monthId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId);
+    }
+    function dayPath(monthId, dateId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId)/days/$(dateId);
+    }
+    function memberPath(memberId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/members/$(memberId);
+    }
+    function publicRosterPath() {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/public/roster;
+    }
+    function listedForParents(monthId) {
+      return exists(publicRosterPath())
+        && get(publicRosterPath()).data.get('publishedMonths', []).hasAny([monthId]);
+    }
+    // Independent, absolute lock: every target month becomes read-only at
+    // 00:00 JST on day 1 of its immediately preceding month.
+    // A later cutoffAt stored by an administrator cannot bypass this rule.
+    // Initial operating season 2027-01 through 2027-11; expand together with tests for future seasons.
+    function beforeFixedMonthLock(monthId) {
+      return         (monthId == '2027-01' && request.time < timestamp.value('2026-11-30T15:00:00Z'))
+        ||         (monthId == '2027-02' && request.time < timestamp.value('2026-12-31T15:00:00Z'))
+        ||         (monthId == '2027-03' && request.time < timestamp.value('2027-01-31T15:00:00Z'))
+        ||         (monthId == '2027-04' && request.time < timestamp.value('2027-02-28T15:00:00Z'))
+        ||         (monthId == '2027-05' && request.time < timestamp.value('2027-03-31T15:00:00Z'))
+        ||         (monthId == '2027-06' && request.time < timestamp.value('2027-04-30T15:00:00Z'))
+        ||         (monthId == '2027-07' && request.time < timestamp.value('2027-05-31T15:00:00Z'))
+        ||         (monthId == '2027-08' && request.time < timestamp.value('2027-06-30T15:00:00Z'))
+        ||         (monthId == '2027-09' && request.time < timestamp.value('2027-07-31T15:00:00Z'))
+        ||         (monthId == '2027-10' && request.time < timestamp.value('2027-08-31T15:00:00Z'))
+        ||         (monthId == '2027-11' && request.time < timestamp.value('2027-09-30T15:00:00Z'));
+    }
+    function validEditableMonth(monthId) {
+      return monthId.matches('^2027-(0[1-9]|1[01])$')
+        && listedForParents(monthId)
+        && exists(monthPath(monthId))
+        && get(monthPath(monthId)).data.publication == 'published'
+        && get(monthPath(monthId)).data.inputState == 'open'
+        && request.time >= get(monthPath(monthId)).data.openAt
+        && request.time < get(monthPath(monthId)).data.cutoffAt
+        && beforeFixedMonthLock(monthId);
+    }
+    function activeMember(memberId, dayId) {
+      return exists(memberPath(memberId))
+        && get(memberPath(memberId)).data.status == 'active'
+        && get(memberPath(memberId)).data.startDate <= dayId
+        && (get(memberPath(memberId)).data.get('endDate', null) == null
+          || get(memberPath(memberId)).data.endDate >= dayId);
+    }
+    function validPracticeDay(monthId, dateId) {
+      return exists(dayPath(monthId, dateId))
+        && get(dayPath(monthId, dateId)).data.type == 'practice'
+        && get(dayPath(monthId, dateId)).data.ownerId is string
+        && get(dayPath(monthId, dateId)).data.ownerId.size() > 0
+        && get(dayPath(monthId, dateId)).data.get('confirmedSubstituteId', null) == null;
+    }
+    function validAnswerShape(monthId, answerId, answer) {
+      return answer is map
+        && answer.keys().hasOnly(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
+        && answer.keys().hasAll(['date', 'memberId', 'kind', 'updatedAt', 'updatedBy'])
+        && answer.date is string
+        && answer.date.matches('^' + monthId + '-(0[1-9]|[12][0-9]|3[01])$')
+        && answer.memberId is string
+        && answerId == answer.date + '_' + answer.memberId
+        && answer.kind in ['x', 'o']
+        && answer.updatedAt == request.time
+        && answer.updatedBy == request.auth.uid
+        && validEditableMonth(monthId)
+        && activeMember(answer.memberId, answer.date)
+        && validPracticeDay(monthId, answer.date)
+        && ((answer.kind == 'x'
+              && get(dayPath(monthId, answer.date)).data.ownerId == answer.memberId)
+         || (answer.kind == 'o'
+              && get(dayPath(monthId, answer.date)).data.ownerId != answer.memberId));
+    }
+    function validDelete(monthId, answerId) {
+      return resource.data.updatedBy == request.auth.uid
+        && resource.data.date is string
+        && resource.data.memberId is string
+        && answerId == resource.data.date + '_' + resource.data.memberId
+        && validEditableMonth(monthId)
+        && activeMember(resource.data.memberId, resource.data.date)
+        && validPracticeDay(monthId, resource.data.date);
+    }
+
+    match /admins/{uid} {
+      allow get: if isAdmin() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // Management data: Google admin only, including private member constraints.
+    match /teams/{teamId}/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Share only minimal names and IDs, never the full private member documents.
+    match /teams/aritama-mini-basket/public/roster {
+      allow get: if signedIn();
+    }
+
+    // Only manager-published months are readable. Candidate parent answers are bounded by server-side checks.
+    match /teams/aritama-mini-basket/months/{monthId} {
+      allow get: if signedIn()
+        && listedForParents(monthId)
+        && resource.data.publication == 'published';
+
+      match /days/{dayId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+      }
+
+      match /answers/{answerId} {
+        allow get, list: if signedIn() && publishedMonth(monthId);
+        allow create: if anonymousParent() && validAnswerShape(monthId, answerId, request.resource.data);
+        allow update: if anonymousParent()
+          && resource.data.updatedBy == request.auth.uid
+          && resource.data.date == request.resource.data.date
+          && resource.data.memberId == request.resource.data.memberId
+          && validAnswerShape(monthId, answerId, request.resource.data);
+        allow delete: if anonymousParent() && validDelete(monthId, answerId);
+      }
+    }
+  }
+}

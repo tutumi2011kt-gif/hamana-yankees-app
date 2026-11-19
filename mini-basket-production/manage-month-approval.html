@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
+<title>🏀 新しい月の確認・公開承認｜管理者</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f7fb;color:#263b53;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:780px;margin:0 auto;padding:12px 10px 60px}header{padding:17px 14px;background:linear-gradient(110deg,#e3f2ff,#fff0db);border:1px solid #dce7f1;border-radius:15px}h1{font-size:20px;margin:0 0 6px}h2{font-size:16px;margin:0 0 8px}p{margin:6px 0}
+.card{background:#fff;border:1px solid #dce5ee;border-radius:14px;margin-top:11px;padding:13px}.notice{background:#fff3df;border:1px solid #f1d7ad;border-radius:9px;padding:11px;font-size:12px}.ok{background:#eaf9ef;border:1px solid #b9e2c8;border-radius:9px;padding:10px;color:#1b6847}.err{background:#fff0f2;border:1px solid #e5bac8;border-radius:9px;padding:10px;color:#a42d4b}.small{font-size:12px;color:#6d7c8a;white-space:pre-wrap}
+button,select,input{font:inherit;color:inherit}button{cursor:pointer;min-height:44px;border-radius:10px;border:1px solid #c6d5e2;background:#fff;padding:10px 13px;font-weight:750}button.primary{background:#275b84;color:#fff;border-color:#275b84}button.approve{background:#18724d;color:white;border-color:#18724d}button:disabled{opacity:.45;cursor:default}
+select{width:100%;background:white;border:1px solid #c6d4e2;border-radius:9px;min-height:44px;padding:8px}.row{display:flex;flex-wrap:wrap;gap:8px}.row>*{flex:1 1 160px}
+.day{border:1px solid #e2eaf0;border-radius:10px;padding:10px;margin:8px 0;background:#fafcff}.dayhead{display:flex;justify-content:space-between;align-items:center;gap:9px;margin-bottom:7px}.dayhead b{font-size:15px}.edit{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.edit label{font-size:12px;color:#617486}
+.check{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;margin-top:8px;background:#f0f5fa;border-radius:8px;font-size:13px}.check input{width:18px;height:18px;accent-color:#18754e;flex-shrink:0;margin-top:3px}
+#errors{font-size:12px;white-space:pre-wrap;max-height:210px;overflow:auto}footer{font-size:11px;color:#78899a;margin-top:14px}
+@media(max-width:360px){.card{padding:11px 9px}.edit{grid-template-columns:1fr 1fr}}
+</style></head><body><main>
+<header><h1>🏀 新しい月の確認・公開承認</h1><p>有玉女子ミニバス｜管理者専用</p>
+<div class="notice"><b>毎月1日に作るカレンダーは管理者だけの下書きです。</b> 練習・試合・休み、当番者を確認して下書き保存し、最後に別の「保護者へ公開OK」を押すまで保護者には共有しません。</div></header>
+<section class="card"><h2>① 管理者ログイン・月の読み込み</h2>
+<p id="auth" class="small">認証状態を確認中…</p>
+<label>対象月（新規自動生成月のみ）
+<select id="month"></select></label>
+<div class="row" style="margin-top:9px"><button id="login" class="primary">Googleでログイン</button><button id="load">Firebaseから最新の下書きを読み込む</button></div>
+<p id="load-status" class="small">管理者として読み込んでください。</p></section>
+<section class="card"><h2>② 日ごとの活動・当番を確認</h2>
+<p class="small">自動生成された日は「練習予定・担当者なし・未確認」です。実際に練習があるか確認し、試合・休みに変更してから担当者を選んでください。「確認済み」は活動区分と担当者を確認して初めてチェックしてください。</p>
+<div class="notice" style="margin:10px 0"><b>仮当番の自動配置：</b> 12人の実施回数・繰越回数を確認し、実際の練習・試合・休みを確認してから実行してください。生成結果はこの画面の未保存プレビューです。保存後も管理者が「公開OK」を押すまでは共有されません。</div>
+<div id="history-inputs" class="small"></div>
+<label class="check"><input id="history-confirmed" type="checkbox"><span>12人全員の過去の実施回数・繰越回数を確認しました</span></label>
+<label class="check"><input id="calendar-confirmed" type="checkbox"><span>対象月すべての日の練習・試合・休みを確認しました（担当者は自動配置後に別途確認）</span></label>
+<button id="auto-draft" type="button" style="width:100%;margin:10px 0" disabled>確認した条件で当番を自動仮配置</button>
+<p id="auto-status" class="small" role="status">実績と日程を確認すると仮配置できます。</p>
+<div id="days" class="small">下書きはまだ読み込まれていません。</div>
+<div class="row"><button id="save" class="primary" disabled>確認した内容を下書き保存</button></div>
+<p id="save-status" role="status" class="small">保存しても保護者には公開されません。</p></section>
+<section class="card"><h2>③ 保護者への公開を最終承認</h2>
+<p id="review" class="notice" role="status">全日程・担当者の確認後に公開可能になります。</p>
+<div id="errors"></div>
+<label class="check"><input type="checkbox" id="agree"><span>すべての活動区分・当番担当者を確認しました。<b>「公開OK」を押すと、保護者全員がこの月のカレンダーを閲覧できます。</b> 受付期間内で入力を許可された保護者は×・○も入力できることを理解しました。</span></label>
+<button id="approve" class="approve" style="width:100%;margin-top:10px" disabled>管理者として保護者への公開OK</button>
+<p id="approve-status" role="status" class="small">まだ公開していません。</p></section>
+<footer>既存の2026年12月確定表・2027年1月下書きは対象外です。自動生成時に公開したり、担当者を勝手に確定したりしません。保護者入力用の本番セキュリティルールは別途検証・承認が必要です。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {canReviewGeneratedMonth,reviewMonthlyDraft,monthApprovalPatch,publishMonthList,APPROVAL_FIRST_MONTH,APPROVAL_LAST_MONTH} from './month-approval-core.mjs?v=1';
+import {preliminaryPracticeDays,addMonths} from './month-rollover-core.mjs?v=1';
+import {normalizeMember} from './month-draft-core.mjs?v=3';
+import {generateAutomaticDraft} from './auto-draft.mjs?v=2';
+import {ledgerTotals} from './duty-ledger-core.mjs?v=1';
+import {isDayAllowed} from './weekday-conditions.mjs?v=6';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'month-approval-admin'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const memberRef=id=>doc(db,'teams',teamId,'members',id);
+const monthRef=m=>doc(db,'teams',teamId,'months',m);
+const dayRef=(m,date)=>doc(db,'teams',teamId,'months',m,'days',date);
+const rosterRef=doc(db,'teams',teamId,'public','roster');
+let month='',members=[],rows=[],meta=null,version=null,loaded=false,busy=false,dirty=false,ledgerRecords=[];
+const daysLabel=['日','月','火','水','木','金','土'];
+const out=(id,msg,cls='small')=>{$(id).textContent=msg;$(id).className=cls};
+const snapshotSignature=d=>JSON.stringify({date:d.date,weekday:d.weekday,type:d.type,ownerId:d.ownerId??null,activityVerified:d.activityVerified===true,updatedAt:d.updatedAt?.toMillis?.()??null});
+let initialSignatures=new Map();
+function makeOptions(){
+ const values=[];for(let m=APPROVAL_FIRST_MONTH;m<=APPROVAL_LAST_MONTH;m=addMonths(m,1))values.push(m);
+ $('month').innerHTML=values.map(m=>'<option value="'+m+'">'+Number(m.slice(0,4))+'年'+Number(m.slice(5))+'月</option>').join('');
+}
+function currentAudit(){
+ return reviewMonthlyDraft({month,meta,days:rows,members});
+}
+function controls(){
+ $('login').hidden=!!auth.currentUser;
+ $('load').disabled=busy||!auth.currentUser;
+ $('save').disabled=busy||!loaded||!dirty||meta?.publication!=='draft';
+ $('auto-draft').disabled=busy||!loaded||meta?.publication!=='draft';
+ const ok=loaded&&!dirty&&!busy&&currentAudit().ok&&meta?.publication==='draft';
+ $('approve').disabled=!ok||!$('agree').checked;
+}
+function renderHistoryInputs(){
+ const ordered=members.slice().sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+ const fromLedger=ledgerRecords.length?ledgerTotals(members.map(m=>m.id),ledgerRecords,month):null;
+ $('history-inputs').innerHTML='<div class="small">'+
+  (fromLedger?'📒 管理者の実績台帳から仮入力しました（実績・中止の未記録がないか確認し、必要なら修正）。':'📒 実績台帳に記録がありません。未確認のまま0と決めつけず、過去の実施回数と繰越を手動入力してください。')+
+  ' この画面の数字は仮割当に使い、実績台帳には書き込みません。</div>'+
+  ordered.map(m=>'<div class="row" style="align-items:center;margin-top:5px">'+
+  '<b style="flex:1 1 90px">'+esc(m.name)+'</b>'+
+  '<label style="flex:1 1 110px">実施回数<input type="number" min="0" step="1" data-count="'+esc(m.id)+'" value="'+(fromLedger?fromLedger.counts[m.id]:'')+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
+  '<label style="flex:1 1 110px">繰越回数<input type="number" min="0" step="1" data-carry="'+esc(m.id)+'" value="'+(fromLedger?fromLedger.carry[m.id]:'')+'" placeholder="要確認" style="width:100%;min-height:44px"></label>'+
+  '</div>').join('')+
+  (fromLedger?.overdue.length?'<div class="notice">⚠ 4か月超の未解消繰越：'+esc(fromLedger.overdue.join('、'))+'。管理者が個別確認してください。</div>':'');
+ $('history-confirmed').checked=false;
+ $('calendar-confirmed').checked=false;
+}
+$('history-inputs').addEventListener('input',()=>{$('history-confirmed').checked=false;});
+$('days').addEventListener('change',()=>{$('calendar-confirmed').checked=false;});
+$('auto-draft').addEventListener('click',()=>{
+ if(!loaded||busy||meta?.publication!=='draft')return;
+ if(!$('history-confirmed').checked||!$('calendar-confirmed').checked){
+  out('auto-status','先に実績回数・繰越回数と、全日の練習・試合・休みの確認をしてください。','err');return;
+ }
+ const counts={},carry={};
+ for(const m of members){
+  const a=document.querySelector('[data-count="'+m.id+'"]')?.value??'';
+  const b=document.querySelector('[data-carry="'+m.id+'"]')?.value??'';
+  if(a.trim()===''||b.trim()===''||!Number.isSafeInteger(Number(a))||!Number.isSafeInteger(Number(b))||Number(a)<0||Number(b)<0){
+   out('auto-status',m.name+'の実施回数・繰越回数を0以上の整数で入力してください。','err');return;
+  }
+  counts[m.id]=Number(a);carry[m.id]=Number(b);
+ }
+ if(rows.some(x=>x.ownerId)&&!confirm('現在の担当者を自動で再計算します。既存の担当者割当を置き換えますが、まだFirestoreには保存されません。続けますか？'))return;
+ try{
+  const histories=ledgerRecords.length?ledgerTotals(members.map(m=>m.id),ledgerRecords,month):null;
+  const result=generateAutomaticDraft({month,rows,members,counts,carry,historyDates:histories?.historyDates??{},calendarConfirmed:true});
+  rows=result.rows.map(x=>({...x,activityVerified:false}));
+  dirty=true;
+  $('agree').checked=false;
+  render();
+  out('auto-status','仮配置（未保存） '+members.map(m=>m.name+' '+(result.allocated[m.id]||0)+'回').join('／')+
+   (result.warnings.length?'｜要確認：'+result.warnings.join('／'):'')+
+   '。各日の担当者・活動内容を確認済みにしてから下書き保存してください。','notice');
+ }catch(e){out('auto-status','自動割当できません：'+(e.message||String(e)),'err');}
+});
+function review(){
+ if(!loaded){out('review','Firebaseの下書き読み込み待ちです。');$('errors').textContent='';controls();return;}
+ const audit=currentAudit();
+ const message=meta?.publication==='published'?'✅ この月は既に保護者へ公開済みです。':
+  dirty?'📝 未保存の変更があります。先に下書き保存して再読み込みしてください。':
+  audit.ok?'✅ 全日程と担当者の確認が完了しました。最終承認で公開できます。':
+  '🔒 公開準備未完了：'+audit.errors.length+'件の確認・修正が必要です。';
+ out('review',message,audit.ok&&!dirty?'ok':'notice');
+ $('errors').textContent=audit.errors.slice(0,30).map(x=>'・'+x).join('\n')+
+  (audit.errors.length>30?'\nほか '+(audit.errors.length-30)+' 件':'');
+ controls();
+}
+function render(){
+ const byId=Object.fromEntries(members.map(m=>[m.id,m]));
+ $('days').innerHTML=rows.map(r=>{
+  const candidates=members.filter(m=>isDayAllowed(m,r.date,r.weekday)||m.id===r.ownerId)
+   .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  const owners='<option value="">— 担当者未選択 —</option>'+candidates.map(m=>'<option value="'+esc(m.id)+'" '+(r.ownerId===m.id?'selected':'')+'>'+
+   esc(m.name)+(isDayAllowed(m,r.date,r.weekday)?'':' ⚠ 曜日条件違反')+'</option>').join('');
+  const types=[['practice','練習予定'],['game','試合（当番なし）'],['rest','休み（当番なし）']].map(([v,label])=>
+    '<option value="'+v+'" '+(r.type===v?'selected':'')+'>'+label+'</option>').join('');
+  return '<div class="day" data-date="'+esc(r.date)+'"><div class="dayhead"><b>'+Number(r.date.slice(-2))+'日（'+daysLabel[r.weekday]+'）</b>'+
+    '<small>'+(r.activityVerified?'✅ 確認済み':'⚠ 未確認')+'</small></div><div class="edit">'+
+    '<label>活動予定<select data-field="type" aria-label="'+esc(r.date)+' 活動予定">'+types+'</select></label>'+
+    '<label>当番担当者<select data-field="ownerId" aria-label="'+esc(r.date)+' 当番担当者" '+(r.type==='practice'?'':'disabled')+'>'+owners+'</select></label></div>'+
+    '<label class="check"><input type="checkbox" data-field="activityVerified" '+(r.activityVerified?'checked':'')+'><span>この日の活動内容・担当者を確認しました</span></label></div>';
+ }).join('');
+ review();
+}
+onAuthStateChanged(auth,user=>{
+ loaded=false;rows=[];members=[];ledgerRecords=[];dirty=false;meta=null;version=null;
+ $('days').textContent='Firebaseの読み込み待ちです。';$('history-inputs').textContent='';$('agree').checked=false;
+ out('auth',user?'管理者アカウントでログイン済み。読み込みを押してください。':'管理者のGoogleアカウントでログインしてください。');
+ out('load-status','Firebaseの月データは未確認です。');out('approve-status','まだ公開していません。');
+ review();
+},e=>out('auth','認証エラー：'+(e.code||e.message),'err'));
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>out('auth','ログインエラー：'+(e.code||e.message),'err'));
+$('month').onchange=()=>{loaded=false;rows=[];members=[];ledgerRecords=[];dirty=false;meta=null;version=null;$('agree').checked=false;$('history-inputs').textContent='';$('days').textContent='この月を読み込んでください。';review()};
+$('agree').onchange=controls;
+$('days').addEventListener('change',event=>{
+ if(!loaded||busy||meta?.publication!=='draft')return;
+ const field=event.target.dataset.field,wrap=event.target.closest('[data-date]');
+ if(!wrap||!['type','ownerId','activityVerified'].includes(field))return;
+ const row=rows.find(x=>x.date===wrap.dataset.date);if(!row)return;
+ if(field==='type'){row.type=event.target.value;row.ownerId=null;row.activityVerified=false;}
+ else if(field==='ownerId'){row.ownerId=event.target.value||null;row.activityVerified=false;}
+ else row.activityVerified=event.target.checked;
+ dirty=true;$('agree').checked=false;render();
+});
+$('load').onclick=async()=>{
+ const user=auth.currentUser;if(!user||busy)return;
+ const chosen=$('month').value;
+ if(!canReviewGeneratedMonth(chosen))return out('load-status','この月は管理対象外です。','err');
+ busy=true;loaded=false;dirty=false;$('agree').checked=false;controls();
+ out('load-status','管理者権限・月・メンバー・活動予定をFirebaseから確認中…');
+ try{
+  const admin=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限を確認できません');
+  const [m,days,ms,roster,ledger]=await Promise.all([
+   getDocFromServer(monthRef(chosen)),getDocsFromServer(collection(db,'teams',teamId,'months',chosen,'days')),
+   getDocsFromServer(collection(db,'teams',teamId,'members')),getDocFromServer(rosterRef),
+   getDocsFromServer(collection(db,'teams',teamId,'dutyLedger'))
+  ]);
+  if(auth.currentUser?.uid!==user.uid||$('month').value!==chosen)throw Error('ログインまたは選択月が変わりました');
+  if(!m.exists())throw Error('まだ自動生成されていません。月初の作成を確認してください');
+  if(m.data().autoGenerated!==true)throw Error('自動生成の月ではありません。既存当番表はここで変更しません');
+  if(ms.size!==12)throw Error('名簿が12人ではありません。確認してください');
+  if(!roster.exists()||!Array.isArray(roster.data().members)||!Array.isArray(roster.data().publishedMonths))throw Error('保護者向け公開名簿を確認できません');
+  month=chosen;meta=m.data();version=Number(meta.version??0);
+  members=ms.docs.map(x=>normalizeMember({id:x.id,...x.data()}));
+  ledgerRecords=ledger.docs.map(x=>({date:x.id,...x.data()}));
+  rows=days.docs.map(d=>({date:d.id,...d.data()})).sort((a,b)=>a.date.localeCompare(b.date));
+  initialSignatures=new Map(rows.map(x=>[x.date,snapshotSignature(x)]));
+  loaded=true;dirty=false;renderHistoryInputs();render();
+  out('load-status','✅ '+chosen+' の'+rows.length+'日分を取得。状態：'+meta.publication+'。','ok');
+  out('save-status','確認内容を修正したら下書き保存してください。');
+ }catch(e){loaded=false;out('load-status','読み込み失敗：'+(e.code||e.message||String(e)),'err');$('days').textContent='読み込みできませんでした。'}
+ finally{busy=false;review();}
+};
+$('save').onclick=async()=>{
+ const user=auth.currentUser;if(!loaded||busy||!dirty||!user||meta?.publication!=='draft')return;
+ if(!confirm(month+' の活動予定・当番者・確認結果を「管理者限定の下書き」に保存します。保護者へ公開しません。保存しますか？'))return;
+ const chosen=month,originalVersion=version,data=rows.map(r=>({...r}));
+ busy=true;controls();out('save-status','下書きをFirebaseに保存しています…');
+ try{
+  await runTransaction(db,async tx=>{
+   const mRef=monthRef(chosen),m=await tx.get(mRef);
+   if(!m.exists()||m.data().autoGenerated!==true||m.data().publication!=='draft'||Number(m.data().version??0)!==originalVersion)
+    throw Error('下書きがほかの端末で変更されています。再読み込みしてください');
+   const refs=preliminaryPracticeDays(chosen).map(x=>dayRef(chosen,x.date));
+   const snaps=[];for(const ref of refs)snaps.push(await tx.get(ref));
+   if(snaps.some(x=>!x.exists()))throw Error('日別予定が不足しています');
+   if(data.length!==refs.length)throw Error('日別予定の件数が一致しません');
+   for(const snap of snaps){if(snapshotSignature(snap.data())!==initialSignatures.get(snap.id))throw Error(snap.id+' が他の端末で更新されています。');}
+   const proposed=data.map(x=>({...x}));
+   // Incomplete drafts may be saved, but no invalid owner/date/type may be written.
+   for(const row of proposed){
+    if(!['practice','game','rest'].includes(row.type))throw Error('予定区分が不正です');
+    if(row.type!=='practice'&&row.ownerId)throw Error('試合・休みに担当者を設定できません');
+    if(row.ownerId&&!members.some(m=>m.id===row.ownerId&&isDayAllowed(m,row.date,row.weekday)))throw Error(row.date+' の担当者が当番可能条件に違反しています');
+   }
+   const time=serverTimestamp();
+   for(let i=0;i<refs.length;i++){
+    const row=proposed.find(x=>x.date===refs[i].id);
+    if(!row)throw Error('日付の不足があります');
+    tx.update(refs[i],{type:row.type,ownerId:row.ownerId||null,activityVerified:row.activityVerified===true,updatedAt:time});
+   }
+   tx.update(mRef,{scheduleVerified:false,updatedAt:time,updatedBy:user.uid,version:originalVersion+1});
+  });
+  loaded=false;dirty=false;$('agree').checked=false;
+  out('save-status','✅ 管理者用の下書きを保存しました。まだ保護者には公開されていません。最新データを再読み込みしてから公開承認してください。','ok');
+  $('days').textContent='保存しました。公開前に再読み込みが必要です。';
+ }catch(e){out('save-status','保存できませんでした：'+(e.code||e.message||String(e)),'err');}
+ finally{busy=false;review();}
+};
+$('approve').onclick=async()=>{
+ const user=auth.currentUser;if(!user||busy||!loaded||dirty||!$('agree').checked)return;
+ const audit=currentAudit();if(!audit.ok)return review();
+ if(!confirm(month+' の当番表を本当に保護者全員へ公開しますか？\n公開後はカレンダーが共有され、受付期間中は権限のある保護者が×・○を入力できます。'))return;
+ const chosen=month,expectedVersion=version;
+ busy=true;controls();out('approve-status','管理者承認と公開処理を確認中…');
+ try{
+  await runTransaction(db,async tx=>{
+   const [adm,m,roster]=await Promise.all([
+    tx.get(doc(db,'admins',user.uid)),tx.get(monthRef(chosen)),tx.get(rosterRef)
+   ]);
+   if(auth.currentUser?.uid!==user.uid||!adm.exists()||adm.data().enabled!==true)throw Error('管理者権限を確認できません');
+   if(!m.exists()||m.data().publication!=='draft'||m.data().autoGenerated!==true||Number(m.data().version??0)!==expectedVersion)throw Error('公開直前に状態が変わりました。再読み込みしてください');
+   if(!roster.exists()||!Array.isArray(roster.data().publishedMonths)||!Array.isArray(roster.data().members))throw Error('保護者向け公開名簿を確認できません');
+   const refs=preliminaryPracticeDays(chosen).map(x=>dayRef(chosen,x.date));
+   const daySnaps=[];for(const ref of refs)daySnaps.push(await tx.get(ref));
+   const memberIds=roster.data().members.map(x=>x.id);
+   if(new Set(memberIds).size!==12||memberIds.length!==12)throw Error('保護者公開用名簿が12人ではありません');
+   const memberSnaps=[];for(const id of memberIds)memberSnaps.push(await tx.get(memberRef(id)));
+   if(memberSnaps.some(x=>!x.exists()))throw Error('最新のメンバー情報が不足しています');
+   const latestMembers=memberSnaps.map((s,i)=>normalizeMember({id:memberIds[i],...s.data()}));
+   const currentDays=daySnaps.map((s,i)=>s.exists()?{date:refs[i].id,...s.data()}:{date:refs[i].id});
+   // Approval must be for exactly the snapshot the administrator reviewed.
+   for(let i=0;i<refs.length;i++){
+    if(!daySnaps[i].exists()||snapshotSignature(currentDays[i])!==initialSignatures.get(refs[i].id))
+     throw Error('承認前に'+refs[i].id+'の予定が変更されました。再読み込みして確認してください');
+   }
+   const finalAudit=reviewMonthlyDraft({month:chosen,meta:m.data(),days:currentDays,members:latestMembers});
+   if(!finalAudit.ok)throw Error('公開前チェックに失敗：'+finalAudit.errors.slice(0,3).join('／'));
+   const patch=monthApprovalPatch({month:chosen,meta:m.data(),nowMillis:Date.now()});
+   tx.update(monthRef(chosen),{...patch,approvedBy:user.uid,approvedAt:serverTimestamp(),updatedBy:user.uid,updatedAt:serverTimestamp(),version:expectedVersion+1});
+   tx.update(rosterRef,{publishedMonths:publishMonthList(roster.data().publishedMonths,chosen),updatedAt:serverTimestamp()});
+  });
+  loaded=false;$('agree').checked=false;
+  out('approve-status','✅ 管理者の公開承認が保存されました。保護者用カレンダーにこの月を共有しました。','ok');
+  $('days').textContent='公開済みです。内容を確認する場合は再読み込みしてください。';
+ }catch(e){out('approve-status','公開できませんでした：'+(e.code||e.message||String(e))+'／再読み込みして確認してください。','err');}
+ finally{busy=false;review();}
+};
+makeOptions();controls();
+</script></body></html>

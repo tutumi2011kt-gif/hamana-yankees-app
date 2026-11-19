@@ -1,7 +1,8 @@
 // Run in a JS environment: node mini-basket-production/core-tests.mjs
 import {ROSTER,monthPlus,rollingWindow,inputPermission,practices,buildDraft,auditSchedule,swapStatus,check7DayAlert} from './core.mjs';
 function assert(condition,label){if(!condition)throw new Error('FAILED: '+label);console.log('OK '+label)}
-const members=ROSTER.map(m=>({...m}));
+// Explicit partial-confirmation fixture; live weekday profiles are tested separately.
+const members=ROSTER.map(m=>({...m,days:m.id==='yui'?[3]:m.id==='haruka'?[0,3,5,6]:null,preferredWeekdays:[],approvedWeekendDates:[]}));
 assert(monthPlus('2026-12',3)==='2027-03','year crossing');
 assert(rollingWindow('2026-12-01').lockThrough==='2027-01','Jan locked Dec1');
 assert(rollingWindow('2026-12-01').createMonth==='2027-03','Mar auto-create Dec1');

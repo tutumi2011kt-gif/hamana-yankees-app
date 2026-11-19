@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><title>🏀 保護者用カレンダー・管理画面連動QA体験版</title>
+<style>
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{background:#f3f7fb;color:#253a51;margin:0;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:740px;padding:11px 9px 50px;margin:auto}header{border-radius:16px;border:1px solid #dfebf3;background:linear-gradient(112deg,#e7f3ff,#fff2df);padding:17px 14px}h1{font-size:20px;margin:0 0 5px}h2{font-size:16px;margin:0 0 8px}p{margin:6px 0}
+.qa{background:#a54617;color:white;text-align:center;padding:8px 11px;font-weight:900}.note{background:#fff3de;border:1px solid #ead0ac;padding:10px;border-radius:10px;font-size:12px}
+.card{background:white;border:1px solid #dce5ef;padding:13px 11px;border-radius:14px;margin-top:12px}.muted{font-size:12px;color:#677e94}.tiny{font-size:11px;color:#75899a}.status{font-size:12px;font-weight:800;color:#176a49;min-height:21px;white-space:pre-wrap}
+button,select{font:inherit}button{cursor:pointer;touch-action:manipulation}button:disabled{opacity:.55;cursor:default}
+button.btn{min-height:44px;border:1px solid #c3d4e3;background:#fff;color:#243e59;padding:9px 12px;border-radius:10px;font-weight:800}button.primary{background:#275f8d;border-color:#275f8d;color:white}
+a{color:#215f91;font-weight:800}.months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.month{background:white;border:1px solid #cbdce8;color:#2c465d;border-radius:9px;min-height:45px;font-weight:800}.month.active{background:#e8f3ff;border:2px solid #2c6e9f}
+.person{display:block;width:100%;min-height:46px;margin:8px 0 10px;padding:10px;border:1px solid #bdcee0;border-radius:9px;background:#fff;color:#28415d}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0 12px}.mode{border-radius:11px;min-height:56px;padding:8px 5px;background:#fff;border:2px solid #d5e1ea;font-weight:900;color:#244159}.mode.active-x{background:#fff0f3;border-color:#bf425e}.mode.active-o{background:#eaf9f0;border-color:#168454}
+.week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.week{margin:10px 0 5px}.week span{text-align:center;color:#6d7e90;font-size:11px;font-weight:900}.calendar .empty{min-height:65px}
+.day{background:white;border:1px solid #dae3ed;border-radius:7px;min-height:74px;padding:4px 1px;color:#264057;display:flex;align-items:center;flex-direction:column;gap:3px;min-width:0;overflow-wrap:anywhere;text-align:center}.day b{font-size:11px}.day span{font-size:9px;line-height:1.2}.day.practice{background:#edf6ff}.day.rest{background:#f3f4f6;color:#84919d}.day.game{background:#fff2dc;color:#835c2f}
+.day.mine-x{outline:2px solid #bb4661;outline-offset:-3px}.day.mine-o{outline:2px solid #278656;outline-offset:-3px}
+.day .x{color:#bb304b;font-weight:900}.day .o{color:#178158;font-weight:900}.day .act{font-size:9px;color:#667f92}
+.day:disabled{opacity:1}.key{font-size:11px;color:#687e8d}.summary{margin-top:8px;padding:9px;border-radius:8px;background:#f1f6fa;font-size:12px;white-space:pre-wrap}
+footer{padding:16px 1px;font-size:11px;color:#6b7d90}
+@media(max-width:390px){main{padding:8px 6px 45px}.card{padding:10px 7px}.day{min-height:68px;padding:3px 1px}.day span{font-size:8.5px}.months{gap:4px}}
+</style></head>
+<body><div class="qa">🧪 保護者用QA体験版・本番公開ではありません</div>
+<main><header><h1>🏀 有玉女子ミニバス 当番表</h1><p>保護者が使うカレンダーの操作確認</p>
+<div class="note">これは管理者用「年間当番表管理・体験版」と連動する試用ページです。<b>同じSafariなど、同じブラウザ・端末でのみ</b>管理者が体験公開した月を閲覧し、×・○を登録できます。実際のFirebaseや保護者向けサイトには送信しません。</div></header>
+<section class="card"><h2>① お子さんの名前</h2><select id="person" class="person" aria-label="お子さんの名前"></select>
+<h2>② 管理者が公開した月を選ぶ</h2><div id="months" class="months"></div>
+<p id="publication" class="muted"></p><button class="btn" id="refresh" style="width:100%;margin-top:7px">↻ 管理者画面の変更を読み込み直す</button></section>
+<section class="card"><h2>③ ×・○を選んでカレンダーをタップ</h2><div class="modes">
+<button id="mode-x" class="mode active-x">❌ 当番ができない日</button><button id="mode-o" class="mode">⭕ 代わりにできる日</button></div>
+<p class="muted">×は自分が担当する練習日、○は他の人を代われる練習日に登録できます。同じ記号をもう一度タップすると取消できます。通常割当の曜日制限は、自発的な○には適用しません。</p>
+<p id="feedback" class="status" role="status"></p><div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+<div id="calendar" class="calendar"></div><div id="summary" class="summary"></div>
+</section>
+<section class="card"><h2>確認したいとき</h2><p class="muted">まず管理者画面で1月を選び、「この月の活動予定と当番を確認した」にチェックして「この月を公開する（体験用）」を押してください。その後この画面を開くと、1月の当番表が表示されます。</p>
+<a href="./annual-admin-demo.html">🏀 年間当番管理の体験画面を開く</a></section>
+<footer>実際の名前を使っていますが、デモ内の仮当番と体験回答です。名前だけでは本人確認はできません。回答・公開状態・仮当番はこのブラウザ内だけに保存し、他の端末との共有や本番当番表への書き込みは行いません。共通URLをチーム外へ共有しないでください。</footer></main>
+<script>
+(function(){
+'use strict';
+var STORAGE='aritama-qa-annual-demo-realnames-v2';
+var PERSONS=[
+ {id:'q01',name:'大竹わかな',kana:'おおたけわかな'},
+ {id:'q02',name:'みあ',kana:'みあ'},
+ {id:'q03',name:'ゆい',kana:'ゆい'},
+ {id:'q04',name:'あん',kana:'あん'},
+ {id:'q05',name:'まい',kana:'まい'},
+ {id:'q06',name:'こはる',kana:'こはる'},
+ {id:'q07',name:'なぎさ',kana:'なぎさ'},
+ {id:'q08',name:'のどか',kana:'のどか'},
+ {id:'q09',name:'さやか',kana:'さやか'},
+ {id:'q10',name:'はるか',kana:'はるか'},
+ {id:'q11',name:'かほ',kana:'かほ'},
+ {id:'q12',name:'村松さわ',kana:'むらまつさわ'}
+];
+var names=Object.fromEntries(PERSONS.map(function(p){return [p.id,p.name]}));
+var $=function(id){return document.getElementById(id)};
+var esc=function(s){return String(s??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var weekday=function(d){return new Date(d+'T00:00:00Z').getUTCDay()};
+var countDays=function(m){var y=+m.slice(0,4),n=+m.slice(5);return new Date(Date.UTC(y,n,0)).getUTCDate()};
+var session=null,month='',person='q04',mode='x',previousKey=null;
+function latest(){
+ try{var data=JSON.parse(localStorage.getItem(STORAGE)||'null');
+  if(!data||data.version!==2||!data.months)return null;
+  return data;
+ }catch(e){return null}
+}
+function save(data){
+ try{localStorage.setItem(STORAGE,JSON.stringify(data));return true}
+ catch(e){status('保存に失敗しました。Safariの保存設定を確認してください。');return false}
+}
+function status(s){$('feedback').textContent=s}
+function published(data){return Object.keys(data?.months||{}).filter(function(m){
+ return /^2027-(0[1-9]|1[01])$/.test(m)&&data.months[m].published===true
+}).sort()}
+function setupName(){
+ $('person').innerHTML=PERSONS.slice().sort(function(a,b){return a.kana.localeCompare(b.kana,'ja')})
+ .map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>'}).join('');
+ $('person').value=person;
+}
+function renderModes(){
+ $('mode-x').className='mode'+(mode==='x'?' active-x':'');
+ $('mode-o').className='mode'+(mode==='o'?' active-o':'');
+}
+function refresh(){
+ session=latest();
+ var ms=published(session);
+ if(month&&!ms.includes(month))month='';
+ if(!month)month=ms[0]||'';
+ $('months').innerHTML=ms.length?ms.map(function(m){
+  return '<button class="month'+(m===month?' active':'')+'" data-month="'+m+'">'+(+m.slice(-2))+'月</button>';
+ }).join(''):'<p class="note">まだ体験公開された月はありません。管理者の年間当番画面で「公開する（体験用）」を押してください。</p>';
+ $('publication').textContent=ms.length?'公開済み（端末内の体験用）：'+ms.map(function(m){return +m.slice(-2)+'月'}).join('・'):'未公開（端末内の体験用）';
+ renderModes();renderCalendar();
+}
+function renderCalendar(){
+ if(!session||!month||!session.months[month]?.published){
+  $('calendar').innerHTML='';
+  $('summary').textContent='公開された月を選ぶと、ここに当番カレンダーが表示されます。';
+  return;
+ }
+ var entry=session.months[month],days=entry.days||{},answers=entry.answers||{};
+ var html='<div class="empty"></div>'.repeat(weekday(month+'-01'));
+ var n=countDays(month),summary={x:0,o:0};
+ for(var i=1;i<=n;i++){
+  var date=month+'-'+String(i).padStart(2,'0'),d=days[date];
+  if(!d){html+='<div class="day" style="opacity:.55"><b>'+i+'</b></div>';continue}
+  var self=answers[date]?.[person]||null;
+  var mark=answers[date]||{};
+  var x=d.type==='practice'&&mark[d.owner]==='x';
+  var volunteers=d.type==='practice'?Object.keys(mark).filter(function(id){return id!==d.owner&&mark[id]==='o'&&names[id]}):[];
+  if(self==='x')summary.x++;
+  if(self==='o')summary.o++;
+  var title=d.type==='practice'?(names[d.owner]||'⚠ 未設定'):d.type==='game'?'🏀 試合':'休み';
+  var details=d.type==='practice'?
+   (x?'<span class="x">'+esc(names[d.owner])+' ×</span>':'')+
+   (volunteers.length?'<span class="o">'+volunteers.map(function(id){return esc(names[id])+' ○'}).join('・')+'</span>':''):'';
+  var className=self?' mine-'+self:'';
+  html+='<button class="day '+d.type+className+'" data-date="'+date+'"'+
+   (d.type==='practice'&&d.owner?'':' disabled')+'><b>'+i+'</b><span>'+esc(title)+'</span>'+details+
+   '</button>';
+ }
+ $('calendar').innerHTML=html;
+ $('summary').textContent=names[person]+'の回答　×：'+summary.x+'日 ／ ○：'+summary.o+'日\n'+
+  '元担当者の名前は固定し、候補者の○は元担当者の下に表示します。試合・休み・担当未設定には回答できません。';
+}
+function toggle(date){
+ var current=latest();
+ if(!current||!current.months?.[month]?.published)return status('公開状態が変わりました。再読み込みしてください。');
+ var days=current.months[month].days||{},d=days[date];
+ if(!d||d.type!=='practice'||!d.owner)return status('練習日で担当者がいる日にだけ回答できます。');
+ if(mode==='x'&&person!==d.owner)return status('×は元担当者本人の当番日にだけ登録できます。');
+ if(mode==='o'&&person===d.owner)return status('○は他の人の当番を代われる場合だけ登録できます。');
+ if(!current.months[month].answers)current.months[month].answers={};
+ var byDate=current.months[month].answers;
+ if(!byDate[date])byDate[date]={};
+ var old=byDate[date][person]||null;
+ if(old===mode)delete byDate[date][person];
+ else byDate[date][person]=mode;
+ if(Object.keys(byDate[date]).length===0)delete byDate[date];
+ if(!save(current))return;
+ session=current;
+ renderCalendar();
+ status(names[person]+'：'+date+'の'+(old===mode?(mode==='x'?'×':'○')+'を取り消しました。':(mode==='x'?'×':'○')+'を登録しました。')+'（この端末内だけ）');
+}
+$('person').onchange=function(){person=$('person').value;status('');renderCalendar()};
+$('mode-x').onclick=function(){mode='x';renderModes();status('❌ 自分が担当する日をタップしてください。')};
+$('mode-o').onclick=function(){mode='o';renderModes();status('⭕ 他の人を代われる日をタップしてください。')};
+$('months').addEventListener('click',function(e){var b=e.target.closest('[data-month]');if(!b)return;month=b.dataset.month;renderMonthsClick();});
+function renderMonthsClick(){status('');refresh()}
+$('calendar').addEventListener('click',function(e){var b=e.target.closest('[data-date]');if(b)toggle(b.dataset.date)});
+$('refresh').onclick=function(){refresh();status('✅ このブラウザ内の最新の公開状態・回答を読み込みました。')};
+if(typeof window!=='undefined')window.addEventListener('storage',function(e){if(e.key===STORAGE){refresh();status('管理者画面の変更が反映されました。')}});
+setupName();refresh();
+})();
+</script></body></html>

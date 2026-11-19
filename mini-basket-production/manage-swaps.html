@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
+<title>🏀 管理者｜交代候補の確認・確定</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f7fc;color:#26394f;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:750px;margin:auto;padding:12px 10px 56px}header{padding:17px 14px;background:linear-gradient(110deg,#e6f2ff,#fff2dd);border-radius:16px;border:1px solid #deebf2}
+h1{font-size:20px;margin:0 0 5px}h2{font-size:17px;margin:0 0 9px}p{margin:6px 0}
+.card{padding:13px;margin-top:12px;background:white;border:1px solid #dce6f0;border-radius:14px}.small{font-size:12px;color:#65788c;white-space:pre-wrap}.notice{padding:10px;background:#fff4df;border:1px solid #ead1a7;border-radius:10px;font-size:12px}
+.good{padding:10px;background:#e9f7ee;border:1px solid #b9dfc9;color:#16704b;border-radius:10px}.danger{padding:10px;background:#fff0f2;border:1px solid #eabfc7;color:#a52d49;border-radius:10px}
+input,select,button{font:inherit;color:inherit}input,select{min-height:44px;border:1px solid #c8d8e4;background:white;border-radius:9px;padding:9px;width:100%}
+button{min-height:44px;background:white;border:1px solid #c7d6e3;padding:9px 12px;border-radius:9px;font-weight:800;cursor:pointer}button.primary{background:#255c88;border-color:#255c88;color:white}button:disabled{opacity:.48;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px}.row>*{flex:1 1 160px}
+.item{border:1px solid #dfe8f1;border-radius:11px;padding:12px;margin-top:10px}.item.urgent{background:#fff3f4;border-color:#e8b7c1}.item.confirmed{background:#f1faf5;border-color:#c4e0cf}
+.item h3{font-size:15px;margin:0 0 8px}.item label{display:block;font-size:12px;margin:9px 0 3px}.item button{margin-top:7px;width:100%}.candidates{font-size:13px;line-height:1.8}.hint{font-size:11px;color:#77879a}
+</style></head><body><main>
+<header><h1>🏀 当番交代の確認・確定</h1><p>有玉女子ミニバス｜管理者専用</p>
+<div class="notice"><b>元担当者名は固定します。</b> ×を出した元担当者はそのまま表示し、○の候補から管理者が1人を選んで確定します。候補が0人の場合は自動で誰かに割り当てず、赤く表示します。</div>
+</header>
+<section class="card"><h2>① 管理者ログイン・月の確認</h2>
+<p id="auth" class="small">ログインを確認中…</p>
+<label for="month">交代を確認する月</label><input type="month" id="month" min="2027-01" max="2027-11">
+<div class="row" style="margin-top:11px"><button class="primary" id="login">Googleで管理者ログイン</button><button id="load">Firebaseから交代希望を読み込む</button></div>
+<p id="status" class="small">まだ読み込んでいません。</p></section>
+<section class="card"><h2>② ×・○を確認して交代を決定</h2>
+<p class="small">○は正式な交代決定ではありません。ログイン不要のため、名前の選択だけでは本人確認できません。交代確定前に候補者本人と連絡を取って確認してください。</p>
+<div id="summary" class="notice">管理者として当番表を読み込んでください。</div>
+<div id="items"></div></section>
+<section class="card"><h2>③ 実施回数について</h2><p class="small">交代確定は「当番予定の変更記録」であり、実施回数には加算しません。当番が実際に終わったら、別の管理者台帳で実施者を記録してください。確定を誤った場合は管理者が解除できます。操作履歴は残します。</p></section>
+<footer class="small">2026年12月の確定当番表は変更しません。Firestore本番の書き込み許可や保護者公開は未実施です。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {todayTokyo,monthPlus} from './core.mjs';
+import {swapState,validateSwapConfirmation,validateSwapUndo} from './swap-confirmation-core.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'basket-swap-admin'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nameMap=()=>Object.fromEntries(members.map(m=>[m.id,m.name]));
+const monthRef=m=>doc(db,'teams',teamId,'months',m);
+const dayRef=(m,date)=>doc(db,'teams',teamId,'months',m,'days',date);
+const answerRef=(m,date,id)=>doc(db,'teams',teamId,'months',m,'answers',date+'_'+id);
+let members=[],monthMeta=null,days=[],answers=[],loadedMonth='',busy=false,ready=false;
+function report(m,cls='small'){$('status').textContent=m;$('status').className=cls;}
+function controls(){$('login').hidden=!!auth.currentUser;$('load').disabled=busy||!auth.currentUser;}
+function render(){
+ if(!ready){$('items').textContent='';$('summary').textContent='未読み込みです。';return;}
+ const people=nameMap(),needs=[];
+ for(const day of days){
+  const state=swapState(day,answers,members);
+  if(state.status==='not-applicable'||(!state.needsSwap&&state.status!=='confirmed'))continue;
+  needs.push({day,state});
+ }
+ const urgents=needs.filter(x=>x.state.status==='urgent').length;
+ const waiting=needs.filter(x=>x.state.status==='candidates').length;
+ const confirmed=needs.filter(x=>x.state.status==='confirmed').length;
+ $('summary').textContent='交代募集中（○なし）：'+urgents+'件／○候補あり・確定待ち：'+waiting+'件／管理者確定済み：'+confirmed+'件';
+ if(!needs.length){$('items').innerHTML='<p class="good">現在、交代の確認が必要な日はありません。</p>';return;}
+ $('items').innerHTML=needs.sort((a,b)=>a.day.date.localeCompare(b.day.date)).map(({day,state})=>{
+  const owner=esc(people[day.ownerId]||day.ownerId);
+  const chosen=state.confirmedId?esc(people[state.confirmedId]||state.confirmedId):'';
+  const candidateOptions=state.candidates.map(id=>'<option value="'+esc(id)+'">'+esc(people[id]||id)+' ○</option>').join('');
+  const dayMarks=state.candidates.map(id=>esc(people[id]||id)+' ○').join('／');
+  const confirmed=state.status==='confirmed';
+  const danger=state.status==='urgent';
+  const action=confirmed?
+   '<p class="good">✅ 管理者確定：'+chosen+'さんが交代。元担当者 '+owner+'さんは記録上そのまま残ります。</p>'+
+   (state.confirmedStillValid?'':'<p class="danger">⚠ 元の×または候補○が現在の回答と一致しません。確認してください。</p>')+
+   '<button data-act="undo" data-date="'+esc(day.date)+'">確定を解除（管理者）</button>'
+   :state.needsSwap&&candidateOptions?
+    '<label for="candidate-'+esc(day.date)+'">交代する人を選ぶ（管理者が本人確認済みであること）</label>'+
+    '<select data-candidate="'+esc(day.date)+'" id="candidate-'+esc(day.date)+'">'+candidateOptions+'</select>'+
+    '<button class="primary" data-act="confirm" data-date="'+esc(day.date)+'">選択した○候補で交代を確定</button>'
+    :'<p class="danger">⚠ 交代候補が0人です。管理者が保護者へ確認してください。自動割当はしません。</p>';
+  const badge=state.needsSwap?'<span style="color:#b7394b">元担当者 '+owner+' ×</span>':'元担当者 '+owner;
+  return '<div class="item '+(danger?'urgent':confirmed?'confirmed':'')+'">'+
+   '<h3>'+esc(day.date)+'　'+badge+'</h3>'+
+   '<div class="candidates">'+(state.candidates.length?'交代可能：'+dayMarks:'交代可能の○なし')+'</div>'+action+'</div>';
+ }).join('');
+}
+async function load(){
+ const user=auth.currentUser,month=$('month').value;
+ if(!user||busy)return;
+ if(month<'2027-01'||month>'2027-11'){report('2027年1〜11月を選んでください','danger');return;}
+ busy=true;ready=false;controls();report('公開済み当番表・12人・×○を読み込み中…');
+ try{
+  const [admin,meta,memberSnaps,daySnaps,answerSnaps]=await Promise.all([
+   getDocFromServer(doc(db,'admins',user.uid)),getDocFromServer(monthRef(month)),
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',month,'days')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',month,'answers'))
+  ]);
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限を確認できません');
+  if(!meta.exists()||meta.data().publication!=='published')throw Error('この月は未公開のため交代確定できません');
+  if(memberSnaps.size!==12)throw Error('12人の名簿を取得できません');
+  if(auth.currentUser?.uid!==user.uid||$('month').value!==month)throw Error('読み込み中に管理者・対象月が変わりました');
+  monthMeta=meta.data();members=memberSnaps.docs.map(x=>({id:x.id,...x.data()}));
+  days=daySnaps.docs.map(x=>({date:x.id,...x.data()}));
+  answers=answerSnaps.docs.map(x=>({id:x.id,...x.data()}));
+  loadedMonth=month;ready=true;render();
+  report('✅ '+month+'／'+days.length+'日分と'+answers.length+'件の×・○を確認。確定操作は保存前に再検証します。','good');
+ }catch(e){ready=false;$('items').textContent='';$('summary').textContent='読み込めませんでした';report('取得失敗：'+(e.code||e.message||String(e)),'danger');}
+ finally{busy=false;controls();}
+}
+$('month').onchange=()=>{ready=false;loadedMonth='';render();};
+$('load').onclick=load;
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>report('ログイン失敗：'+(e.code||e.message),'danger'));
+onAuthStateChanged(auth,user=>{ready=false;loadedMonth='';$('auth').textContent=user?'Googleログイン済み。対象月を読み込んでください。':'Googleの管理者アカウントでログインしてください。';controls();render();},e=>report('認証失敗：'+(e.code||e.message),'danger'));
+$('items').addEventListener('click',async event=>{
+ const button=event.target.closest('button[data-act]');
+ if(!button||!ready||busy||!auth.currentUser)return;
+ const date=button.dataset.date,action=button.dataset.act,month=loadedMonth,uid=auth.currentUser.uid;
+ const displayed=days.find(x=>x.date===date);
+ if(!displayed||!['confirm','undo'].includes(action)||month!==$('month').value)return;
+ let candidateId=null;
+ if(action==='confirm'){
+  candidateId=document.querySelector('[data-candidate="'+date+'"]')?.value;
+  try{validateSwapConfirmation({month,publication:monthMeta?.publication,day:displayed,answers,members,candidateId});}
+  catch(e){report('候補を確定できません：'+e.message,'danger');return;}
+  if(!confirm(date+' の交代を「'+(members.find(m=>m.id===candidateId)?.name||candidateId)+'」さんで確定しますか？元担当者は変更しません。候補者本人の了承を確認した場合のみ続けてください。'))return;
+ }else{
+  try{validateSwapUndo({month,publication:monthMeta?.publication,day:displayed});}
+  catch(e){report(e.message,'danger');return;}
+  if(!confirm(date+' の交代確定を解除しますか？元担当者・×・○回答は残ります。'))return;
+ }
+ busy=true;controls();report('変更があった場合は中止するよう、Firebaseで確認中…');
+ const auditRef=doc(collection(db,'teams',teamId,'swapAudit'));
+ try{
+  await runTransaction(db,async tx=>{
+   const adminRef=doc(db,'admins',uid),mRef=monthRef(month),dRef=dayRef(month,date);
+   const snapshots=await Promise.all([tx.get(adminRef),tx.get(mRef),tx.get(dRef)]);
+   const [admin,meta,day]=snapshots;
+   if(auth.currentUser?.uid!==uid||!admin.exists()||admin.data().enabled!==true)throw Error('管理者認証が一致しません');
+   if(!meta.exists()||meta.data().publication!=='published'||!day.exists())throw Error('現在は交代できません');
+   if(day.data().type!=='practice'||day.data().ownerId!==displayed.ownerId)throw Error('当番日または元担当者が変更されています');
+   if((day.data().confirmedSubstituteId??null)!==(displayed.confirmedSubstituteId??null))throw Error('別の管理者が交代を変更しました。再読み込みしてください');
+   const previous=day.data().confirmedSubstituteId||null;
+   const original=day.data().ownerId;
+   if(action==='confirm'){
+    const [ownerX,volunteer,member]=await Promise.all([
+     tx.get(answerRef(month,date,original)),tx.get(answerRef(month,date,candidateId)),
+     tx.get(doc(db,'teams',teamId,'members',candidateId))
+    ]);
+    if(!member.exists())throw Error('候補者の登録を確認できません');
+    const currentAnswers=[
+     ownerX.exists()?{date,memberId:original,...ownerX.data()}:null,
+     volunteer.exists()?{date,memberId:candidateId,...volunteer.data()}:null
+    ].filter(Boolean);
+    validateSwapConfirmation({
+     month,publication:meta.data().publication,day:{date,...day.data()},answers:currentAnswers,
+     members:[{id:candidateId,...member.data()}],candidateId
+    });
+    tx.update(dRef,{confirmedSubstituteId:candidateId,confirmedSwapAt:serverTimestamp(),confirmedSwapBy:uid,updatedAt:serverTimestamp()});
+   }else{
+    validateSwapUndo({month,publication:meta.data().publication,day:{date,...day.data()}});
+    tx.update(dRef,{confirmedSubstituteId:null,confirmedSwapAt:null,confirmedSwapBy:null,updatedAt:serverTimestamp()});
+   }
+   tx.set(auditRef,{month,date,action,originalOwnerId:original,previousSubstituteId:previous,
+    newSubstituteId:action==='confirm'?candidateId:null,adminUid:uid,createdAt:serverTimestamp()});
+  });
+  report(action==='confirm'?'✅ 管理者が交代を確定しました。元担当者は変更されません。':'✅ 交代確定を解除しました。','good');
+  busy=false;await load();
+ }catch(e){report('保存失敗：'+(e.code||e.message||String(e))+'。最新データを再読み込みしてください。','danger');}
+ finally{busy=false;controls();}
+});
+const current=todayTokyo().slice(0,7),next=monthPlus(current,1);
+$('month').value=next<'2027-01'?'2027-01':next>'2027-11'?'2027-11':next;
+controls();
+</script></body></html>

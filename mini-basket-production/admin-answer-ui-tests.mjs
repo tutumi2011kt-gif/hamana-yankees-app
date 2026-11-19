@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const ui=await readFile(new URL('./manage-parent-answers.html',import.meta.url),'utf8');
+const parent=await readFile(new URL('./parent.html',import.meta.url),'utf8');
+const writeConfig=await readFile(new URL('./parent-write-config.mjs',import.meta.url),'utf8');
+const config=JSON.parse(await readFile(new URL('./firebase.json',import.meta.url),'utf8'));
+assert.match(ui,/GoogleAuthProvider/,'admin must use Google');
+assert.match(ui,/validateAdminCorrection\(/,'admin verifies correction');
+assert.match(ui,/tx\.set\(auditRef,/,'audit recorded');
+assert.match(ui,/signatureAnswer\(currentAnswer\)!==previousSignature/,'concurrent edit blocked');
+assert.match(ui,/answerCorrectionAudit/,'audited collection');
+assert.doesNotMatch(ui,/tx\.update\(dayRef|ownerId:\s*memberId/,'correction never changes assignee');
+assert.match(parent,/signInAnonymously\(auth\)/,'parent no account');
+assert.match(parent,/parent-write-config\.mjs/);
+assert.match(writeConfig,/PARENT_WRITES_ENABLED=false/,'parent public writes disabled');
+assert.equal(config.firestore.rules,'firestore-parent-readonly.rules','default server security remains read-only');
+const js=ui.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];assert.ok(js);new Function(js.replace(/^import[^\n]*;\s*$/gm,''));
+console.log('PASS manager correction UI, audit, concurrency, parent privacy and static syntax');

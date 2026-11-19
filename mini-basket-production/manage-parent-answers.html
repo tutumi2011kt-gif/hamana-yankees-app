@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 管理者｜×・○回答の訂正</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#283b53;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:720px;margin:auto;padding:12px 10px 60px}header{padding:17px 14px;border:1px solid #dce6ee;border-radius:16px;background:linear-gradient(110deg,#e8f3ff,#fff0df)}h1{font-size:21px;margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}p{margin:7px 0}
+.card{background:#fff;border:1px solid #dce6ed;border-radius:13px;margin:11px 0;padding:13px}.small{font-size:12px;color:#687e91;white-space:pre-wrap}.notice{background:#fff2dd;border:1px solid #edce9f;border-radius:9px;padding:10px;font-size:12px}.ok{background:#e9f9ef;border:1px solid #b5e0c7;border-radius:9px;padding:10px;color:#176b49}.err{background:#fff0f2;border:1px solid #ebbfc8;border-radius:9px;padding:10px;color:#a62f47}
+input,button,select{font:inherit;color:inherit}input,select{min-height:44px;width:100%;border-radius:9px;border:1px solid #c7d6e3;padding:9px;background:#fff}button{min-height:44px;padding:10px 12px;border:1px solid #c3d2de;border-radius:9px;background:#fff;font-weight:800}button.primary{background:#235c89;color:#fff;border-color:#235c89}button:disabled{opacity:.5}
+label{display:block;font-weight:600;margin:9px 0 4px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.list{max-height:300px;overflow:auto}.entry{padding:8px;border-bottom:1px solid #e3ebf1}.entry:last-child{border-bottom:0}
+@media(max-width:370px){.row{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><h1>🏀 ×・○回答の管理者訂正</h1><p>有玉女子ミニバス｜管理者専用</p>
+<div class="notice">共通URL・ログイン不要の保護者画面では、スマホ変更や誤選択によって本人が回答を変更できない場合があります。管理者が本人へ確認したうえで修正できます。<b>この画面では元担当者や確定した交代先を変更しません。</b></div></header>
+<section class="card"><h2>① 管理者認証と月の読み込み</h2>
+<p id="auth-status" class="small">Googleログインを確認中…</p>
+<label for="month">修正する月（2027年1〜11月）</label>
+<input id="month" type="month" min="2027-01" max="2027-11">
+<div class="row" style="margin-top:10px"><button id="login" class="primary">管理者としてGoogleログイン</button><button id="load">最新の回答を読み込む</button></div>
+<p id="load-status" class="small">まだ読み込んでいません。</p></section>
+<section class="card"><h2>② 日付と子どもの名前を選択</h2>
+<label for="date">日付</label><select id="date" disabled></select>
+<label for="member">お子さんの名前</label><select id="member" disabled></select>
+<label for="kind">操作内容</label>
+<select id="kind" disabled><option value="x">× 当番ができない</option><option value="o">○ 交代できる</option><option value="remove">回答を削除する</option></select>
+<p id="preview" class="notice">読み込み後に回答状況を表示します。</p>
+<button id="save" class="primary" style="width:100%" disabled>本人確認済みの内容で訂正を保存</button>
+<p id="save-status" class="small" role="status">未保存です。</p></section>
+<section class="card"><h2>③ その日の回答一覧</h2><div id="answers" class="list small">未読み込み</div></section>
+<section class="card"><h2>変更履歴と注意</h2>
+<p class="small">変更の前後を監査ログに記録します。管理者以外はこの画面から操作できません。交代確定済みの日は回答を変更せず、先に管理者の交代確認画面で確定解除が必要です。締切後の修正は例外対応として履歴を残します。</p></section>
+<footer class="small">開発候補ページです。保護者の本番書き込み権限は変更しません。2026年12月確定表の回答は管理対象外です。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {todayTokyo,monthPlus} from './core.mjs';
+import {validateAdminCorrection,signatureAnswer} from './admin-answer-correction-core.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'basket-answer-admin'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const monthRef=m=>doc(db,'teams',teamId,'months',m);
+const dayRef=(m,date)=>doc(db,'teams',teamId,'months',m,'days',date);
+const answerRef=(m,date,member)=>doc(db,'teams',teamId,'months',m,'answers',date+'_'+member);
+let month='',members=[],days=[],answers=[],ready=false,busy=false,publication='';
+const getAnswer=(date,member)=>answers.find(a=>a.date===date&&a.memberId===member);
+const byId=()=>Object.fromEntries(members.map(x=>[x.id,x.name]));
+const report=(id,msg,cls='small')=>{$(id).textContent=msg;$(id).className=cls};
+function controls(){
+ $('login').hidden=!!auth.currentUser;
+ $('load').disabled=busy||!auth.currentUser;
+ for(const id of ['date','member','kind'])$(id).disabled=!ready||busy;
+ $('save').disabled=!ready||busy;
+}
+function show(){
+ if(!ready)return;
+ const date=$('date').value,person=$('member').value,day=days.find(x=>x.date===date);
+ const names=byId(),selected=getAnswer(date,person),kind=$('kind').value;
+ const current=selected?selected.kind==='x'?'×':'○':'未登録';
+ const locked=day?.confirmedSubstituteId?'（交代確定済みのため訂正禁止）':'';
+ report('preview','元担当：'+(names[day?.ownerId]||day?.ownerId||'未登録')+'／選択者 '+(names[person]||'未選択')+
+  '／現在：'+current+'／操作：'+(kind==='remove'?'削除':kind==='x'?'×登録':'○登録')+locked,day?.confirmedSubstituteId?'err':'notice');
+ const list=answers.filter(a=>a.date===date);
+ $('answers').innerHTML=list.length?list.map(a=>'<div class="entry">'+esc(names[a.memberId]||a.memberId)+'：'+
+  (a.kind==='x'?'× 当番不可':'○ 交代可能')+' <span class="small">（登録端末の識別情報は非表示）</span></div>').join(''):
+  'この日にはまだ×・○回答が登録されていません。';
+}
+async function load(){
+ const user=auth.currentUser,chosen=$('month').value;
+ if(!user||busy)return;
+ if(chosen<'2027-01'||chosen>'2027-11'){report('load-status','2027年1〜11月を選択してください','err');return;}
+ busy=true;ready=false;controls();report('load-status','管理者権限と当番表・回答を照合中…');
+ try{
+  const [adm,meta,memberSnaps,daySnaps,answerSnaps]=await Promise.all([
+   getDocFromServer(doc(db,'admins',user.uid)),getDocFromServer(monthRef(chosen)),
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',chosen,'days')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',chosen,'answers'))
+  ]);
+  if(!adm.exists()||adm.data().enabled!==true)throw Error('管理者権限がありません');
+  if(!meta.exists()||meta.data().publication!=='published')throw Error('未公開月の回答は変更できません');
+  if(memberSnaps.size!==12)throw Error('登録メンバー12人を確認できません');
+  if(auth.currentUser?.uid!==user.uid||$('month').value!==chosen)throw Error('読み込み中に認証または対象月が変更されました');
+  members=memberSnaps.docs.map(s=>({id:s.id,...s.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  days=daySnaps.docs.map(s=>({date:s.id,...s.data()})).filter(d=>d.type==='practice').sort((a,b)=>a.date.localeCompare(b.date));
+  answers=answerSnaps.docs.map(s=>({id:s.id,...s.data()}));
+  if(!days.length)throw Error('練習日の登録がありません');
+  month=chosen;publication=meta.data().publication;
+  $('date').innerHTML=days.map(d=>'<option value="'+esc(d.date)+'">'+esc(d.date)+(d.confirmedSubstituteId?'（交代確定済み）':'')+'</option>').join('');
+  $('member').innerHTML=members.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>').join('');
+  ready=true;show();
+  report('load-status','✅ '+chosen+'：練習日'+days.length+'件、保護者の回答'+answers.length+'件を読み込みました。','ok');
+ }catch(e){ready=false;report('load-status','読み込み失敗：'+(e.code||e.message||String(e)),'err');$('answers').textContent='データを確認できませんでした';}
+ finally{busy=false;controls();}
+}
+$('date').onchange=show;$('member').onchange=show;$('kind').onchange=show;
+$('month').onchange=()=>{ready=false;days=[];answers=[];controls();$('answers').textContent='この月を読み込んでください。';};
+$('load').onclick=load;
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>report('auth-status','管理者ログイン失敗：'+(e.code||e.message),'err'));
+onAuthStateChanged(auth,user=>{ready=false;days=[];members=[];answers=[];
+ report('auth-status',user?'Googleログイン済み。対象月を読み込んでください。':'管理者のGoogleアカウントでログインしてください。');controls();
+},e=>report('auth-status','認証エラー：'+(e.code||e.message),'err'));
+$('save').onclick=async()=>{
+ const user=auth.currentUser;if(!ready||busy||!user)return;
+ const date=$('date').value,memberId=$('member').value,kind=$('kind').value,action=kind==='remove'?'remove':'set';
+ const day=days.find(x=>x.date===date),member=members.find(x=>x.id===memberId),old=getAnswer(date,memberId);
+ try{validateAdminCorrection({month,publication,day,member,kind,action,existing:old});}
+ catch(e){report('save-status',e.message,'err');return;}
+ const memberName=member?.name||memberId;
+ if(!confirm(date+' '+memberName+'さんの回答を'+(action==='remove'?'削除':kind==='x'?'×に訂正':'○に訂正')+
+  'しますか？\nご本人に確認済みの場合だけ続行してください。変更は履歴に残ります。'))return;
+ const chosen=month,previousSignature=signatureAnswer(old),uid=user.uid;
+ const auditRef=doc(collection(db,'teams',teamId,'answerCorrectionAudit'));
+ busy=true;controls();report('save-status','Firebaseで最新データを照合して訂正中…');
+ try{
+  await runTransaction(db,async tx=>{
+   const refs=[doc(db,'admins',uid),monthRef(chosen),dayRef(chosen,date),doc(db,'teams',teamId,'members',memberId),answerRef(chosen,date,memberId)];
+   const snapshots=[];for(const ref of refs)snapshots.push(await tx.get(ref));
+   const [adminSnap,monthSnap,daySnap,memberSnap,answerSnap]=snapshots;
+   if(!adminSnap.exists()||adminSnap.data().enabled!==true||auth.currentUser?.uid!==uid)throw Error('管理者権限を再確認できません');
+   if(!monthSnap.exists()||!daySnap.exists()||!memberSnap.exists())throw Error('月・日付・メンバーが変更されています');
+   const currentAnswer=answerSnap.exists()?answerSnap.data():null;
+   if(signatureAnswer(currentAnswer)!==previousSignature)throw Error('ほかの端末で回答が変わりました。再読み込みしてください');
+   const check=validateAdminCorrection({month:chosen,publication:monthSnap.data().publication,day:{date,...daySnap.data()},member:{id:memberId,...memberSnap.data()},kind,action,existing:currentAnswer});
+   const ref=answerRef(chosen,date,memberId);
+   const next=check.action==='set'?{date,memberId,kind,updatedBy:uid,updatedAt:serverTimestamp()}:null;
+   if(check.action==='remove')tx.delete(ref);else tx.set(ref,next);
+   tx.set(auditRef,{month:chosen,date,memberId,action:check.action,
+    before:currentAnswer,nextKind:check.action==='set'?kind:null,actorUid:uid,updatedAt:serverTimestamp()});
+  });
+  report('save-status','✅ 回答訂正と変更履歴を保存しました。','ok');
+  busy=false;await load();
+ }catch(e){report('save-status','保存できませんでした：'+(e.code||e.message||String(e)),'err');}
+ finally{busy=false;controls();}
+};
+const now=todayTokyo().slice(0,7),next=monthPlus(now,1);
+$('month').value=next<'2027-01'?'2027-01':next>'2027-11'?'2027-11':next;
+controls();
+</script></body></html>

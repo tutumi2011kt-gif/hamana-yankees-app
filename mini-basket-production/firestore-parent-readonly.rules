@@ -19,9 +19,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
     }
 
+    function monthPath(monthId) {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId);
+    }
+    function publicRosterPath() {
+      return /databases/$(database)/documents/teams/aritama-mini-basket/public/roster;
+    }
+    function listedForParents(monthId) {
+      return exists(publicRosterPath())
+        && get(publicRosterPath()).data.get('publishedMonths', []).hasAny([monthId]);
+    }
     function publishedMonth(monthId) {
-      return exists(/databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId))
-        && get(/databases/$(database)/documents/teams/aritama-mini-basket/months/$(monthId)).data.publication == 'published';
+      return listedForParents(monthId)
+        && exists(monthPath(monthId))
+        && get(monthPath(monthId)).data.publication == 'published';
     }
 
     match /admins/{uid} {
@@ -41,7 +52,9 @@ service cloud.firestore {
 
     // Only published months. No parent writes are permitted at this stage.
     match /teams/aritama-mini-basket/months/{monthId} {
-      allow get: if signedIn() && resource.data.publication == 'published';
+      allow get: if signedIn()
+        && listedForParents(monthId)
+        && resource.data.publication == 'published';
 
       match /days/{dayId} {
         allow get, list: if signedIn() && publishedMonth(monthId);

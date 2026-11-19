@@ -1,0 +1,157 @@
+name: Mini basket security tests
+on:
+  push:
+    branches: [development/mini-basket-release-preparation]
+  pull_request:
+    paths: ['mini-basket-production/**', '.github/workflows/mini-basket-tests.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mini-basket-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm install --ignore-scripts
+      - run: node core-tests.mjs && node parent-accountless-tests.mjs && node parent-clock-tests.mjs && node parent-input-tests.mjs && node weekday-conditions-tests.mjs && node auto-draft-tests.mjs && node month-rollover-tests.mjs && node first-day-hard-lock-tests.mjs && node month-approval-tests.mjs && node january-publication-tests.mjs && node release-preflight-tests.mjs && node parent-write-release-candidate-tests.mjs && node review-january-report-tests.mjs && node duty-ledger-tests.mjs && node ledger-calendar-tests.mjs && node swap-confirmation-tests.mjs && node swap-ui-tests.mjs && node admin-answer-correction-tests.mjs && node admin-answer-ui-tests.mjs && node answer-monitor-tests.mjs && node staging-build-tests.mjs && node staging-fixture-tests.mjs && node staging-deploy-tests.mjs && node qa-readiness-tests.mjs && node qa-health-ui-tests.mjs && node qa-hosting-check-tests.mjs
+      - name: Smoke-test isolated staging website build (fake QA config only)
+        env:
+          STAGING_FIREBASE_CONFIG_JSON: '{"apiKey":"build-only-test","projectId":"basket-staging-qa","authDomain":"basket-staging-qa.firebaseapp.com","appId":"1:123:web:fake"}'
+        run: |
+          node build-staging-site.mjs
+          test -f dist-staging/index.html
+          test -f dist-staging/admin-approve.html
+          test -f dist-staging/admin-january-publish.html
+          test -f dist-staging/admin-review-january.html
+          test -f dist-staging/admin-swaps.html
+          test -f dist-staging/admin-qa-health.html
+          test -f dist-staging/firebase-config-staging.mjs
+          ! grep -R "aritama-mini-basket.firebaseapp.com" dist-staging/
+      - name: Probe public QA Hosting (read-only; informational)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-redirs 2 --connect-timeout 8 --max-time 20 \
+            -H 'Cache-Control: no-cache' \
+            'https://aritama-mini-basket-qa.web.app/' -o /tmp/mini-basket-live-qa.html
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const html=readFileSync('/tmp/mini-basket-live-qa.html','utf8');
+          const labels=['② 月を選ぶ','③ ×・○の希望入力','❌ 当番ができない日','⭕ 代わりにできる日','id="calendar-title"'];
+          const positions=labels.map(label=>html.indexOf(label));
+          const qaBadge=html.includes('🧪 検証版');
+          console.log('QA Hosting HTML: bytes='+Buffer.byteLength(html)+'; QA badge='+qaBadge+'; labels='+JSON.stringify(positions));
+          if(!qaBadge||positions.some(position=>position<0)||positions.some((position,i)=>i>0&&position<=positions[i-1])){
+            console.error('QA Hosting is not showing the latest verified parent UI (or is unavailable).');
+            process.exitCode=1;
+          }else{
+            console.log('PASS: deployed QA parent UI shows the new mode controls between month selection and calendar.');
+          }
+          NODE
+      - name: Verify published QA Web config and admin pages (read-only)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          base='https://aritama-mini-basket-qa.web.app'
+          curl --fail --silent --show-error --location --max-redirs 2 --connect-timeout 8 --max-time 20 \
+            -H 'Cache-Control: no-cache' "$base/firebase-config-staging.mjs" -o /tmp/mini-basket-live-qa-config.mjs
+          for page in admin-swaps.html admin-qa-health.html; do
+            curl --fail --silent --show-error --location --max-redirs 2 --connect-timeout 8 --max-time 20 \
+              -H 'Cache-Control: no-cache' "$base/$page" -o "/tmp/mini-basket-live-$page"
+          done
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const source=readFileSync('/tmp/mini-basket-live-qa-config.mjs','utf8');
+          const match=source.match(/export const firebaseConfig = (\{[\s\S]*?\});/);
+          if(!match)throw Error('QA public Firebase Web config missing');
+          const config=JSON.parse(match[1]);
+          if(config.projectId!=='aritama-mini-basket-qa'||config.authDomain!=='aritama-mini-basket-qa.firebaseapp.com')
+            throw Error('QA public Web app does not point exclusively to the approved QA project');
+          for(const page of ['admin-swaps.html','admin-qa-health.html']){
+            const html=readFileSync('/tmp/mini-basket-live-'+page,'utf8');
+            if(!html.includes('🧪 検証版')||!html.includes('firebase-config-staging.mjs'))
+              throw Error('QA admin page is missing or not isolated: '+page);
+          }
+          console.log('PASS: live QA public projectId='+config.projectId+', QA admin pages are isolated. No login or write was attempted.');
+          NODE
+      - name: Capture live QA HTML at mobile width without logging in (read-only)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          test -s /tmp/mini-basket-live-qa.html
+          mkdir -p qa-evidence
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends fonts-noto-cjk >/dev/null
+          fc-cache -f >/dev/null
+          if command -v google-chrome >/dev/null 2>&1; then
+            browser=google-chrome
+          elif command -v chromium >/dev/null 2>&1; then
+            browser=chromium
+          else
+            echo 'No headless Chrome/Chromium on the runner; mobile capture unavailable.'
+            exit 1
+          fi
+          # Render the downloaded QA HTML with JS disabled: never create a QA Auth user or write Firestore.
+          "$browser" --headless=new --disable-javascript --no-sandbox --disable-dev-shm-usage \
+            --disable-gpu --hide-scrollbars --window-size=390,844 \
+            --screenshot=qa-evidence/qa-static-mobile-390.png file:///tmp/mini-basket-live-qa.html
+          test -s qa-evidence/qa-static-mobile-390.png
+          echo 'Saved QA public HTML screenshot at 390px. Static layout only; dynamic Firebase UI remains unverified.'
+      - name: Verify QA read-only doctor refuses production and needs no credentials in dry-run
+        run: |
+          node firebase-functions/verify-qa.mjs --project basket-staging-qa | tee /tmp/qa-verify-dryrun.txt
+          grep -q "Firebaseへ接続せず" /tmp/qa-verify-dryrun.txt
+          if node firebase-functions/verify-qa.mjs --project aritama-mini-basket; then
+            echo "ERROR: production accepted for QA diagnostics" >&2
+            exit 1
+          fi
+          if node firebase-functions/verify-qa.mjs --project basket-staging-qa --remote; then
+            echo "ERROR: unconfirmed remote QA diagnostics accepted" >&2
+            exit 1
+          fi
+      - name: Ensure QA deploy wrapper defaults to dry-run and refuses production
+        run: |
+          node deploy-qa.mjs --project basket-staging-qa | tee /tmp/mini-basket-qa-deploy-dryrun.txt
+          grep -q "DRY-RUN:" /tmp/mini-basket-qa-deploy-dryrun.txt
+          if node deploy-qa.mjs --project aritama-mini-basket; then
+            echo "ERROR: production Firebase project accepted by deploy wrapper" >&2
+            exit 1
+          fi
+          if node deploy-qa.mjs --project basket-staging-qa --apply; then
+            echo "ERROR: unconfirmed QA deployment accepted" >&2
+            exit 1
+          fi
+      - name: Ensure QA seed default is dry-run and production project is rejected
+        run: |
+          node firebase-functions/seed-qa.mjs --project basket-staging-qa | tee /tmp/mini-basket-qa-dryrun.txt
+          grep -q "DRY-RUN: Firebase" /tmp/mini-basket-qa-dryrun.txt
+          if node firebase-functions/seed-qa.mjs --project aritama-mini-basket; then
+            echo "ERROR: production project was accepted" >&2
+            exit 1
+          fi
+          if node firebase-functions/seed-qa.mjs --project basket-staging-qa --apply; then
+            echo "ERROR: apply without duplicate project confirmation/admin UID was accepted" >&2
+            exit 1
+          fi
+      - run: node --check firebase-functions/index.mjs && node --check firebase-functions/seed-qa.mjs && node --check deploy-qa.mjs && node --check firebase-functions/verify-qa.mjs
+      - run: npm run test:rules
+      - run: npm audit --json > audit-results.json
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mini-basket-test-evidence
+          path: |
+            mini-basket-production/*debug.log
+            mini-basket-production/audit-results.json
+            mini-basket-production/qa-evidence/qa-static-mobile-390.png
