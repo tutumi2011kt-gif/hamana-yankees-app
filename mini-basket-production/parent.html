@@ -24,6 +24,7 @@ footer{font-size:11px;color:#76889b}.not-available{display:none}
 <section class="card"><h2>② 月を選ぶ</h2><div id="months" class="months"></div><p id="month-status" class="info">当番表を読み込んでいます。</p></section>
 <section class="card"><h2>③ ×・○を選ぶ</h2><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない日</button><button id="mark-o" type="button">⭕ 代わりにできる日</button></div><p class="small">×は自分の当番日、○は他の人の当番を代われる日に選びます。カレンダーの日付を直接タップして登録・取消できます。</p><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。保存した×・○は全員のカレンダーへすぐに反映されます（管理者がまだ有効化していない間は閲覧のみ）。名前の選択だけでは本人確認になりません。間違い・他人名義の入力を見つけたら管理者へ連絡してください。別端末に機種変更した場合も管理者に回答訂正を依頼できます。</p></section>
 <section class="card"><h2 id="calendar-title">④ 当番カレンダー</h2><div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal" aria-label="当番カレンダー"></div><div class="legend"><span>水色：練習日</span><span>薄橙：試合・当番なし</span></div></section>
+<details class="card"><summary style="cursor:pointer;font-weight:800">📋 今月の全員の×・○入力状況を見る</summary><p class="small">登録した日付を確認できます。未登録は「なし」です。</p><div id="answer-overview" class="small">読み込み中…</div></details>
 <footer>この画面では学年・当番可能曜日・個別の不可日などの管理情報は公開しません。共通URLを知る人が閲覧できる形式のため、URLの共有先にはご注意ください。接続エラー時は当番表を推測して表示しません。</footer>
 </main>
 <script type="module">
@@ -98,6 +99,14 @@ function setMonth(m){
    $('reply-status').className='err';
    $('calendar').textContent='';
  }));
+}
+function renderAnswerOverview(){
+ const visible=overlayParentAnswers(answers,answerOverlay).filter(a=>a&&a.date?.startsWith(selectedMonth+'-')&&['x','o'].includes(a.kind));
+ $('answer-overview').innerHTML=names.slice().sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja')).map(m=>{
+  const own=visible.filter(a=>a.memberId===m.id);
+  const days=k=>own.filter(a=>a.kind===k).map(a=>Number(a.date.slice(-2))+'日').sort((a,b)=>parseInt(a)-parseInt(b)).join('・')||'なし';
+  return '<div style="padding:9px 0;border-bottom:1px solid #e5ebef"><b>'+esc(m.name)+'</b>　<span style="color:#ae3451">× '+esc(days('x'))+'</span>　<span style="color:#15764f">○ '+esc(days('o'))+'</span></div>';
+ }).join('')||'入力情報がありません。';
 }
 function draw(){
  // Only redraw the whole calendar when data or the edit window changes.
@@ -174,6 +183,7 @@ function draw(){
 
  }
  $('calendar').innerHTML=calendar;
+ renderAnswerOverview();
  monthMessage(!PARENT_WRITES_ENABLED?'🗓️ 当番表を閲覧中です。保護者の書き込みは安全確認待ちのため停止中です。':canWrite?'✅ ×・○の入力受付中。登録内容は即時に共有されます。':'🗓️ 閲覧中です。未受付・締切済み、または名前未選択のため入力できません。','info');
 }
 $('person').addEventListener('change',e=>{if(writing)return;selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
