@@ -76,7 +76,7 @@ function resetMonthListeners(){
 }
 function setMonth(m){
  if(!options.includes(m))return;
- selectedMonth=m;lastSaveMessage='';resetMonthListeners();drawMonths();draw();
+ selectedMonth=m;lastSaveMessage='';resetMonthListeners();$('answer-overview').textContent='読み込み中…';drawMonths();draw();
  if(!published.includes(m)){monthMessage('この月の当番表は、まだ管理者から公開されていません。');return;}
  const version=token;
  monthMessage('Firebaseから'+caption(m)+'の当番表を読み込み中…');
@@ -115,8 +115,8 @@ function draw(){
  $('calendar-title').textContent='④ '+caption(selectedMonth)+' 当番カレンダー';
  const publishedNow=published.includes(selectedMonth);
  const reply=$('reply-status');
- if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';return;}
- if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';return;}
+ if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';$('answer-overview').textContent='この月は公開待ちです。';return;}
+ if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('answer-overview').textContent='回答状況を読み込み中…';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
  const canWrite=PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&lastInputWindowOpen&&!writing&&!!selectedPerson&&auth.currentUser?.isAnonymous===true;
  $('person').disabled=writing;
