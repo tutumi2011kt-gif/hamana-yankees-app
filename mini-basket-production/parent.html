@@ -15,7 +15,7 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day{border:1px solid #e0e8ef;border-radius:7px;background:#fff;min-width:0;min-height:81px;padding:5px 2px;overflow-wrap:anywhere;text-align:left;color:inherit;display:block;width:100%}.day:disabled{cursor:default}.day.tap-x{border:2px solid #c64a66;padding:4px 1px}.day.tap-o{border:2px solid #23865f;padding:4px 1px}.day.tap-x,.day.tap-o{cursor:pointer}
 .day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
-.day .cancel-hint{font-size:9px;display:block;color:#9d2747;font-weight:800;line-height:1.3;margin-top:4px}.day .pending-hint{font-size:9px;display:block;color:#6d4c16;font-weight:800;line-height:1.3;margin-top:4px}.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}
+.day .cancel-hint{font-size:9px;display:block;color:#9d2747;font-weight:800;line-height:1.3;margin-top:4px}.day .pending-hint{font-size:9px;display:block;color:#6d4c16;font-weight:800;line-height:1.3;margin-top:4px}.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}.day .swap-request{font-size:10px;display:block;color:#bb2f4d;font-weight:900;line-height:1.35;margin-top:3px}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
 footer{font-size:11px;color:#76889b}.not-available{display:none}
 </style></head><body><main>
@@ -149,7 +149,8 @@ function draw(){
   const isPractice=d?.type==='practice',isGame=d?.type==='game';
   const swap=swapState(d,marks);
   const owner=isPractice?(people[d.ownerId]||'担当未登録'):'';
-  const label=isGame?'🏀 試合':owner;
+  const ownerLabel=swap.needsSwap?owner+' ×':owner;
+  const label=isGame?'🏀 試合':ownerLabel;
   const existing=marks.find(a=>a.memberId===selectedPerson);
   const tap=answerTapDecision({day:d,existing,kind:selectedMode,memberId:selectedPerson,
     uid:auth.currentUser?.uid,canWrite});
@@ -158,11 +159,11 @@ function draw(){
   const isOwnCancel=tap.action==='delete';
   const selectedMark=isOwnCancel?'（取消）':'';
   const volunteerMarks=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId);
-  const extras=marks.filter(a=>a.kind==='x'&&a.memberId===d?.ownerId).map(a=>'<span class="bad">'+esc(people[a.memberId]||'')+' ×</span>').join('')+
+  const extras=(swap.needsSwap&&!swap.confirmedId?'<span class="swap-request">交代求む</span>':'')+
     volunteerMarks.slice(0,2).map(a=>'<span class="good">'+esc(people[a.memberId]||'')+' ○</span>').join('')+
     (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'')+
     (swap.status==='urgent'?'<span class="bad">⚠ 交代候補なし（要調整）</span>':'')+
-    (swap.confirmedId?'<span class="confirmed">✅ 管理者確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'（交代）</span>':'');
+    (swap.confirmedId?'<span class="confirmed">✅ 交代確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'</span>':'');
   const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+
     (eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
