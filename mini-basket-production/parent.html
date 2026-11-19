@@ -89,9 +89,9 @@ function draw(){
  if(!publishedNow){reply.textContent='この月はまだ公開されていないため入力できません。';reply.className='notice';$('calendar').textContent='';$('detail').textContent='管理者の公開待ちです。';return;}
  if(!Object.values(ready).every(Boolean)){reply.textContent='Firebaseのデータを読み込んでいます。';monthMessage('Firebaseのデータを読み込み中…');$('calendar').textContent='';$('detail').textContent='読み込み中…';return;}
  if(!monthData||monthData.publication!=='published'){reply.textContent='入力できません。';monthMessage('当番表の公開状態を確認できません。','err');return;}
- const canWrite=canEditMonth(monthData)&&!writing;
- reply.textContent=writing?'Firebaseに保存中です…':lastSaveMessage|| (canWrite?(selectedPerson?'✅ 入力受付中。枠線が付いた日をタップしてください。':'入力受付中です。まずお子さんの名前を選んでください。'):'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。');
- reply.className=canWrite?'ok':'notice';
+ const canWrite=false; // Viewer launch remains read-only until separately authorized answer-write security release.
+ reply.textContent='🔒 現在は当番表の閲覧のみです。×・○の入力は安全確認後に公開します。';
+ reply.className='notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
  $('mark-o').className=selectedMode==='o'?'selected-o':'';
  const dayMap=Object.fromEntries(days.map(x=>[x.date,x])),people=mapNames();
