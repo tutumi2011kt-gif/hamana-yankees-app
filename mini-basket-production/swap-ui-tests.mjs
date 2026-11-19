@@ -9,7 +9,7 @@ const script=html=>{const m=html.match(/<script type="module">([\s\S]*?)<\/scrip
 script(parent);script(manager);script(ledger);
 assert.match(parent,/swapState\(d,marks\)/);
 assert.match(parent,/交代候補なし（要調整）/);
-assert.match(parent,/管理者確定：/);
+assert.match(parent,/交代確定：/);
 assert.match(parent,/parent-write-config\.mjs/);
 assert.match(writeConfig,/PARENT_WRITES_ENABLED=false/);
 assert.match(parent,/const tap=answerTapDecision\(\{day:d,existing/,'all existing answers use cancellation-aware tap decisions');
