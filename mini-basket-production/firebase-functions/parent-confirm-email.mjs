@@ -5,8 +5,10 @@
 import {onCall,HttpsError} from 'firebase-functions/v2/https';
 import {defineSecret} from 'firebase-functions/params';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getApps,initializeApp} from 'firebase-admin/app';
 import nodemailer from 'nodemailer';
 
+if(!getApps().length)initializeApp();
 const db=getFirestore();
 const TEAM='aritama-mini-basket';
 const ADMIN_EMAIL='tutumi2011kt@gmail.com';
