@@ -17,20 +17,27 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
 .day .cancel-hint{font-size:9px;display:block;color:#9d2747;font-weight:800;line-height:1.3;margin-top:4px}.day .pending-hint{font-size:9px;display:block;color:#6d4c16;font-weight:800;line-height:1.3;margin-top:4px}.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}.day .swap-request{font-size:10px;display:block;color:#bb2f4d;font-weight:900;line-height:1.35;margin-top:3px}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
+.review-button{width:100%;min-height:52px;font-size:15px;font-weight:900;padding:10px;background:#244f80;border-color:#244f80;color:white}
+.review-button:disabled{opacity:.5}.review-choice{padding:9px 6px;border-bottom:1px solid #dfe8f0;font-weight:700}
+.review-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.review-actions{margin-top:12px;padding-top:12px;border-top:1px solid #e2eaf0}
+.day.is-staged{outline:2px dashed #b77923;outline-offset:-3px}#review-panel[hidden]{display:none}
 footer{font-size:11px;color:#76889b}.not-available{display:none}
 </style></head><body><main>
 <header><h1>🏀 有玉女子ミニバス 当番表</h1><p>みんなで確認する当番カレンダー</p><p id="connection" class="notice" role="status" aria-live="polite">Firebaseに接続中です…</p></header>
 <section class="card"><h2>① お子さんの名前を選ぶ</h2><select id="person" aria-label="お子さんの名前"><option value="">メンバーを読み込み中…</option></select><p class="small">名前を選ぶだけでカレンダーを見られます。選択した名前はこの端末に保存されます。</p></section>
 <section class="card"><h2>② 月を選ぶ</h2><div id="months" class="months"></div><p id="month-status" class="info">当番表を読み込んでいます。</p></section>
-<section class="card"><h2>③ ×・○を選ぶ</h2><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない日</button><button id="mark-o" type="button">⭕ 代わりにできる日</button></div><p class="small">×は自分の当番日、○は他の人の当番を代われる日に選びます。カレンダーの日付を直接タップして登録・取消できます。</p><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。保存した×・○は全員のカレンダーへすぐに反映されます（管理者がまだ有効化していない間は閲覧のみ）。名前の選択だけでは本人確認になりません。間違い・他人名義の入力を見つけたら管理者へ連絡してください。別端末に機種変更した場合も管理者に回答訂正を依頼できます。</p></section>
-<section class="card"><h2 id="calendar-title">④ 当番カレンダー</h2><div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal" aria-label="当番カレンダー"></div><div class="legend"><span>水色：練習日</span><span>薄橙：試合・当番なし</span></div></section>
+<section class="card"><h2>③ ×・○を選ぶ</h2><div class="mode"><button id="mark-x" type="button" class="selected-x">❌ 当番ができない日</button><button id="mark-o" type="button">⭕ 代わりにできる日</button></div><p class="small">×は自分の当番日、○は他の人の当番を代われる日に選びます。日付を選択したあと、カレンダー下の「確認画面へ」で内容を確認して登録します。</p><p id="reply-status" role="status" aria-live="polite" class="notice">この月の入力受付状況を確認中です。</p><p class="tiny">×は自分が当番の日だけ、○は他の人が当番の日だけ選べます。日付を選んだ時点では未保存です。「確定して登録」の後に全員のカレンダーへ反映されます。名前の選択だけでは本人確認になりません。間違い・他人名義の入力を見つけたら管理者へ連絡してください。別端末に機種変更した場合も管理者に回答訂正を依頼できます。</p></section>
+<section class="card"><h2 id="calendar-title">④ 当番カレンダー</h2><div class="week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div id="calendar" class="cal" aria-label="当番カレンダー"></div><div class="legend"><span>水色：練習日</span><span>薄橙：試合・当番なし</span></div><div class="review-actions"><p id="draft-count" class="small">まだ日付を選択していません。</p><button type="button" id="review-open" class="review-button" disabled>確認画面へ</button></div></section>
+<section id="review-panel" class="card" hidden><h2>⑤ この内容で登録していいですか？</h2><p id="review-person-month" class="small"></p><div id="review-items"></div><p class="small">確定後は全員のカレンダーへ反映されます。※ 管理者への自動メールは現在準備中で、まだ送信されません。</p><div class="review-controls"><button id="review-back" type="button">選び直す</button><button id="review-submit" type="button" class="review-button">この内容で確定して登録</button></div></section>
 <details class="card"><summary style="cursor:pointer;font-weight:800">📋 今月の全員の×・○入力状況を見る</summary><p class="small">登録した日付を確認できます。未登録は「なし」です。</p><div id="answer-overview" class="small">読み込み中…</div></details>
 <footer>この画面では学年・当番可能曜日・個別の不可日などの管理情報は公開しません。共通URLを知る人が閲覧できる形式のため、URLの共有先にはご注意ください。接続エラー時は当番表を推測して表示しません。</footer>
 </main>
 <script type="module">
 import {todayTokyo,monthPlus,dayList} from './core.mjs?v=parent-input-2';
-import {canEditMonth,answerTapDecision,sameAnswerTap,overlayParentAnswers} from './parent-input-core.mjs?v=4';
-import {swapState,canEditSwapAnswer} from './swap-confirmation-core.mjs?v=1';
+import {canEditMonth,answerTapDecision,overlayParentAnswers} from './parent-input-core.mjs?v=4';
+import {draftChoiceForTap,choiceLabel,normalizeSubmissionChanges,MAX_CONFIRM_CHANGES} from './parent-confirm-core.mjs?v=1';
+import {swapState} from './swap-confirmation-core.mjs?v=1';
 import {PARENT_WRITES_ENABLED,ANSWER_PUBLICATION_MODE} from './parent-write-config.mjs?v=public-20261119';
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
@@ -38,13 +45,31 @@ import {getAuth,signInAnonymously} from 'https://www.gstatic.com/firebasejs/12.1
 import {getFirestore,doc,collection,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'mini-basket-parent-share'),auth=getAuth(app),db=getFirestore(app);
+// Gmail notification service is staged separately and not deployed yet.
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key='mini-basket-parent-name-1';
 // A方式：回答は保存後に即時全員へ反映。公開まで書き込みスイッチは無効。
 let displayedClockMonth=todayTokyo().slice(0,7);
 let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
-let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,pendingTap=null,lastSaveMessage='',ready={meta:false,days:false,answers:false},lastInputWindowOpen=null;
+let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false},lastInputWindowOpen=null;
 const answerOverlay=new Map();
+const stagedChoices=new Map();
+let reviewOpen=false,requestIdForRetry=null;
+function resetDraft(){stagedChoices.clear();reviewOpen=false;requestIdForRetry=null;}
+function renderReview(){
+ const list=normalizeSubmissionChanges([...stagedChoices.values()]);
+ const name=names.find(p=>p.id===selectedPerson)?.name||selectedPerson;
+ $('review-person-month').textContent=caption(selectedMonth)+'／'+name+'さん（'+list.length+'件）';
+ $('review-items').innerHTML=list.map(c=>'<div class="review-choice">'+esc(c.date)+'　'+esc(choiceLabel(c))+'</div>').join('');
+}
+function drawReviewStatus(){
+ $('draft-count').textContent=stagedChoices.size?stagedChoices.size+'件を選択中（未保存）。確認画面へ進んでください。':'まだ日付を選択していません。';
+ $('review-open').disabled=writing||!stagedChoices.size||!canEditMonth(monthData);
+ $('review-back').disabled=writing;
+ $('review-submit').disabled=writing||!stagedChoices.size||!canEditMonth(monthData);
+ $('review-panel').hidden=!reviewOpen;
+ if(reviewOpen&&stagedChoices.size)renderReview();
+}
 const answerId=(date,person)=>date+'_'+person;
 function reconcileAnswerOverlay(){
  for(const [id,expected] of answerOverlay){
@@ -76,7 +101,8 @@ function resetMonthListeners(){
 }
 function setMonth(m){
  if(!options.includes(m))return;
- selectedMonth=m;lastSaveMessage='';resetMonthListeners();$('answer-overview').textContent='読み込み中…';drawMonths();draw();
+ if(m!==selectedMonth&&stagedChoices.size&&!confirm('未確定の選択を破棄して月を切り替えますか？'))return;
+ resetDraft();selectedMonth=m;lastSaveMessage='';resetMonthListeners();$('answer-overview').textContent='読み込み中…';drawMonths();draw();
  if(!published.includes(m)){monthMessage('この月の当番表は、まだ管理者から公開されていません。');return;}
  const version=token;
  monthMessage('Firebaseから'+caption(m)+'の当番表を読み込み中…');
@@ -122,30 +148,10 @@ function draw(){
  $('person').disabled=writing;
  $('mark-x').disabled=writing;
  $('mark-o').disabled=writing;
- reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○の入力は安全確認後に公開します。':writing?(pendingTap?.queuedToggle?'⏳ 取消／再登録を予約しました。保存が完了するまでお待ちください。':'⏳ Firebaseに保存中。同じ日をもう一度タップすると逆操作を予約できます。'):lastSaveMessage|| (!lastInputWindowOpen?'🔒 この月は入力締切済みか、まだ受付前です。閲覧のみできます。':!selectedPerson?'まずお子さんの名前を選んでください。':canWrite?'✅ 入力受付中。枠線が付いた日をタップしてください。':'接続確認中です。');
+ reply.textContent=!PARENT_WRITES_ENABLED?'🔒 現在は閲覧のみ。×・○入力は停止中です。':writing?'⏳ 確認済みの変更を一括保存中です。':lastSaveMessage||(!lastInputWindowOpen?'🔒 入力締切済みか受付前です。':!selectedPerson?'まずお子さんの名前を選んでください。':canWrite?'✅ 日付を選んだ後、「確認画面へ」で登録してください。':'接続確認中です。');
  reply.className=canWrite?'ok':'notice';
  $('mark-x').className=selectedMode==='x'?'selected-x':'';
  $('mark-o').className=selectedMode==='o'?'selected-o':'';
- // Keep the tapped button node alive while Firestore commits.
- // Replacing the entire calendar during an iPhone touch can drop its click event.
- if(writing&&pendingTap){
-  for(const button of $('calendar').querySelectorAll('button[data-day]')){
-   const same=button.dataset.day===pendingTap.date&&selectedMonth===pendingTap.month&&
-    selectedPerson===pendingTap.person&&selectedMode===pendingTap.kind;
-   button.disabled=!same;
-   if(same){
-    let hint=button.querySelector('.pending-hint');
-    if(!hint){
-     hint=document.createElement('span');
-     hint.className='pending-hint';
-     button.appendChild(hint);
-    }
-    hint.textContent=pendingTap.queuedToggle?'逆操作を予約済み':'保存中・再タップ可';
-   }
-  }
-  monthMessage('⏳ 登録・取消を保存中です。操作した日付は再タップできます。');
-  return;
- }
  const dayMap=Object.fromEntries(days.map(x=>[x.date,x])),people=mapNames();
  const markMap={};
  for(const a of overlayParentAnswers(answers,answerOverlay))if(a.date&&a.memberId&&['x','o'].includes(a.kind))(markMap[a.date]??=[]).push(a);
@@ -162,8 +168,8 @@ function draw(){
   const existing=marks.find(a=>a.memberId===selectedPerson);
   const tap=answerTapDecision({day:d,existing,kind:selectedMode,memberId:selectedPerson,
     uid:auth.currentUser?.uid,canWrite});
-  const pendingHere=writing&&sameAnswerTap(pendingTap,{month:selectedMonth,date,person:selectedPerson,kind:selectedMode});
-  const eligible=tap.enabled||pendingHere;
+  const staged=stagedChoices.get(date);
+  const eligible=!writing&&(tap.enabled||Boolean(staged&&staged.kind===selectedMode&&canWrite));
   const isOwnCancel=tap.action==='delete';
   const selectedMark=isOwnCancel?'（取消）':'';
   const volunteerMarks=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId);
@@ -172,105 +178,87 @@ function draw(){
     (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'')+
     (swap.status==='urgent'?'<span class="bad">⚠ 交代候補なし（要調整）</span>':'')+
     (swap.confirmedId?'<span class="confirmed">✅ 交代確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'</span>':'');
-  const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+
+  const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+(staged?' is-staged':'')+
     (eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
    ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(tap.action==='different-device'?'別端末の回答：管理者に相談':isOwnCancel?(selectedMode==='x'?'×を取り消す':'○を取り消す'):(selectedMode==='x'?'×を登録する':'○を登録する'))+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
    (label?'<span class="owner">'+esc(label)+'</span>':'')+
    (d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+
-   extras+(pendingHere?'<span class="pending-hint">'+(pendingTap.queuedToggle?'逆操作を予約済み':'保存中・再タップ可')+'</span>':
-    isOwnCancel?'<span class="cancel-hint">'+(selectedMode==='x'?'×取消':'○取消')+'（再タップ）</span>':'')+'</button>';
+   extras+(staged?'<span class="pending-hint">未確定：'+esc(choiceLabel(staged))+'</span>':isOwnCancel?'<span class="cancel-hint">取消を選択できます</span>':'')+'</button>';
 
  }
  $('calendar').innerHTML=calendar;
  renderAnswerOverview();
- monthMessage(!PARENT_WRITES_ENABLED?'🗓️ 当番表を閲覧中です。保護者の書き込みは安全確認待ちのため停止中です。':canWrite?'✅ ×・○の入力受付中。登録内容は即時に共有されます。':'🗓️ 閲覧中です。未受付・締切済み、または名前未選択のため入力できません。','info');
+ drawReviewStatus();
+ monthMessage(!PARENT_WRITES_ENABLED?'🗓️ 閲覧のみです。入力は停止中です。':canWrite?'✅ 入力受付中。選択だけでは保存されません。':'🗓️ 未受付・締切済み・名前未選択のため入力できません。','info');
 }
-$('person').addEventListener('change',e=>{if(writing)return;selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw()});
-$('mark-x').addEventListener('click',()=>{if(writing)return;selectedMode='x';lastSaveMessage='';draw()});
-$('mark-o').addEventListener('click',()=>{if(writing)return;selectedMode='o';lastSaveMessage='';draw()});
-$('months').addEventListener('click',e=>{if(writing)return;const target=e.target.closest('button[data-month]');if(target)setMonth(target.dataset.month)});
-$('calendar').addEventListener('click',async event=>{
- const target=event.target.closest('button[data-day]');
- if(!target||target.disabled)return;
- const date=target.dataset.day,month=selectedMonth,person=selectedPerson,kind=selectedMode;
- if(writing){
-  if(sameAnswerTap(pendingTap,{month,date,person,kind})){
-   pendingTap.queuedToggle=!pendingTap.queuedToggle;
-   draw();
-  }
-  return;
- }
- const day=days.find(d=>d.date===date);
- const old=overlayParentAnswers(answers,answerOverlay).find(a=>a.date===date&&a.memberId===person);
- const uid=auth.currentUser?.uid;
- const decision=answerTapDecision({day,existing:old,kind,memberId:person,uid,
-   canWrite:PARENT_WRITES_ENABLED&&ANSWER_PUBLICATION_MODE==='instant'&&
-    auth.currentUser?.isAnonymous===true&&canEditMonth(monthData)&&
-    published.includes(month)&&!writing});
- if(!decision.enabled)return;
- const action=decision.action;
- if(action==='different-device'){alert('この回答は別の端末から登録されています。変更が必要な場合は管理者に連絡してください。');return;}
- if(action==='blocked'||!uid){alert('Firebaseの認証状態を確認してください。');return;}
- const name=names.find(x=>x.id===person)?.name||person,mark=kind==='x'?'×':'○';
- const verb=action==='delete'?'取り消し':'登録';
- if(!confirm('入力者のお名前：'+name+'さん\n日付：'+date+'\n回答：'+mark+'\n\nご自身のお子さんの名前になっているか確認してください。'+mark+'を'+verb+'すると、全員のカレンダーにすぐ反映されます。続けますか？'))return;
- const ref=doc(db,'teams',teamId,'months',month,'answers',date+'_'+person);
- const refMonth=doc(db,'teams',teamId,'months',month);
- const refDay=doc(db,'teams',teamId,'months',month,'days',date);
- const refRoster=doc(db,'teams',teamId,'public','roster');
- writing=true;
- pendingTap={month,date,person,kind,uid,queuedToggle:false};
- draw();
- const transaction=async()=>{
-  return runTransaction(db,async tx=>{
-   const [mSnap,dSnap,rSnap,aSnap]=await Promise.all([
-    tx.get(refMonth),tx.get(refDay),tx.get(refRoster),tx.get(ref)
-   ]);
-   if(!mSnap.exists()||!canEditMonth(mSnap.data()))throw Error('この月は入力締切です。');
-   if(!dSnap.exists()||dSnap.data().type!=='practice'||!dSnap.data().ownerId||
-      !canEditSwapAnswer(dSnap.data()))throw Error('この日は交代確定済み、または入力できません。');
-   if(!rSnap.exists()||!(rSnap.data().members||[]).some(x=>x.id===person&&x.status==='active'))
-    throw Error('メンバー情報を確認してください。');
-   const existing=aSnap.exists()?aSnap.data():null;
-   const actualDecision=answerTapDecision({day:dSnap.data(),existing,kind,
-      memberId:person,uid,canWrite:true});
-   if(!actualDecision.enabled)throw Error('この日の回答は変更できません。');
-   const actualAction=actualDecision.action;
-   if(actualAction==='different-device')throw Error('別端末が登録した回答です。管理者へ連絡してください。');
-   if(actualAction==='blocked')throw Error('認証状態を確認してください。');
-   if(actualAction==='delete')tx.delete(ref);
-   else tx.set(ref,{date,memberId:person,kind,updatedAt:serverTimestamp(),updatedBy:uid});
-   return actualAction;
-  });
- };
- try{
-  let committedAction;
-  // Repeat taps during a save are queued, not lost. Two extra taps cancel
-  // each other, and each cloud commit is serialized through a transaction.
-  do {
-   pendingTap.queuedToggle=false;
-   committedAction=await transaction();
-   if(month===selectedMonth){
-    answerOverlay.set(answerId(date,person),committedAction==='delete'?null:
-      {date,memberId:person,kind,updatedBy:uid});
-    reconcileAnswerOverlay();
-   }
-   lastSaveMessage=committedAction==='delete'?
-    '✅ '+mark+'を取り消しました。カレンダーにも反映されます。':
-    '✅ '+mark+'を登録しました。全員のカレンダーに反映されます。';
-   draw();
-  } while(pendingTap.queuedToggle);
- }catch(err){
-  lastSaveMessage='';
-  const msg=err?.code==='permission-denied'?
-    'セキュリティルールにより書き込みが拒否されました。管理者へ連絡してください。':
-    (err?.message||err?.code||String(err));
-  alert('保存できませんでした：'+msg);
- }finally{
-  pendingTap=null;writing=false;draw();
- }
+$('person').addEventListener('change',e=>{
+ if(writing){e.target.value=selectedPerson;return;}
+ if(e.target.value!==selectedPerson&&stagedChoices.size&&!confirm('未確定の選択を破棄して名前を変更しますか？')){e.target.value=selectedPerson;return;}
+ resetDraft();selectedPerson=e.target.value;lastSaveMessage='';localStorage.setItem(key,selectedPerson);draw();
 });
+$('mark-x').onclick=()=>{if(writing)return;selectedMode='x';draw();};
+$('mark-o').onclick=()=>{if(writing)return;selectedMode='o';draw();};
+$('months').onclick=e=>{if(writing)return;const t=e.target.closest('button[data-month]');if(t)setMonth(t.dataset.month);};
+$('calendar').onclick=e=>{
+ const t=e.target.closest('button[data-day]');if(!t||t.disabled||writing||!canEditMonth(monthData))return;
+ const date=t.dataset.day,day=days.find(d=>d.date===date),person=selectedPerson,kind=selectedMode;
+ const existing=overlayParentAnswers(answers,answerOverlay).find(a=>a.date===date&&a.memberId===person);
+ const result=draftChoiceForTap({date,day,existing,memberId:person,uid:auth.currentUser?.uid,kind,current:stagedChoices.get(date)});
+ if(result.action==='different-device'){alert('別の端末から登録された回答は変更できません。管理者に連絡してください。');return;}
+ if(result.action==='change-mode'){alert('同じ日に別の種類が選択されています。元の記号に戻して選択を取り消してください。');return;}
+ if(result.action==='blocked')return;
+ if(result.action==='stage'&&!stagedChoices.has(date)&&stagedChoices.size>=MAX_CONFIRM_CHANGES){alert('一度に選択できるのは'+MAX_CONFIRM_CHANGES+'日までです。');return;}
+ if(result.action==='unstage')stagedChoices.delete(date);else stagedChoices.set(date,result.choice);
+ reviewOpen=false;lastSaveMessage='';draw();
+};
+$('review-open').onclick=()=>{
+ if(writing||!stagedChoices.size||!canEditMonth(monthData))return;
+ reviewOpen=true;drawReviewStatus();$('review-panel').scrollIntoView({block:'nearest',behavior:'smooth'});
+};
+$('review-back').onclick=()=>{if(writing)return;reviewOpen=false;drawReviewStatus();};
+$('review-submit').onclick=async()=>{
+ if(writing||!reviewOpen||!stagedChoices.size||!selectedPerson||!canEditMonth(monthData))return;
+ let changes;
+ try{changes=normalizeSubmissionChanges([...stagedChoices.values()]);}catch(e){alert(e.message);return;}
+ const month=selectedMonth,person=selectedPerson,uid=auth.currentUser?.uid;
+ if(!uid||auth.currentUser?.isAnonymous!==true){alert('Firebaseの匿名認証を確認してください。');return;}
+ writing=true;draw();
+ const mRef=doc(db,'teams',teamId,'months',month),rRef=doc(db,'teams',teamId,'public','roster');
+ const items=changes.map(c=>({...c,dayRef:doc(db,'teams',teamId,'months',month,'days',c.date),
+  answerRef:doc(db,'teams',teamId,'months',month,'answers',c.date+'_'+person)}));
+ try{
+  await runTransaction(db,async tx=>{
+   // Firestore transaction: either all selected days are saved or none.
+   const results=await Promise.all([tx.get(mRef),tx.get(rRef),...items.flatMap(c=>[tx.get(c.dayRef),tx.get(c.answerRef)])]);
+   const meta=results[0],roster=results[1];
+   if(!meta.exists()||!canEditMonth(meta.data())||!roster.exists()||
+      !(roster.data().publishedMonths||[]).includes(month)||
+      !(roster.data().members||[]).some(n=>n.id===person&&n.status==='active'))
+    throw Error('入力期間または公開状態を確認してください。');
+   for(let i=0;i<items.length;i++){
+    const c=items[i],day=results[2+i*2],answer=results[3+i*2],existing=answer.exists()?answer.data():null;
+    if(!day.exists()||day.data().type!=='practice'||!day.data().ownerId||day.data().confirmedSubstituteId)
+     throw Error(c.date+'は入力できません。');
+    const tap=answerTapDecision({day:day.data(),existing,kind:c.kind,memberId:person,uid,canWrite:true});
+    if(!tap.enabled||tap.action!==c.operation||
+       (c.operation==='delete'&&existing?.kind!==c.expectedKind)||
+       (c.operation==='set'&&answer.exists()))
+     throw Error(c.date+'は回答が変更されています。再読み込みしてください。');
+   }
+   for(const c of items){
+    if(c.operation==='delete')tx.delete(c.answerRef);
+    else tx.set(c.answerRef,{date:c.date,memberId:person,kind:c.kind,updatedAt:serverTimestamp(),updatedBy:uid});
+   }
+  });
+  for(const c of items)answerOverlay.set(answerId(c.date,person),c.operation==='delete'?null:
+   {date:c.date,memberId:person,kind:c.kind,updatedBy:uid});
+  resetDraft();
+  lastSaveMessage='✅ '+changes.length+'件の変更を確定・保存しました。全員のカレンダーに反映されます。📧 メール通知は準備中で、まだ送信されません。';
+ }catch(e){
+  alert('保存できませんでした：'+(e?.code==='permission-denied'?'セキュリティルールにより拒否されました。':e?.message||e?.code||String(e)));
+ }finally{writing=false;draw();}
+};
 drawMonths();
 async function start(){
  connection('アカウント不要で当番表を読み込み中…');
