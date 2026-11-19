@@ -62,6 +62,10 @@ jobs:
           grep -q 'aritama-qa-annual-demo-realnames-v2' dist-staging/annual-admin-demo.html
           grep -q '大竹わかな' dist-staging/annual-admin-demo.html
           grep -q '保護者用QA体験版' dist-staging/annual-parent-demo.html
+          if grep -q '自分：' dist-staging/annual-parent-demo.html; then
+            echo 'ERROR: duplicate self answer label in parent QA demo' >&2
+            exit 1
+          fi
           grep -q 'Second pass: reduce annual load spread' dist-staging/annual-admin-demo.html
           grep -q 'Preserve parent responses written' dist-staging/annual-admin-demo.html
           grep -q '村松さわ' dist-staging/annual-admin-demo.html
@@ -142,6 +146,10 @@ jobs:
             'https://aritama-mini-basket-qa.web.app/annual-parent-demo.html?verify=parent-qa-20261119' \
             -o "$RUNNER_TEMP/qa-parent-after.html"
           grep -q '保護者用QA体験版' "$RUNNER_TEMP/qa-parent-after.html"
+          if grep -q '自分：' "$RUNNER_TEMP/qa-parent-after.html"; then
+            echo 'QA parent still contains duplicate self answer label' >&2
+            exit 1
+          fi
           grep -q 'aritama-qa-annual-demo-realnames-v2' "$RUNNER_TEMP/qa-parent-after.html"
           grep -q '当番ができない日' "$RUNNER_TEMP/qa-parent-after.html"
           grep -q '代わりにできる日' "$RUNNER_TEMP/qa-parent-after.html"
