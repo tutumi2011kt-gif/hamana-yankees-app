@@ -55,7 +55,7 @@ let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',select
 const answerOverlay=new Map();
 const stagedChoices=new Map();
 let reviewOpen=false,requestIdForRetry=null;
-function resetDraft(){stagedChoices.clear();reviewOpen=false;requestIdForRetry=null;}
+function resetDraft(){stagedChoices.clear();reviewOpen=false;requestIdForRetry=null;const panel=$('review-panel'),button=$('review-open');if(panel)panel.hidden=true;if(button)button.disabled=true;const count=$('draft-count');if(count)count.textContent='まだ日付を選択していません。';}
 function renderReview(){
  const list=normalizeSubmissionChanges([...stagedChoices.values()]);
  const name=names.find(p=>p.id===selectedPerson)?.name||selectedPerson;
