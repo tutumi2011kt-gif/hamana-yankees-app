@@ -69,6 +69,7 @@ parentDateClick();
 assert.ok(!data().months['2027-01'].answers[date]?.[owner],'second tap removes owner x');
 parentDateClick();
 assert.equal(data().months['2027-01'].answers[date][owner],'x');
+assert.ok(p.el('calendar').innerHTML.includes('mine-x'),'own-answer border must remain');
 let other=owner==='q02'?'q03':'q02';
 p.el('person').value=other;
 p.el('person').onchange();
@@ -81,7 +82,6 @@ assert.ok(p.el('calendar').innerHTML.includes('mine-o'),'own o border must remai
 
 assert.ok(p.el('calendar').innerHTML.includes(' ×'),'original owner retains x');
 assert.ok(!p.el('calendar').innerHTML.includes('自分：'),'parent day label must not duplicate self x/o');
-assert.ok(p.el('calendar').innerHTML.includes('mine-x'),'own-answer border must remain');
 
 p.el('mode-x').onclick();
 parentDateClick();
