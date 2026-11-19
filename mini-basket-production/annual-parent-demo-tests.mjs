@@ -76,7 +76,13 @@ p.el('mode-o').onclick();
 parentDateClick();
 assert.equal(data().months['2027-01'].answers[date][other],'o','voluntary o is allowed regardless of normal weekdays');
 assert.ok(p.el('calendar').innerHTML.includes(' ○'),'volunteer name and mark displayed');
+assert.ok(!p.el('calendar').innerHTML.includes('自分：'),'own o must not add a duplicate line');
+assert.ok(p.el('calendar').innerHTML.includes('mine-o'),'own o border must remain');
+
 assert.ok(p.el('calendar').innerHTML.includes(' ×'),'original owner retains x');
+assert.ok(!p.el('calendar').innerHTML.includes('自分：'),'parent day label must not duplicate self x/o');
+assert.ok(p.el('calendar').innerHTML.includes('mine-x'),'own-answer border must remain');
+
 p.el('mode-x').onclick();
 parentDateClick();
 assert.equal(data().months['2027-01'].answers[date][other],'o','non-owner may not register x');
