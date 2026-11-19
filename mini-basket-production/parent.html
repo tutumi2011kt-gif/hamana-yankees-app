@@ -16,6 +16,7 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
 .day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}
+.day .swap-request{font-size:10px;display:block;color:#bb2f4d;font-weight:900;line-height:1.35;margin-top:3px}.day .confirmed{font-size:9px;display:block;color:#116a47;font-weight:800}.rowday .swap-request{color:#bb2f4d;font-weight:900}.rowday .confirmed{color:#116a47;font-weight:800}
 .rowday{display:grid;grid-template-columns:78px minmax(0,1fr);gap:9px;align-items:center;padding:11px 9px;border-bottom:1px solid #e2eaf1}.rowday:last-child{border-bottom:0}.rowday.game{background:#fffbf5}.rowday b{font-size:14px}.rowday small{font-size:11px;color:#708195;display:block}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
 footer{font-size:11px;color:#76889b}.not-available{display:none}
@@ -103,27 +104,33 @@ function draw(){
   const date=day.date,n=Number(date.slice(-2)),d=dayMap[date],marks=markMap[date]||[];
   const isPractice=d?.type==='practice',isGame=d?.type==='game';
   const owner=isPractice?(people[d.ownerId]||'担当未登録'):'';
-  const label=isGame?'🏀 試合':owner;
+  const ownerHasX=isPractice&&marks.some(a=>a.kind==='x'&&a.memberId===d.ownerId);
+  const confirmedId=isPractice&&typeof d.confirmedSubstituteId==='string'&&d.confirmedSubstituteId&&d.confirmedSubstituteId!==d.ownerId?d.confirmedSubstituteId:null;
+  const ownerLabel=ownerHasX?owner+' ×':owner;
+  const label=isGame?'🏀 試合':ownerLabel;
   const existing=marks.find(a=>a.memberId===selectedPerson);
   const eligible=canWrite&&selectedPerson&&allowedAnswerKind({kind:selectedMode,ownerId:d?.ownerId,memberId:selectedPerson,dayType:d?.type})
     &&(!existing||existing.updatedBy===auth.currentUser?.uid);
   const selectedMark=existing?.kind===selectedMode?' ✓':'';
   const volunteerMarks=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId);
-  const extras=marks.filter(a=>a.kind==='x'&&a.memberId===d?.ownerId).map(a=>'<span class="bad">'+esc(people[a.memberId]||'')+' ×</span>').join('')+
+  const extras=(ownerHasX&&!confirmedId?'<span class="swap-request">交代求む</span>':'')+
     volunteerMarks.slice(0,2).map(a=>'<span class="good">'+esc(people[a.memberId]||'')+' ○</span>').join('')+
-    (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'');
+    (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'')+
+    (confirmedId?'<span class="confirmed">✅ 交代確定：'+esc(people[confirmedId]||confirmedId)+'</span>':'');
   const cls='day '+(isPractice?'practice':isGame?'game':'')+(eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
    ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(selectedMode==='x'?'×を登録または取消':'○を登録または取消')+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
    (label?'<span class="owner">'+esc(label)+'</span>':'')+(d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+extras+'</button>';
   if(!isPractice&&!isGame)continue;
-  const dlabel=isGame?'試合・当番なし':owner;
+  const dlabel=isGame?'試合・当番なし':ownerLabel;
   const extra=d?.traineeIds?.length?'＋'+d.traineeIds.map(id=>people[id]||id).join('・')+'（教習）':'';
-  const volunteers=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId).map(a=>people[a.memberId]||a.memberId);
-  const needSwap=marks.some(a=>a.kind==='x'&&a.memberId===d?.ownerId);
+  const volunteers=volunteerMarks.map(a=>people[a.memberId]||a.memberId);
   detail+='<div class="rowday '+(isGame?'game':'')+'"><b>'+n+'日<small>('+DAY_NAMES[day.weekday]+')</small></b><div><b>'+esc(dlabel)+'</b>'+
     (extra?'<small>'+esc(extra)+'</small>':'')+(isGame&&d.eventLocation?'<small>'+esc(d.eventLocation)+'</small>':'')+
-    (needSwap?'<small style="color:#b54456">元担当者 '+esc(owner)+' × ／ '+(volunteers.length?'交代候補（未確定）：'+esc(volunteers.join('・'))+' ○':'交代募集中（○候補なし）')+'</small>':volunteers.length?'<small style="color:#19805d">交代可能：'+esc(volunteers.join('・'))+' ○</small>':'')+'</div></div>';
+    (ownerHasX&&!confirmedId?'<small class="swap-request">交代求む</small>':'')+
+    (confirmedId?'<small class="confirmed">✅ 交代確定：'+esc(people[confirmedId]||confirmedId)+'</small>':'')+
+    (!confirmedId&&volunteers.length?'<small style="color:#19805d">'+(ownerHasX?'交代候補（未確定）：':'交代可能：')+esc(volunteers.join('・'))+' ○</small>':'')+
+    (ownerHasX&&!confirmedId&&!volunteers.length?'<small style="color:#b54456">交代候補なし（要調整）</small>':'')+'</div></div>';
  }
  $('calendar').innerHTML=calendar;$('detail').innerHTML=detail||'<p>当番日がありません。</p>';
  monthMessage(monthData.inputState==='closed'?'🔒 この月は確定済み・入力締切です。閲覧のみできます。':'🗓️ 当番表を表示中です。現在の画面は閲覧のみです。','info');
