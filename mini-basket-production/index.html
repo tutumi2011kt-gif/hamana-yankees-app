@@ -1,12 +1,15 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 ミニバス本番準備版</title>
-<style>
-*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:#f5f7fb;color:#29394f;font:14px/1.5 -apple-system,BlinkMacSystemFont,'Yu Gothic',sans-serif}button,select{font:inherit}.wrap{max-width:760px;padding:10px;margin:auto}.head,.panel{background:#fff;border:1px solid #dde5ed;border-radius:14px;padding:14px 12px;margin:10px 0}.head{background:linear-gradient(110deg,#eaf3fe,#fff3e1)}h1{font-size:21px;margin:0}h2{font-size:16px;margin:0 0 8px}.note{background:#fff0d7;border-radius:8px;padding:10px;font-size:12px;margin-top:8px}.small{font-size:12px;color:#647789}select{width:100%;padding:11px;border:1px solid #d6e1eb;border-radius:9px}.monthrow,.mode{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:9px 0}.mode{grid-template-columns:1fr 1fr}.month,.mark{min-height:44px;padding:9px 3px;border:1px solid #dae2e9;border-radius:10px;background:#fff;font-weight:800;color:#28394f}.month.chosen{background:#e7f2ff;border:2px solid #396c9e}.month small{display:block;color:#6e7f8b;font-size:10px}.mark.on-x{background:#fff0f3;border:2px solid #ca4961}.mark.on-o{background:#eaf8f0;border:2px solid #248660}.week,.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}.week>div{text-align:center;font-weight:800}.day{width:100%;min-width:0;min-height:79px;padding:4px 2px;border:1px solid #e2e9ef;border-radius:5px;text-align:left;background:#fff;color:#27374b;display:flex;flex-direction:column;gap:2px;overflow:hidden}.day:disabled{opacity:1}.day.empty{border:0;background:transparent}.day.active{border:2px solid #d14b61;padding:3px 1px}.day.active.o{border-color:#238961}.day .num{font-weight:900;font-size:12px}.day .owner{font-size:10px;font-weight:800;overflow-wrap:anywhere;line-height:1.2}.day .extra{font-size:9px;line-height:1.15;overflow-wrap:anywhere}.bad{color:#b83d55}.good{color:#167f59}.error{background:#fff0f2;border-radius:8px;padding:10px;color:#a0384d;font-size:12px}.status{background:#edf4fa;padding:9px;border-radius:8px;margin:8px 0;font-size:12px}.action{padding:12px;background:#28496c;border:0;border-radius:10px;color:#fff;font-weight:800;min-height:44px}.action:disabled{opacity:.45}.bottom{font-size:11px;color:#708195;padding-bottom:35px}
-</style></head><body><div class="wrap">
-<header class="head"><h1>🏀 ミニバス当番管理</h1><div class="small">本番準備版｜毎月の締切と希望チェック</div><div class="note">⚠️ 本番準備中の画面です。Firebase接続が完了するまでは端末内試作です。正式な当番表ではありません。</div><div id="cloud-status" class="status" aria-live="polite">接続状態を確認中</div></header>
-<section class="panel"><h2>保護者の希望入力</h2><label class="small">① お子さんの名前</label><select id="person"></select><p class="small">② 月をタップ</p><div id="months" class="monthrow"></div><div id="status" class="status"></div><div class="mode"><button class="mark on-x" id="mode-x">❌ できない日</button><button class="mark" id="mode-o">⭕ 代われる日</button></div></section>
-<section class="panel"><h2 id="month-title">当番カレンダー</h2><div id="calendar"></div><p class="small">※未確認の曜日条件は推測せず、割当できない日を管理者へ知らせます。</p></section>
-<section class="panel"><h2>🛡️ 自動ファクトチェック</h2><div id="audit" class="error"></div><details><summary>チェック内容を詳しく見る</summary><div id="audit-list" class="small"></div></details></section>
-<section class="panel"><h2>管理者確認（試作）</h2><p class="small">「仮公開」はこの端末での動作再現です。本番では管理者本人のログインが必要です。</p><button class="action" id="approve">管理者が確認して仮公開（試作）</button></section>
-<section class="panel"><h2>月初の動きを試す</h2><select id="simulation"><option value="">現在の日本時間</option><option value="2026-12-01">2026年12月1日</option><option value="2027-01-01">2027年1月1日</option></select><p id="simulation-note" class="small">12月1日に1月ロック、2月入力可、3月は新規作成・承認待ちに切り替わります。</p></section>
-<div class="bottom">本番のクラウド同期・管理者認証・自動メール・画像生成はまだ未接続です。確定済みの実際の当番表ではありません。</div></div>
-<script type="module" src="./app.mjs"></script></body></html>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="refresh" content="0;url=./parent.html">
+<title>🏀 有玉女子ミニバス 当番表</title>
+<script>location.replace('./parent.html'+location.search+location.hash);</script>
+</head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Yu Gothic',sans-serif;padding:24px">
+<p>🏀 保護者用の当番カレンダーを開いています。</p>
+<p><a href="./parent.html">カレンダーを開く</a></p>
+</body>
+</html>
