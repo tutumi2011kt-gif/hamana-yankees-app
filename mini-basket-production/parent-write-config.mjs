@@ -1,8 +1,8 @@
-// A方式：保護者の回答は送信後に即時共有。ユーザーの確定仕様。
-// 公開前の安全ゲート：本番のFirestoreルールが閲覧専用のためfalseを維持する。
-// 本番での有効化は匿名書込みルールの本番承認・デプロイ・実機検証後のみ。
-// このフラグをtrueにするだけではFirebaseの書込み権限は得られない。
+// 本番：保護者の×・○を保存後即時共有する（2026-11-19 有効化）。
+// Firestore Rules が公開月・入力期間・当番者・同一匿名UIDを必ずサーバー側で検証する。
+// 子どもの名前選択だけでは本人確認にならない。管理者が回答の監視・訂正を行うこと。
+// 緊急停止時は、GitHubのこのフラグをfalseにし、Firebase Rulesを保存済みの閲覧専用版へ戻す。
 export const ANSWER_PUBLICATION_MODE='instant';
-export const PARENT_WRITES_ENABLED=false;
+export const PARENT_WRITES_ENABLED=true;
 export const ACCOUNT_REQUIRED=false;
 export const REGISTRATION_REQUIRED=false;
