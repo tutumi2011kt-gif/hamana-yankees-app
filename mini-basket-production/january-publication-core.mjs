@@ -1,0 +1,95 @@
+// January 2027 is a pre-existing manually prepared draft, NOT a monthly auto-generated draft.
+// This module is read-only. It cannot deploy, seed, or publish a month.
+import {calendarDates,auditDraft} from './month-draft-core.mjs';
+import {isDayAllowed} from './weekday-conditions.mjs';
+import {jstInputCutoffMillis} from './month-rollover-core.mjs';
+
+export const JANUARY_PUBLICATION_MONTH='2027-01';
+
+export function timestampMillis(v){
+ if(typeof v?.toMillis==='function')return v.toMillis();
+ return typeof v==='number'&&Number.isFinite(v)?v:NaN;
+}
+
+export function januaryDaySignature(day){
+ return JSON.stringify([
+  day?.date??null,day?.weekday??null,day?.type??null,day?.ownerId??null,
+  day?.eventLocation??'',Array.isArray(day?.traineeIds)?day.traineeIds:null,
+  day?.activityVerified??null,day?.confirmedSubstituteId??null,
+  timestampMillis(day?.updatedAt)||null
+ ]);
+}
+
+// Compare all manager-reviewed assignment eligibility fields, independent of document order.
+// Reject a publication if names, statuses, entry periods or weekday constraints changed.
+export function januaryMembersReviewSignature(members){
+ if(!Array.isArray(members))return '';
+ return JSON.stringify(members.map(m=>[
+  m?.id??null,m?.name??null,m?.status??null,m?.start??null,m?.end??null,
+  m?.days??null,m?.weekdayRule??null,m?.preferredWeekdays??null,
+  m?.approvedWeekendDates??null
+ ]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));
+}
+
+export function reviewJanuaryForPublication({month=JANUARY_PUBLICATION_MONTH,meta,days,members,roster,openMillis,cutoffMillis,nowMillis=Date.now()}){
+ const errors=[],warnings=[];
+ const add=(condition,message)=>{if(!condition)errors.push(message);};
+ add(month===JANUARY_PUBLICATION_MONTH,'2027年1月以外は、この画面では公開できません');
+ add(meta?.publication==='draft','管理者の下書き状態ではありません');
+ add(meta?.inputState==='closed','公開前の下書きは入力受付を閉じた状態である必要があります');
+ add(Number.isInteger(meta?.version)&&meta.version>=0,'下書きのバージョンが確認できません');
+ add(Number.isFinite(openMillis)&&Number.isFinite(cutoffMillis)&&openMillis<cutoffMillis,'受付開始・締切の日本時間が不正です');
+ add(cutoffMillis===jstInputCutoffMillis(JANUARY_PUBLICATION_MONTH),'1月の締切は2026年12月1日00:00（日本時間）に固定されています');
+ add(Number.isFinite(nowMillis)&&nowMillis<cutoffMillis,'入力締切がすでに過ぎています。公開前に管理者が締切を確認してください');
+ add(Array.isArray(members)&&members.length===12&&new Set(members.map(m=>m.id)).size===12,
+  'メンバーが12人ではありません');
+ add(Array.isArray(roster?.members)&&roster.members.length===12
+  &&new Set(roster.members.map(m=>m.id)).size===12,
+  '公開用名簿が12人ではありません');
+ add(Array.isArray(roster?.publishedMonths)
+  &&!roster.publishedMonths.includes(JANUARY_PUBLICATION_MONTH),
+  '1月がすでに公開されているか、公開月一覧が不正です');
+ if(Array.isArray(members)&&Array.isArray(roster?.members)&&
+    members.length===12&&roster.members.length===12){
+  const publicById=new Map(roster.members.map(x=>[x.id,x]));
+  add(members.every(m=>publicById.has(m.id)),'公開用名簿と管理者名簿のIDが一致しません');
+  add(members.every(m=>{
+   const visible=publicById.get(m.id);
+   return visible&&typeof visible.name==='string'&&visible.name===m.name
+    &&visible.status===m.status;
+  }),'公開用名簿の名前・在籍状態が管理者名簿と異なります。公開用名簿の更新内容を確認してください');
+ }
+ const expected=calendarDates(JANUARY_PUBLICATION_MONTH);
+ const rows=Array.isArray(days)?days:[];
+ add(rows.length===expected.length,'1月の活動日数が一致しません');
+ const audit=auditDraft(JANUARY_PUBLICATION_MONTH,rows,Array.isArray(members)?members:[]);
+ errors.push(...audit.problems);
+ // The draft editor can save an incomplete month, but the publication must be complete.
+ add(!audit.warnings.some(message=>message.includes('当番者が未設定')),
+  '当番担当者が未設定の日があります');
+ warnings.push(...audit.warnings.filter(message=>!message.includes('当番者が未設定')));
+ for(const day of rows){
+  if(day?.type==='practice'&&day.ownerId){
+   const member=members?.find(m=>m.id===day.ownerId);
+   add(!!member&&isDayAllowed(member,day.date,day.weekday),day.date+' の担当者の在籍・曜日条件を再確認してください');
+  }
+ }
+ return {
+  ok:errors.length===0,errors:[...new Set(errors)],warnings,
+  days:expected.length,practice:rows.filter(x=>x?.type==='practice').length,
+  game:rows.filter(x=>x?.type==='game').length,rest:rows.filter(x=>x?.type==='rest').length
+ };
+}
+
+export function januaryPublicationPatch({meta,openMillis,cutoffMillis,nowMillis=Date.now()}){
+ if(meta?.publication!=='draft')throw Error('1月は下書きである必要があります');
+ if(!Number.isFinite(openMillis)||!Number.isFinite(cutoffMillis)||openMillis>=cutoffMillis
+  ||!Number.isFinite(nowMillis)||nowMillis>=cutoffMillis)
+  throw Error('入力期間が不正、または締切済みです');
+ if(cutoffMillis!==jstInputCutoffMillis(JANUARY_PUBLICATION_MONTH))
+  throw Error('1月の締切は2026年12月1日00:00（日本時間）固定です');
+ return {
+  publication:'published',scheduleStatus:'provisional-published',scheduleVerified:true,
+  inputState:nowMillis>=openMillis?'open':'closed'
+ };
+}
