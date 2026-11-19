@@ -55,6 +55,7 @@ jobs:
           node parent-clock-tests.mjs
           node annual-admin-demo-tests.mjs
           node annual-parent-demo-tests.mjs
+          # Confirm duplicate self x/o labels are gone while own-mark outlines remain.
           test -s dist-staging/index.html
           test -s dist-staging/annual-admin-demo.html
           test -s dist-staging/annual-parent-demo.html
