@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#e8f5fc">
-<title>🏀 管理者｜メンバー編集</title>
+<title>🏀 管理者｜メンバー追加・編集</title>
 <style>
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:#f3f7fb;color:#26394f;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
 main{max-width:730px;margin:auto;padding:12px 11px 55px}header{background:linear-gradient(120deg,#e6f3ff,#fff7e8);border:1px solid #e4eaf0;border-radius:17px;padding:17px 15px}
@@ -20,7 +20,7 @@ footer{font-size:11px;color:#718095}
 </style></head><body><main>
 <header><h1>🏀 メンバー管理</h1><p>管理者専用｜Firebaseと連動</p><div class="warn"><b>この画面の「保存」は本番Firebaseのメンバー情報を変更します。</b> 当番表の確定済み担当日を自動で書き換えることはありません。変更後は当番表の再チェックが必要です。</div></header>
 <section class="panel"><h2>① 管理者ログイン</h2><p id="login-status" class="muted">Googleログインの状態を確認中…</p><button id="login" class="primary">Googleでログイン</button><p class="muted">初期登録時に使った管理者Googleアカウントを選択してください。</p></section>
-<section class="panel"><h2>② メンバーを選択</h2><p id="load-status" class="muted">管理者認証後に12人の情報を読み込みます。</p><div id="members-list"></div></section>
+<section class="panel"><h2>② メンバーを選択・追加</h2><p id="load-status" class="muted">管理者認証後にメンバーを読み込みます。</p><button id="add-member" type="button" class="good" disabled style="width:100%;margin:8px 0">＋ 新入部員を追加</button><div id="members-list"></div></section>
 <section class="panel hidden" id="editor"><h2 id="form-title">③ 登録内容を編集</h2>
 <form id="member-form">
 <div class="grid2">
@@ -57,6 +57,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const goodDate=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const x=new Date(s+'T00:00:00');return !Number.isNaN(x.getTime())&&x.getFullYear()===Number(s.slice(0,4))&&x.getMonth()+1===Number(s.slice(5,7))&&x.getDate()===Number(s.slice(8));};
 const dateList=value=>[...new Set(value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean))].sort();
 let unsubscribe=null,members=[],selected=null,etag=null,working=false,admin=false;
+const NEW_MEMBER='__new_member__';
 const displayStatus=(message,type='')=>{$('load-status').textContent=message;$('load-status').className=type||'muted';};
 const notify=(message,type='')=>{$('form-feedback').textContent=message;$('form-feedback').className=type;};
 const canEdit=()=>admin&&selected&&!working;
@@ -71,6 +72,18 @@ const updateMode=()=>{
  const mode=document.querySelector('input[name=day-mode]:checked')?.value;
  for(const item of document.querySelectorAll('#weekday-inputs input'))item.disabled=(mode!=='set');
 };
+function openNewMember(){
+ if(!admin||working)return;
+ selected=NEW_MEMBER;etag=null;
+ $('form-title').textContent='③ 新入部員を追加登録';
+ for(const id of ['name','kana','endDate','preferredDates','unavailableDates'])$(id).value='';
+ $('grade').value='1';$('status').value='active';$('startDate').value='2027-01-01';
+ document.querySelector('input[name=day-mode][value="unknown"]').checked=true;
+ $('weekday-inputs').innerHTML=DAY_OPTIONS.map(([label,value])=>'<label><input type="checkbox" value="'+value+'"> '+label+'曜</label>').join('');
+ updateMode();
+ notify('新入部員は既存の確定当番には自動配置しません。曜日・開始日を確認してください。');
+ $('editor').classList.remove('hidden');$('editor').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function openMember(id){
  const m=members.find(x=>x.id===id);
  if(!m||!admin||working)return;
@@ -88,7 +101,7 @@ function openMember(id){
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 const setAuthUser=async user=>{
- admin=false;selected=null;$('editor').classList.add('hidden');
+ admin=false;selected=null;$('add-member').disabled=true;$('editor').classList.add('hidden');
  if(unsubscribe){unsubscribe();unsubscribe=null;}
  if(!user){$('login').style.display='';$('login-status').textContent='Googleログインしてください。';members=[];renderList();displayStatus('管理者ログインを待っています。');return;}
  $('login').style.display='none';$('login-status').textContent='管理者の権限を確認中…';displayStatus('管理者権限を確認中…');
@@ -96,7 +109,7 @@ const setAuthUser=async user=>{
   const check=await getDoc(doc(db,'admins',user.uid));
   if(auth.currentUser?.uid!==user.uid)return;
   if(!check.exists()||check.data().enabled!==true)throw Error('管理者登録が見つかりません');
-  admin=true;$('login-status').textContent='✅ 管理者ログイン確認済み';
+  admin=true;$('add-member').disabled=false;$('login-status').textContent='✅ 管理者ログイン確認済み';
   unsubscribe=onSnapshot(coll,snapshot=>{
    members=snapshot.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
    renderList();displayStatus('Firebaseから'+members.length+'人の情報を取得しました。');
@@ -106,13 +119,14 @@ const setAuthUser=async user=>{
 };
 onAuthStateChanged(auth,user=>{void setAuthUser(user)},err=>{$('login-status').textContent=err.code||err.message});
 $('login').addEventListener('click',()=>{const promise=signInWithPopup(auth,new GoogleAuthProvider());promise.catch(err=>{$('login-status').textContent='ログインに失敗：'+(err.code||err.message)});});
-$('members-list').addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(b)openMember(b.dataset.id)});
+$('add-member').addEventListener('click',openNewMember);
+ $('members-list').addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(b)openMember(b.dataset.id)});
 document.querySelectorAll('input[name=day-mode]').forEach(e=>e.addEventListener('change',updateMode));
 $('cancel').addEventListener('click',()=>{selected=null;$('editor').classList.add('hidden')});
 $('member-form').addEventListener('submit',async e=>{
  e.preventDefault();if(!canEdit())return;
- const id=selected,current=members.find(m=>m.id===id);
- if(!current)return notify('メンバーの情報を再取得してください。','error');
+ const adding=selected===NEW_MEMBER,id=adding?doc(coll).id:selected,current=members.find(m=>m.id===id);
+ if(!adding&&!current)return notify('メンバーの情報を再取得してください。','error');
  const name=$('name').value.trim(),kana=$('kana').value.trim(),grade=Number($('grade').value),status=$('status').value;
  const startDate=$('startDate').value,endDate=$('endDate').value||null,mode=document.querySelector('input[name=day-mode]:checked')?.value;
  const days=mode==='unknown'?null:[...document.querySelectorAll('#weekday-inputs input:checked')].map(n=>Number(n.value));
@@ -125,29 +139,41 @@ $('member-form').addEventListener('submit',async e=>{
  if([...preferredDates,...unavailableDates].some(d=>!goodDate(d)))return notify('希望日・不可日はYYYY-MM-DD形式で入力してください。','error');
  if(preferredDates.some(d=>unavailableDates.includes(d)))return notify('同じ日が希望日と当番不可日に登録されています。','error');
  if(members.some(m=>m.id!==id&&m.name===name))return notify('同じ名前が登録されています。区別できる名前にしてください。','error');
- const payload={name,kana,grade,status,startDate,endDate,days,preferredDates,unavailableDates,updatedAt:serverTimestamp()};
- const preview='メンバー：'+name+'\n状態：'+status+'\n当番可能曜日：'+(days===null?'未確認':days.map(v=>DAY_OPTIONS.find(x=>x[1]===v)?.[0]).join('・'))+'\n開始：'+startDate+'\n終了：'+(endDate||'未設定')+'\n希望日：'+preferredDates.length+'件\n不可日：'+unavailableDates.length+'件\n\nこの内容を本番Firebaseに保存しますか？';
+ const payload={name,kana,grade,status,startDate,endDate,days,preferredDates,unavailableDates,updatedAt:serverTimestamp(),
+ ...(adding?{weekdayRule:days===null?'unverified':'hard',weekdayNote:'新入部員・管理者設定',preferredWeekdays:[],approvedWeekendDates:[]}: {})};
+ const preview=(adding?'【新規追加】\n':'【既存情報の修正】\n')+'メンバー：'+name+'\n状態：'+status+'\n当番可能曜日：'+(days===null?'未確認':days.map(v=>DAY_OPTIONS.find(x=>x[1]===v)?.[0]).join('・'))+'\n開始：'+startDate+'\n終了：'+(endDate||'未設定')+'\n希望日：'+preferredDates.length+'件\n不可日：'+unavailableDates.length+'件\n\nこの内容を本番Firebaseに保存しますか？';
  if(!confirm(preview))return;
  working=true;$('save').disabled=true;notify('Firebaseに保存しています…');
  try{
   await runTransaction(db,async tx=>{
-   const ref=doc(db,'teams',teamId,'members',id);
-   const publicRef=doc(db,'teams',teamId,'public','roster');
-   const snapshot=await tx.get(ref);if(!snapshot.exists())throw Error('登録情報が見つかりません。');
-   const publicSnapshot=await tx.get(publicRef);
-   const latest=snapshot.data().updatedAt?.toMillis?.()??null;
-   if(latest!==etag)throw Error('ほかの端末で情報が更新されています。一度編集画面を閉じて開き直してください。');
-   if(publicSnapshot.exists()){
-     const roster=publicSnapshot.data().members;
-     if(!Array.isArray(roster))throw Error('公開用名簿の形式が正しくありません。管理者へ連絡してください。');
-     const minimal=roster.filter(m=>m&&m.id!==id);
-     minimal.push({id,name,kana,status});
-     minimal.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
-     tx.update(publicRef,{members:minimal,updatedAt:serverTimestamp()});
+   const user=auth.currentUser;if(!user)throw Error('ログインが必要です');
+   const ref=doc(db,'teams',teamId,'members',id),publicRef=doc(db,'teams',teamId,'public','roster');
+   const auditRef=doc(collection(db,'teams',teamId,'memberChangeAudit'));
+   const [adminSnap,snap,publicSnap]=await Promise.all([
+    tx.get(doc(db,'admins',user.uid)),tx.get(ref),tx.get(publicRef)]);
+   if(!adminSnap.exists()||adminSnap.data().enabled!==true||auth.currentUser?.uid!==user.uid)
+    throw Error('管理者の認証を再確認してください');
+   if(!publicSnap.exists()||!Array.isArray(publicSnap.data().members))
+    throw Error('保護者向け公開名簿が確認できません');
+   const roster=publicSnap.data().members;
+   if(roster.some(m=>m&&m.name===name&&(adding||m.id!==id)))throw Error('同じ名前が登録されています');
+   if(adding){
+    if(snap.exists()||roster.some(m=>m?.id===id))throw Error('登録IDが重複しました');
+   }else{
+    if(!snap.exists())throw Error('編集対象が見つかりません');
+    if((snap.data().updatedAt?.toMillis?.()??null)!==etag)throw Error('情報が更新されています。再読み込みしてください');
    }
-   tx.update(ref,payload);
+   const minimal=roster.filter(m=>m&&m.id!==id);
+   minimal.push({id,name,kana,status});
+   minimal.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+   if(minimal.length>40)throw Error('登録可能な人数を超えました');
+   tx.update(publicRef,{members:minimal,updatedAt:serverTimestamp()});
+   if(adding)tx.set(ref,payload);else tx.update(ref,payload);
+   tx.set(auditRef,{action:adding?'member-added':'member-edited',memberId:id,
+    before:adding?null:{name:snap.data().name,days:snap.data().days,status:snap.data().status},
+    next:{name,kana,grade,status,startDate,endDate,days},updatedAt:serverTimestamp(),updatedBy:user.uid});
   });
-  notify('✅ 本番Firebaseに保存しました。既存の確定当番表は変更していません。','ok');
+  notify(adding?'✅ 新入部員を登録しました。既存の確定当番は変更していません。':'✅ 本番Firebaseに保存しました。','ok');
   selected=null;$('editor').classList.add('hidden');
   window.scrollTo({top:0,behavior:'smooth'});
  }catch(err){notify('保存に失敗しました：'+(err.code||err.message||String(err)),'error')}
