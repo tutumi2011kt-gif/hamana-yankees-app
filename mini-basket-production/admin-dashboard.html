@@ -15,7 +15,7 @@ button:disabled{cursor:default;opacity:.6}button.primary{background:#235886;colo
 .action.green{color:#166a47;background:#e8f6ee;border-color:#bddcca}.action.disabled{background:#f0f2f4;color:#6f7b87;pointer-events:none}
 .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metric{background:#f3f8fc;border:1px solid #e0e9f1;border-radius:10px;text-align:center;padding:10px 3px}.metric b{font-size:22px;display:block}.metric span{font-size:11px;color:#60768c}
 .week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.week{margin-top:12px}.week span{font-size:12px;font-weight:750;text-align:center}.week span:first-child{color:#ae4058}.week span:last-child{color:#3671a7}
-.day{padding:4px 2px;min-height:68px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}
+.day{padding:4px 2px;min-height:68px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}.day.game-pick{cursor:pointer;border:2px solid #c47828;background:#fff7e7}.day.game-pick:focus-visible{outline:3px solid #2269b2}.day[disabled]{opacity:1}.mode-on{background:#fff0d6!important;border-color:#cb8e30!important;color:#7a4719!important}.spinner{display:flex;gap:3px;align-items:center;justify-content:center}.spinner b{font-size:16px;min-width:22px}.spinner .arrows{display:flex;flex-direction:column;gap:2px}.spinner button{height:25px;min-height:25px;font-size:12px;line-height:1;padding:2px 9px}.spinner button:disabled{opacity:.35}
 .owner{font-weight:800;display:block;font-size:10px;margin-top:4px}.note{font-size:9px;display:block;color:#677d8e}
 .scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px 5px;border-bottom:1px solid #e5eaf0;text-align:left}th{white-space:nowrap;background:#f5f8fb}
 footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.months{grid-template-columns:repeat(4,minmax(0,1fr))}.metrics{gap:4px}.day{min-height:67px}.action{flex-basis:130px}}
@@ -30,14 +30,14 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 <div id="metrics" class="metrics"><div class="metric"><b>—</b><span>練習</span></div><div class="metric"><b>—</b><span>試合</span></div><div class="metric"><b>—</b><span>休み</span></div></div>
 <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
 <div id="calendar" class="calendar"></div>
-<p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。存在しない月の予定は推測して表示しません。</p>
-<h2>対象月の管理操作</h2><div id="month-actions" class="actions"></div></section>
+<p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。存在しない月の予定は推測して表示しません。</p><div class="actions"><button type="button" id="game-mode" class="primary" disabled>🏀 試合</button><button type="button" id="game-cancel" disabled>選択を解除</button></div><p id="game-status" class="status">試合日を登録する場合は「🏀 試合」を押してから、練習日を選択してください。</p>
+<h2>対象月の管理操作</h2><div id="month-actions" class="actions"></div><div class="actions" style="margin-top:9px"><button id="rebalance" type="button" disabled>⚖️ 将来の未公開月を公平に再割当</button></div><p id="rebalance-status" class="small">試合中止の繰越・実施回数の補正を使って、未公開の将来月だけ調整します。公開済みの当番表は自動変更しません。</p></section>
 <section class="card"><h2>④ メンバー別の当番回数</h2>
 <p class="small"><b>予定回数と実際の実施回数は別管理</b>です。実際に当番を終えた場合だけ実施回数を加算します。試合による中止は実施回数に含まず、元担当者の繰越待ちに記録します。補填を予定に入れただけでは繰越は解消しません。</p>
-<div id="counts-status" class="status">実績台帳を読み込みます。</div><div class="scroll"><table><thead><tr><th>メンバー</th><th>選択月の予定</th><th>記録済み実施</th><th>繰越待ち</th></tr></thead><tbody id="member-counts"></tbody></table></div>
+<div id="counts-status" class="status">実績台帳を読み込みます。</div><div class="scroll"><table><thead><tr><th>メンバー</th><th>選択月の予定</th><th>補正後の実施回数　△▽</th><th>繰越待ち</th></tr></thead><tbody id="member-counts"></tbody></table></div><p class="small">△で＋1、▽で−1。補正前の実施済み回数も表示し、変更履歴は管理者用として保存します。</p>
 <div class="actions" style="margin-top:12px"><a class="action green" href="./manage-duty-ledger.html">✏️ 実施・中止・繰越を記録・訂正</a></div></section>
 <section class="card"><h2>⑤ 管理者ツール</h2><div class="actions">
-<a class="action" href="./manage-members.html">メンバー管理</a>
+<a class="action" href="./manage-members.html">＋ 新入部員を追加・メンバー管理</a>
 <a class="action" href="./manage-january.html">1月の仮当番表管理</a>
 <a class="action" href="./manage-january-publish.html">1月の公開承認</a>
 <a class="action" href="./admin-login.html">ログインと権限確認</a>
@@ -48,14 +48,17 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
-import {ledgerTotals} from './duty-ledger-core.mjs?v=admin-20261120';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import {ledgerTotals,buildDutyLedgerRecord} from './duty-ledger-core.mjs?v=admin-20261120';
+import {persistLedger} from './ledger-calendar-core.mjs?v=admin-20261120';
+import {adjustedDutyCounts,shouldMarkGame,proposeFairDraft} from './admin-fairness-core.mjs?v=20261120';
+import {todayTokyo} from './core.mjs?v=admin';
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=getAuth(app),db=getFirestore(app);
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short=m=>Number(m.slice(5))+'月';
-let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0;
+let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={};
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
  isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;requestToken++;
@@ -161,13 +164,13 @@ async function refreshAll(){
    getDocFromServer(doc(db,'teams',teamId,'public','roster'))
   ]);
   if(auth.currentUser?.uid!==user.uid)throw Error('読み込み中にGoogleアカウントが変更されました');
-  if(memberDocs.size!==12)throw Error('登録メンバー数が12人ではありません。データを確認してください。');
+  if(memberDocs.size<12)throw Error('初期メンバー12人を確認できません。');
   if(!publicRoster.exists()||!Array.isArray(publicRoster.data().publishedMonths))throw Error('公開済み月一覧を確認できません');
   members=memberDocs.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
   records=ledgerDocs.docs.map(x=>({date:x.id,...x.data()}));
   roster=publicRoster.data();
   isAdmin=true;monthsMeta={};renderMonths();
-  status('auth-state','✅ 管理者認証OK。12人の名簿、実績台帳、公開状態を読み取りました。','good');
+  status('auth-state','✅ 管理者認証OK。'+members.length+'人の名簿、実績台帳、公開状態を読み取りました。','good');
   await chooseMonth(selectedMonth);
  }catch(e){resetPrivate();status('auth-state','読み込みできません：'+(e.code||e.message||String(e)),'bad')}
  finally{busy=false;$('refresh').disabled=!isAdmin}
