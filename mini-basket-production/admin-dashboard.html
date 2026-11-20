@@ -15,7 +15,7 @@ button:disabled{cursor:default;opacity:.6}button.primary{background:#235886;colo
 .action.green{color:#166a47;background:#e8f6ee;border-color:#bddcca}.action.disabled{background:#f0f2f4;color:#6f7b87;pointer-events:none}
 .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metric{background:#f3f8fc;border:1px solid #e0e9f1;border-radius:10px;text-align:center;padding:10px 3px}.metric b{font-size:22px;display:block}.metric span{font-size:11px;color:#60768c}
 .week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.week{margin-top:12px}.week span{font-size:12px;font-weight:750;text-align:center}.week span:first-child{color:#ae4058}.week span:last-child{color:#3671a7}
-.day{padding:4px 2px;min-height:68px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}
+.day{padding:4px 2px;min-height:68px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}.day.game-pick{cursor:pointer;border:2px solid #c47828;background:#fff7e7}.day.game-pick:focus-visible{outline:3px solid #2269b2}.day[disabled]{opacity:1}.mode-on{background:#fff0d6!important;border-color:#cb8e30!important;color:#7a4719!important}.spinner{display:flex;gap:3px;align-items:center;justify-content:center}.spinner b{font-size:16px;min-width:22px}.spinner .arrows{display:flex;flex-direction:column;gap:2px}.spinner button{height:25px;min-height:25px;font-size:12px;line-height:1;padding:2px 9px}.spinner button:disabled{opacity:.35}
 .owner{font-weight:800;display:block;font-size:10px;margin-top:4px}.note{font-size:9px;display:block;color:#677d8e}
 .scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px 5px;border-bottom:1px solid #e5eaf0;text-align:left}th{white-space:nowrap;background:#f5f8fb}
 footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.months{grid-template-columns:repeat(4,minmax(0,1fr))}.metrics{gap:4px}.day{min-height:67px}.action{flex-basis:130px}}
@@ -30,14 +30,14 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 <div id="metrics" class="metrics"><div class="metric"><b>—</b><span>練習</span></div><div class="metric"><b>—</b><span>試合</span></div><div class="metric"><b>—</b><span>休み</span></div></div>
 <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
 <div id="calendar" class="calendar"></div>
-<p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。存在しない月の予定は推測して表示しません。</p>
-<h2>対象月の管理操作</h2><div id="month-actions" class="actions"></div></section>
+<p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。存在しない月の予定は推測して表示しません。</p><div class="actions"><button type="button" id="game-mode" class="primary" disabled>🏀 試合</button><button type="button" id="game-cancel" disabled>選択を解除</button></div><p id="game-status" class="status">試合日を登録する場合は「🏀 試合」を押してから、練習日を選択してください。</p>
+<h2>対象月の管理操作</h2><div id="month-actions" class="actions"></div><div class="actions" style="margin-top:9px"><button id="rebalance" type="button" disabled>⚖️ 将来の未公開月を公平に再割当</button></div><p id="rebalance-status" class="small">試合中止の繰越・実施回数の補正を使って、未公開の将来月だけ調整します。公開済みの当番表は自動変更しません。</p></section>
 <section class="card"><h2>④ メンバー別の当番回数</h2>
 <p class="small"><b>予定回数と実際の実施回数は別管理</b>です。実際に当番を終えた場合だけ実施回数を加算します。試合による中止は実施回数に含まず、元担当者の繰越待ちに記録します。補填を予定に入れただけでは繰越は解消しません。</p>
-<div id="counts-status" class="status">実績台帳を読み込みます。</div><div class="scroll"><table><thead><tr><th>メンバー</th><th>選択月の予定</th><th>記録済み実施</th><th>繰越待ち</th></tr></thead><tbody id="member-counts"></tbody></table></div>
+<div id="counts-status" class="status">実績台帳を読み込みます。</div><div class="scroll"><table><thead><tr><th>メンバー</th><th>選択月の予定</th><th>補正後の実施回数　△▽</th><th>繰越待ち</th></tr></thead><tbody id="member-counts"></tbody></table></div><p class="small">△で＋1、▽で−1。補正前の実施済み回数も表示し、変更履歴は管理者用として保存します。</p>
 <div class="actions" style="margin-top:12px"><a class="action green" href="./manage-duty-ledger.html">✏️ 実施・中止・繰越を記録・訂正</a></div></section>
 <section class="card"><h2>⑤ 管理者ツール</h2><div class="actions">
-<a class="action" href="./manage-members.html">メンバー管理</a>
+<a class="action" href="./manage-members.html">＋ 新入部員を追加・メンバー管理</a>
 <a class="action" href="./manage-january.html">1月の仮当番表管理</a>
 <a class="action" href="./manage-january-publish.html">1月の公開承認</a>
 <a class="action" href="./admin-login.html">ログインと権限確認</a>
@@ -48,17 +48,22 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
-import {ledgerTotals} from './duty-ledger-core.mjs?v=admin-20261120';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp,Timestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import {ledgerTotals,buildDutyLedgerRecord} from './duty-ledger-core.mjs?v=admin-20261120';
+import {persistLedger} from './ledger-calendar-core.mjs?v=admin-20261120';
+import {adjustedDutyCounts,shouldMarkGame,proposeFairDraft} from './admin-fairness-core.mjs?v=20261120';
+import {todayTokyo} from './core.mjs?v=admin';
+import {preliminaryPracticeDays,jstInputOpenMillis,jstInputCutoffMillis,addMonths} from './month-rollover-core.mjs?v=admin-20261120';
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=getAuth(app),db=getFirestore(app);
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short=m=>Number(m.slice(5))+'月';
-let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0;
+let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='';
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
- isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;requestToken++;
+ isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';requestToken++;
+ $('game-mode').disabled=true;$('rebalance').disabled=true;
  $('calendar').textContent='';$('member-counts').textContent='';$('month-actions').textContent='';
  status('counts-status','管理者ログインが必要です。');status('month-status','管理者ログインが必要です。');
  $('refresh').disabled=true;renderMonths();
@@ -74,15 +79,24 @@ function renderCounts(){
  const scheduled=Object.fromEntries(members.map(m=>[m.id,0]));
  selectedDays.filter(d=>d.type==='practice'&&d.ownerId).forEach(d=>{if(d.ownerId in scheduled)scheduled[d.ownerId]++});
  let totals;
- try{totals=ledgerTotals(members.map(m=>m.id),records,'2027-12')}catch(e){
+ try{totals=adjustedDutyCounts(members.map(m=>m.id),records,corrections,'2027-12')}catch(e){
   status('counts-status','台帳の集計に失敗しました：'+(e.message||String(e)),'bad');return;
  }
- $('member-counts').innerHTML=members.map(m=>'<tr><td><b>'+esc(m.name)+'</b></td><td>'+scheduled[m.id]+'回</td><td>'+totals.counts[m.id]+'回</td><td>'+totals.carry[m.id]+'件</td></tr>').join('');
+ $('member-counts').innerHTML=members.map(m=>{
+ const delta=corrections[m.id]||0,value=totals.effective[m.id];
+ return '<tr><td><b>'+esc(m.name)+'</b></td><td>'+scheduled[m.id]+'回</td>'+
+ '<td><div class="spinner"><b>'+value+'</b><div class="arrows">'+
+ '<button type="button" data-count-id="'+esc(m.id)+'" data-delta="1" aria-label="'+esc(m.name)+' の回数を増やす" '+(busy?'disabled':'')+'>△</button>'+
+ '<button type="button" data-count-id="'+esc(m.id)+'" data-delta="-1" aria-label="'+esc(m.name)+' の回数を減らす" '+(busy||value<=0?'disabled':'')+'>▽</button></div></div>'+
+ '<small>実施記録'+totals.counts[m.id]+'回＋補正'+(delta>=0?'+':'')+delta+'</small></td><td>'+totals.carry[m.id]+'件</td></tr>';
+ }).join('');
  const sum=Object.values(totals.counts).reduce((a,b)=>a+b,0);
  const overdue=totals.overdue?.length||0;
- status('counts-status','台帳に登録された実施：合計'+sum+'回／記録された中止・繰越待ち：'+(totals.unresolved?.length??0)+'件。'+
+ status('counts-status',(lastCountFeedback?lastCountFeedback+'\n':'')+
+  '台帳に登録された実施：合計'+sum+'回／記録された中止・繰越待ち：'+(totals.unresolved?.length??0)+'件。'+
   (overdue?'⚠ 4か月超の未解消繰越があります。':'')+
-  ' 未記録の日は「実施済み」と推測して加算しません。');
+  ' 未記録の日は「実施済み」と推測して加算しません。',
+  lastCountFeedback.startsWith('✅')?'good':lastCountFeedback.startsWith('⚠')?'bad':'');
 }
 function showDays(){
  $('month-title').textContent='③ '+Number(selectedMonth.slice(0,4))+'年'+short(selectedMonth)+' 当番カレンダー';
@@ -104,10 +118,11 @@ function showDays(){
   const date=selectedMonth+'-'+String(i).padStart(2,'0'),d=map.get(date);
   const type=d?.type||'',owner=d?.ownerId?(byId[d.ownerId]||'担当ID未確認'):'';
   const label=type==='practice'?'練習':type==='game'?'🏀試合':type==='rest'?'休み':'';
-  html+='<div class="day '+esc(type)+'"><span class="date">'+i+'</span>'+
+  const clickGame=gameMode&&!busy&&readyMonth===selectedMonth&&type==='practice';
+  html+=(clickGame?'<button type="button" data-game-date="'+esc(date)+'" class="day '+esc(type)+' game-pick" aria-label="'+esc(date)+' を試合に変更">':'<div class="day '+esc(type)+'">')+'<span class="date">'+i+'</span>'+
    (label?'<span class="note">'+esc(label)+'</span>':'')+
    (owner?'<span class="owner">'+esc(owner)+'</span>':'')+
-   (type==='practice'&&!owner?'<span class="note">⚠担当未設定</span>':'')+'</div>';
+   (type==='practice'&&!owner?'<span class="note">⚠担当未設定</span>':'')+(clickGame?'</button>':'</div>');
  }
  $('calendar').innerHTML=html;
 }
@@ -119,9 +134,16 @@ function renderActions(){
   html='<a class="action" href="./manage-january.html">1月の予定・担当者を確認</a>'+
        '<a class="action green" href="./manage-january-publish.html">1月の公開・承認状況を確認</a>';
  }else{
-  html='<span class="action disabled" aria-disabled="true">この月の仮当番作成・公開操作は準備中</span>';
+  html=!info?.exists?'<button type="button" class="action" id="create-draft">📋 '+short(selectedMonth)+'の仮当番を作成（非公開）</button>':
+   '<span class="action disabled" aria-disabled="true">下書きの公開承認は別途整備中。公開済みの月は変更不可。</span>';
  }
  $('month-actions').innerHTML=html;
+ const allowed=isAdmin&&!busy&&readyMonth===selectedMonth&&info?.exists===true;
+ $('game-mode').disabled=!allowed;$('game-cancel').disabled=!allowed||!gameMode;
+ $('game-mode').className='primary'+(gameMode?' mode-on':'');
+ $('rebalance').disabled=!allowed||selectedMonth<='2027-01'||info?.metadata?.publication!=='draft'||roster?.publishedMonths?.includes(selectedMonth);
+ if(gameMode||!['status good','status bad'].includes($('game-status').className))
+  $('game-status').textContent=gameMode?'🏀 試合モード：練習日を選んでください。登録前に確認します。':'「🏀 試合」を押してから練習日を選択すると試合に変更できます。';
  const published=info?.published===true;
  status('month-status',!info?.exists?selectedMonth+'：未作成です。管理者が作成・公開するまで保護者には表示されません。':
   selectedMonth+'：'+(published?'✅ 公開済み（保護者向け公開名簿にも登録あり）':'🔒 未公開・下書き')+
@@ -129,7 +151,7 @@ function renderActions(){
 }
 async function chooseMonth(m){
  if(!months.includes(m))return;
- selectedMonth=m;renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();
+ selectedMonth=m;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
  const version=++requestToken;
  if(!isAdmin)return;
  status('month-status',m+' の最新当番表を読み込み中…');
@@ -155,23 +177,256 @@ async function refreshAll(){
   const admin=await getDocFromServer(doc(db,'admins',user.uid));
   if(!admin.exists()||admin.data().enabled!==true||
     !user.providerData.some(p=>p.providerId==='google.com'))throw Error('管理者として登録されたGoogleアカウントが必要です');
-  const [memberDocs,ledgerDocs,publicRoster]=await Promise.all([
+  const [memberDocs,ledgerDocs,publicRoster,correctionDocs]=await Promise.all([
    getDocsFromServer(collection(db,'teams',teamId,'members')),
    getDocsFromServer(collection(db,'teams',teamId,'dutyLedger')),
-   getDocFromServer(doc(db,'teams',teamId,'public','roster'))
+   getDocFromServer(doc(db,'teams',teamId,'public','roster')),
+   getDocsFromServer(collection(db,'teams',teamId,'dutyCountAdjustments'))
   ]);
   if(auth.currentUser?.uid!==user.uid)throw Error('読み込み中にGoogleアカウントが変更されました');
-  if(memberDocs.size!==12)throw Error('登録メンバー数が12人ではありません。データを確認してください。');
+  if(memberDocs.size<12)throw Error('初期メンバー12人を確認できません。');
   if(!publicRoster.exists()||!Array.isArray(publicRoster.data().publishedMonths))throw Error('公開済み月一覧を確認できません');
   members=memberDocs.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
   records=ledgerDocs.docs.map(x=>({date:x.id,...x.data()}));
+  corrections=Object.fromEntries(correctionDocs.docs.map(x=>[x.id,Number(x.data().delta||0)]));
   roster=publicRoster.data();
   isAdmin=true;monthsMeta={};renderMonths();
-  status('auth-state','✅ 管理者認証OK。12人の名簿、実績台帳、公開状態を読み取りました。','good');
+  status('auth-state','✅ 管理者認証OK。'+members.length+'人の名簿、実績台帳、公開状態を読み取りました。','good');
   await chooseMonth(selectedMonth);
  }catch(e){resetPrivate();status('auth-state','読み込みできません：'+(e.code||e.message||String(e)),'bad')}
  finally{busy=false;$('refresh').disabled=!isAdmin}
 }
+
+async function reallocateDraftMonth(target,{automatic=false}={}){
+ const user=auth.currentUser;
+ if(!isAdmin||!user||target<='2027-01'||target>'2027-11')return {changed:0,skipped:'対象外'};
+ const metaRef=doc(db,'teams',teamId,'months',target);
+ const [monthSnap,daySnap,publicSnap]=await Promise.all([
+  getDocFromServer(metaRef),getDocsFromServer(collection(db,'teams',teamId,'months',target,'days')),
+  getDocFromServer(doc(db,'teams',teamId,'public','roster'))
+ ]);
+ if(!monthSnap.exists()||monthSnap.data().publication!=='draft'||
+   !publicSnap.exists()||publicSnap.data().publishedMonths?.includes(target))
+  return {changed:0,skipped:'下書き・未公開の月がありません'};
+ if(!Array.isArray(publicSnap.data().members)||
+  publicSnap.data().members.length!==members.length||
+  publicSnap.data().members.some(m=>!members.some(x=>x.id===m.id)))
+  throw Error('名簿が更新されました。年間管理画面を再読み込みしてください。');
+ const rows=daySnap.docs.map(x=>({date:x.id,...x.data()}));
+ const priorPlans=await priorScheduledDays(target);
+ const plan=proposeFairDraft({month:target,days:rows,members,records,corrections,today:todayTokyo(),priorPlans});
+ if(!plan.updates.length)return {changed:0,skipped:plan.warnings.join('・')||'調整不要'};
+ if(!automatic){
+  const names=Object.fromEntries(members.map(m=>[m.id,m.name]));
+  const preview=plan.updates.slice(0,12).map(c=>c.date+'：'+
+   (names[c.from]||'未設定')+' → '+names[c.to]).join('\n');
+  if(!confirm(target+' の未公開・未確認の当番だけを'+plan.updates.length+
+   '件再割当しますか？\n\n'+preview+
+   (plan.updates.length>12?'\nほか'+(plan.updates.length-12)+'件':'')+
+   '\n\n公開済み・確認済み・試合・休みは変更しません。'))return {changed:0,skipped:'キャンセル'};
+ }
+ const originalVersion=Number(monthSnap.data().version??0);
+ const refByDate=new Map(plan.updates.map(c=>[c.date,doc(db,'teams',teamId,'months',target,'days',c.date)]));
+ await runTransaction(db,async tx=>{
+  const admRef=doc(db,'admins',user.uid),rosterRef=doc(db,'teams',teamId,'public','roster');
+  const refs=[admRef,metaRef,rosterRef,...refByDate.values()];
+  const snaps=await Promise.all(refs.map(ref=>tx.get(ref)));
+  const [adm,meta,rosterSnap,...daySnaps]=snaps;
+  if(auth.currentUser?.uid!==user.uid||!adm.exists()||adm.data().enabled!==true)
+   throw Error('管理者権限を再確認してください');
+  if(!meta.exists()||meta.data().publication!=='draft'||
+    Number(meta.data().version??0)!==originalVersion||
+    !rosterSnap.exists()||rosterSnap.data().publishedMonths?.includes(target))
+   throw Error('対象月が変更・公開されています。再読み込みしてください');
+  if(rosterSnap.data().members?.length!==members.length)
+   throw Error('名簿が変更されています。再読み込みしてください');
+  for(let i=0;i<plan.updates.length;i++){
+   const change=plan.updates[i],snap=daySnaps[i],day=snap.data();
+   if(!snap.exists()||day.type!=='practice'||day.activityVerified===true||
+     day.confirmedSubstituteId||change.date<=todayTokyo()||
+     (day.ownerId||null)!==change.from)
+    throw Error(change.date+' は保護済み、または他の管理者が変更しました');
+  }
+  for(const change of plan.updates)
+   tx.update(refByDate.get(change.date),{ownerId:change.to,activityVerified:false,updatedAt:serverTimestamp()});
+  tx.update(metaRef,{scheduleVerified:false,version:originalVersion+1,updatedAt:serverTimestamp(),updatedBy:user.uid});
+  tx.set(doc(collection(db,'teams',teamId,'fairnessRebalanceAudit')),{
+   month:target,changes:plan.updates,reason:automatic?'game-or-count-adjustment':'manual-review',
+   actorUid:user.uid,updatedAt:serverTimestamp()});
+ });
+ return {changed:plan.updates.length,skipped:plan.warnings.join('・')};
+}
+async function rebalanceFutureFrom(sourceMonth){
+ let changed=0,monthsChanged=0,issues=[];
+ for(let y=sourceMonth;y<='2027-11';y=new Date(Date.UTC(Number(y.slice(0,4)),Number(y.slice(5)),1)).toISOString().slice(0,7)){
+  if(y<='2027-01')continue;
+  try{
+   const result=await reallocateDraftMonth(y,{automatic:true});
+   if(result.changed){changed+=result.changed;monthsChanged++;}
+  }catch(e){issues.push(y+': '+(e.code||e.message||String(e)));break;}
+ }
+ return {changed,monthsChanged,issues};
+}
+async function priorScheduledDays(month){
+ const rows=[];
+ for(let m='2027-01';m<month;m=addMonths(m,1)){
+  const ref=doc(db,'teams',teamId,'months',m),meta=await getDocFromServer(ref);
+  if(!meta.exists())continue;
+  const snaps=await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days'));
+  rows.push(...snaps.docs.map(s=>({date:s.id,...s.data()})));
+ }
+ return rows;
+}
+$('month-actions').addEventListener('click',async event=>{
+ const trigger=event.target.closest('#create-draft');
+ if(!trigger||busy||!isAdmin||readyMonth!==selectedMonth)return;
+ const month=selectedMonth;
+ if(month<='2027-01'||month>'2027-11'||monthsMeta[month]?.exists)return;
+ if(!confirm(month+' の仮当番表を新規作成しますか？\n水・金・土・日を「未確認の練習予定」として登録し、既存の実績・繰越・補正と曜日条件で仮担当者を割り当てます。'+
+  '\n試合・休みや日程はまだ未確認です。保護者には公開されません。'))return;
+ const user=auth.currentUser;if(!user)return;
+ busy=true;status('month-status',month+' の仮当番候補を計算中…');
+ try{
+  const rows=preliminaryPracticeDays(month),priorPlans=await priorScheduledDays(month);
+  const plan=proposeFairDraft({month,days:rows,members,records,corrections,today:todayTokyo(),priorPlans});
+  const assigned=Object.fromEntries(plan.updates.map(u=>[u.date,u.to]));
+  const monthRef=doc(db,'teams',teamId,'months',month),rosterRef=doc(db,'teams',teamId,'public','roster');
+  await runTransaction(db,async tx=>{
+   const [adm,m,rosterSnap]=await Promise.all([
+    tx.get(doc(db,'admins',user.uid)),tx.get(monthRef),tx.get(rosterRef)
+   ]);
+   if(auth.currentUser?.uid!==user.uid||!adm.exists()||adm.data().enabled!==true)throw Error('管理者権限がありません');
+   if(m.exists())throw Error('すでに作成済みです。既存の当番表には上書きできません');
+   if(!rosterSnap.exists()||rosterSnap.data().members?.length!==members.length||
+     rosterSnap.data().publishedMonths?.includes(month))
+    throw Error('名簿または公開状態が変更されました。再読み込みしてください');
+   const now=serverTimestamp();
+   tx.set(monthRef,{publication:'draft',scheduleStatus:'awaiting-manager',scheduleVerified:false,
+    inputState:'closed',openAt:Timestamp.fromMillis(jstInputOpenMillis(month)),
+    cutoffAt:Timestamp.fromMillis(jstInputCutoffMillis(month)),autoGenerated:true,
+    createdBy:user.uid,createdAt:now,updatedAt:now,version:1});
+   for(const r of rows)tx.set(doc(db,'teams',teamId,'months',month,'days',r.date),{
+    ...r,ownerId:assigned[r.date]||null,activityVerified:false,
+    confirmedSubstituteId:null,updatedAt:now
+   });
+   tx.set(doc(collection(db,'teams',teamId,'draftCreationAudit')),{month,
+    assignedCount:plan.updates.length,warningCount:plan.warnings.length,
+    createdAt:now,createdBy:user.uid});
+  });
+  await chooseMonth(month);
+  status('month-status','✅ '+month+' の仮当番表を作成しました。未公開です。'+
+   (plan.warnings.length?'⚠ 候補不足：'+plan.warnings.join('・'):'') ,'good');
+ }catch(e){status('month-status','作成できません：'+(e.code||e.message||String(e)),'bad');}
+ finally{busy=false;renderActions();showDays();}
+});
+
+$('game-mode').onclick=()=>{
+ if(!isAdmin||busy||readyMonth!==selectedMonth)return;
+ gameMode=!gameMode;$('game-status').className='status';showDays();renderActions();
+};
+$('game-cancel').onclick=()=>{gameMode=false;$('game-status').className='status';showDays();renderActions()};
+$('calendar').addEventListener('click',async event=>{
+ const b=event.target.closest('button[data-game-date]');
+ if(!b||busy||!isAdmin||!gameMode||readyMonth!==selectedMonth)return;
+ const date=b.dataset.gameDate,day=selectedDays.find(d=>d.date===date),original=records.find(r=>r.date===date);
+ let proposed;
+ try{proposed=shouldMarkGame({date,day,record:original,month:selectedMonth});}
+ catch(e){status('game-status','変更不可：'+e.message,'bad');return;}
+ const name=members.find(m=>m.id===proposed.originalOwnerId)?.name||'未割当';
+ if(!confirm(date+' の練習を「試合・当番なし」に変更しますか？\n現在の当番：'+name+
+  '\n\n担当者の元記録を残し、当番実施回数には加算しません。'+
+  (proposed.carryPending?'\n取消分は繰越待ちに記録します。':'')+
+  '\n既にある未公開・未確認の翌月以降の仮当番は、公平に自動再割当します。'+
+  '\n公開済みの将来月には手を加えません。'))return;
+ const chosen=selectedMonth,user=auth.currentUser;
+ if(!user)return;
+ busy=true;gameMode=false;renderActions();showDays();
+ status('game-status','⏳ 試合・当番取消と繰越記録を保存中…');
+ try{
+  if(proposed.originalOwnerId){
+   const record=buildDutyLedgerRecord({
+    date,status:'cancelled',scheduledOwnerId:proposed.originalOwnerId,
+    actualOwnerId:null,reason:'game',carryState:'pending',carryResolvedDate:null,
+    note:'年間管理画面から試合に変更',traineeIds:[]
+   },members.map(m=>m.id),todayTokyo());
+   await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,
+    uid:user.uid,date,record,expected:original??null,expectedDay:day,
+    authMatches:()=>auth.currentUser?.uid===user.uid});
+  }else{
+   await runTransaction(db,async tx=>{
+    const dayRef=doc(db,'teams',teamId,'months',chosen,'days',date);
+    const [adm,meta,fresh]=await Promise.all([
+     tx.get(doc(db,'admins',user.uid)),
+     tx.get(doc(db,'teams',teamId,'months',chosen)),tx.get(dayRef)
+    ]);
+    if(!adm.exists()||adm.data().enabled!==true||auth.currentUser?.uid!==user.uid||
+      !meta.exists()||!fresh.exists()||fresh.data().type!=='practice'||
+      fresh.data().ownerId||fresh.data().confirmedSubstituteId)
+     throw Error('当番表が変更されています。再読み込みしてください');
+    tx.update(dayRef,{type:'game',ownerId:null,updatedAt:serverTimestamp()});
+    tx.set(doc(collection(db,'teams',teamId,'dutyLedgerAudit')),{action:'game-with-no-owner',
+     date,updatedBy:user.uid,updatedAt:serverTimestamp()});
+   });
+  }
+  const latest=await getDocsFromServer(collection(db,'teams',teamId,'dutyLedger'));
+  records=latest.docs.map(x=>({date:x.id,...x.data()}));
+  const balance=await rebalanceFutureFrom(
+   new Date(Date.UTC(Number(chosen.slice(0,4)),Number(chosen.slice(5)),1)).toISOString().slice(0,7));
+  await chooseMonth(chosen);
+  status('game-status','✅ '+date+' を試合に変更。'+(proposed.carryPending?name+'さんの繰越待ちを記録。':'')+
+   '未公開の将来月で'+balance.monthsChanged+'か月・'+balance.changed+'日を再割当。'+
+   (balance.issues.length?'⚠ 一部再割当失敗：'+balance.issues.join('、'):'') ,'good');
+ }catch(e){status('game-status','保存できませんでした：'+(e.code||e.message||String(e)),'bad');}
+ finally{busy=false;renderActions();showDays();renderCounts();}
+});
+$('member-counts').addEventListener('click',async event=>{
+ const button=event.target.closest('button[data-count-id]');
+ if(!button||busy||!isAdmin)return;
+ const id=button.dataset.countId,delta=Number(button.dataset.delta),member=members.find(m=>m.id===id);
+ if(!member||![-1,1].includes(delta))return;
+ let state;
+ try{state=adjustedDutyCounts(members.map(m=>m.id),records,corrections);}
+ catch(e){status('counts-status',e.message,'bad');return;}
+ const prev=corrections[id]||0,next=prev+delta,adjusted=state.counts[id]+next;
+ if(adjusted<0||Math.abs(next)>50){status('counts-status','0回未満、または補正の上限を超えるため変更できません。','bad');return;}
+ if(!confirm(member.name+'さんの回数を '+state.effective[id]+'回 → '+adjusted+
+  '回に補正しますか？\n※ 実際の実施記録は変更せず、補正履歴を保存します。'))return;
+ const user=auth.currentUser;if(!user)return;
+ busy=true;renderCounts();status('counts-status','⏳ 回数補正を保存しています…');
+ try{
+  const ref=doc(db,'teams',teamId,'dutyCountAdjustments',id);
+  await runTransaction(db,async tx=>{
+   const [adm,snap]=await Promise.all([tx.get(doc(db,'admins',user.uid)),tx.get(ref)]);
+   if(!adm.exists()||adm.data().enabled!==true||auth.currentUser?.uid!==user.uid)
+    throw Error('管理者権限を確認できません');
+   if(Number(snap.data()?.delta??0)!==prev)throw Error('別の端末が補正しています。再読み込みしてください');
+   tx.set(ref,{delta:next,memberId:id,updatedBy:user.uid,updatedAt:serverTimestamp()});
+   tx.set(doc(collection(db,'teams',teamId,'dutyCountAdjustmentAudit')),{
+    memberId:id,oldDelta:prev,newDelta:next,before:state.effective[id],after:adjusted,
+    updatedBy:user.uid,updatedAt:serverTimestamp()});
+  });
+  corrections[id]=next;
+  const balance=await rebalanceFutureFrom('2027-02');
+  lastCountFeedback='✅ '+member.name+'さんの回数を'+adjusted+'回に補正しました。'+
+   '未公開の将来月で'+balance.changed+'日を再割当。'+
+   (balance.issues.length?'⚠ '+balance.issues.join('、'):'');
+ }catch(e){lastCountFeedback='⚠ 回数補正に失敗：'+(e.code||e.message||String(e));}
+ finally{busy=false;renderCounts();renderActions();showDays();}
+});
+$('rebalance').onclick=async()=>{
+ if(busy||!isAdmin||readyMonth!==selectedMonth)return;
+ busy=true;$('rebalance').disabled=true;
+ const month=selectedMonth;
+ status('rebalance-status',month+' の将来当番を照合中…');
+ try{
+  const result=await reallocateDraftMonth(month,{automatic:false});
+  status('rebalance-status',result.changed?'✅ '+month+'：'+result.changed+'日を公平な仮割当へ更新しました。':
+   '変更なし：'+result.skipped,result.changed?'good':'');
+  if(result.changed)await chooseMonth(month);
+ }catch(e){status('rebalance-status','再割当失敗：'+(e.code||e.message||String(e)),'bad');}
+ finally{busy=false;renderActions();showDays();}
+};
+
 $('months').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b)chooseMonth(b.dataset.month)});
 $('refresh').onclick=refreshAll;
 $('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>status('auth-state','Googleログイン失敗：'+(e.code||e.message),'bad'));
