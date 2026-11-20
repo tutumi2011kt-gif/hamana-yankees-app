@@ -120,7 +120,7 @@ async function load(){
   ]);
   if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限を確認できません');
   if(!meta.exists())throw Error('この月の当番表はまだ登録されていません');
-  if(memberSnaps.size!==12)throw Error('現在のメンバーが12人ではありません');
+  if(memberSnaps.size<12)throw Error('初期メンバー12人を確認できません');
   if(auth.currentUser?.uid!==user.uid||$('month').value!==month)throw Error('処理中に月・認証が変わりました');
   members=memberSnaps.docs.map(s=>({id:s.id,...s.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
   days=daySnaps.docs.map(s=>({date:s.id,...s.data()})).sort((a,b)=>a.date.localeCompare(b.date));
