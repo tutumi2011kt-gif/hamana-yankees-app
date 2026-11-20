@@ -59,10 +59,10 @@ const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=get
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short=m=>Number(m.slice(5))+'月';
-let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={};
+let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='';
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
- isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};requestToken++;
+ isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';requestToken++;
  $('game-mode').disabled=true;$('rebalance').disabled=true;
  $('calendar').textContent='';$('member-counts').textContent='';$('month-actions').textContent='';
  status('counts-status','管理者ログインが必要です。');status('month-status','管理者ログインが必要です。');
@@ -92,9 +92,11 @@ function renderCounts(){
  }).join('');
  const sum=Object.values(totals.counts).reduce((a,b)=>a+b,0);
  const overdue=totals.overdue?.length||0;
- status('counts-status','台帳に登録された実施：合計'+sum+'回／記録された中止・繰越待ち：'+(totals.unresolved?.length??0)+'件。'+
+ status('counts-status',(lastCountFeedback?lastCountFeedback+'\n':'')+
+  '台帳に登録された実施：合計'+sum+'回／記録された中止・繰越待ち：'+(totals.unresolved?.length??0)+'件。'+
   (overdue?'⚠ 4か月超の未解消繰越があります。':'')+
-  ' 未記録の日は「実施済み」と推測して加算しません。');
+  ' 未記録の日は「実施済み」と推測して加算しません。',
+  lastCountFeedback.startsWith('✅')?'good':lastCountFeedback.startsWith('⚠')?'bad':'');
 }
 function showDays(){
  $('month-title').textContent='③ '+Number(selectedMonth.slice(0,4))+'年'+short(selectedMonth)+' 当番カレンダー';
@@ -140,7 +142,8 @@ function renderActions(){
  $('game-mode').disabled=!allowed;$('game-cancel').disabled=!allowed||!gameMode;
  $('game-mode').className='primary'+(gameMode?' mode-on':'');
  $('rebalance').disabled=!allowed||selectedMonth<='2027-01'||info?.metadata?.publication!=='draft'||roster?.publishedMonths?.includes(selectedMonth);
- $('game-status').textContent=gameMode?'🏀 試合モード：練習日を選んでください。登録前に確認します。':'「🏀 試合」を押してから練習日を選択すると試合に変更できます。';
+ if(gameMode||!['status good','status bad'].includes($('game-status').className))
+  $('game-status').textContent=gameMode?'🏀 試合モード：練習日を選んでください。登録前に確認します。':'「🏀 試合」を押してから練習日を選択すると試合に変更できます。';
  const published=info?.published===true;
  status('month-status',!info?.exists?selectedMonth+'：未作成です。管理者が作成・公開するまで保護者には表示されません。':
   selectedMonth+'：'+(published?'✅ 公開済み（保護者向け公開名簿にも登録あり）':'🔒 未公開・下書き')+
@@ -148,7 +151,7 @@ function renderActions(){
 }
 async function chooseMonth(m){
  if(!months.includes(m))return;
- selectedMonth=m;gameMode=false;renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
+ selectedMonth=m;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
  const version=++requestToken;
  if(!isAdmin)return;
  status('month-status',m+' の最新当番表を読み込み中…');
@@ -319,9 +322,9 @@ $('month-actions').addEventListener('click',async event=>{
 
 $('game-mode').onclick=()=>{
  if(!isAdmin||busy||readyMonth!==selectedMonth)return;
- gameMode=!gameMode;showDays();renderActions();
+ gameMode=!gameMode;$('game-status').className='status';showDays();renderActions();
 };
-$('game-cancel').onclick=()=>{gameMode=false;showDays();renderActions()};
+$('game-cancel').onclick=()=>{gameMode=false;$('game-status').className='status';showDays();renderActions()};
 $('calendar').addEventListener('click',async event=>{
  const b=event.target.closest('button[data-game-date]');
  if(!b||busy||!isAdmin||!gameMode||readyMonth!==selectedMonth)return;
@@ -404,10 +407,10 @@ $('member-counts').addEventListener('click',async event=>{
   });
   corrections[id]=next;
   const balance=await rebalanceFutureFrom('2027-02');
-  status('counts-status','✅ '+member.name+'さんの回数を'+adjusted+'回に補正しました。'+
+  lastCountFeedback='✅ '+member.name+'さんの回数を'+adjusted+'回に補正しました。'+
    '未公開の将来月で'+balance.changed+'日を再割当。'+
-   (balance.issues.length?'⚠ '+balance.issues.join('、'):'') ,'good');
- }catch(e){status('counts-status','回数補正に失敗：'+(e.code||e.message||String(e)),'bad');}
+   (balance.issues.length?'⚠ '+balance.issues.join('、'):'');
+ }catch(e){lastCountFeedback='⚠ 回数補正に失敗：'+(e.code||e.message||String(e));}
  finally{busy=false;renderCounts();renderActions();showDays();}
 });
 $('rebalance').onclick=async()=>{
