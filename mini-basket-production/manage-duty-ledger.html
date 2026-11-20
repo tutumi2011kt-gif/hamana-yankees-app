@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>🏀 管理者・実施回数と繰越台帳</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#26394f;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:760px;margin:auto;padding:12px 10px 56px}h1{font-size:21px;margin:0 0 5px}h2{font-size:16px;margin:0 0 8px}.card{background:#fff;border:1px solid #dbe7ef;border-radius:14px;padding:13px;margin:12px 0}
+header{background:linear-gradient(110deg,#e7f3ff,#fff2db);padding:18px 14px;border-radius:15px}.notice{background:#fff3df;border:1px solid #ead2a9;border-radius:10px;padding:10px;font-size:12px}.ok{background:#e8f8ee;border:1px solid #b8dfc8;border-radius:10px;padding:10px;color:#156844}.error{background:#fff0f1;border:1px solid #ecc5ca;border-radius:10px;padding:10px;color:#a22940}.small{font-size:12px;color:#65788c;white-space:pre-wrap}
+label{display:block;margin:8px 0 4px;font-weight:600}input,select,button,textarea{font:inherit}input,select,textarea{width:100%;border:1px solid #c5d5e2;border-radius:9px;min-height:44px;padding:9px;background:#fff;color:inherit}
+textarea{min-height:64px}button{min-height:44px;border-radius:9px;border:1px solid #c4d4e2;background:white;color:inherit;font-weight:700;padding:8px 12px}button.primary{background:#285c85;color:#fff;border-color:#285c85}button.danger{color:#a7354d;border-color:#d4aab4}button:disabled{opacity:.5}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1 1 140px}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #e2eaf1;text-align:left;padding:7px 4px}th{white-space:nowrap}.stats{max-height:330px;overflow-y:auto}
+@media(max-width:350px){.row{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><h1>🏀 実施回数・中止・繰越台帳</h1><p>有玉女子ミニバス｜管理者専用</p><p class="notice"><b>予定と実績は別です。</b> 当番予定があるだけでは回数に加算しません。実際に終わった当番のみ「実施済み」として記録します。12/9の村松さわは当番練習なので正式回数には加えません。</p></header>
+<section class="card"><h2>① 管理者ログイン・月の読み込み</h2>
+<p id="auth-status" class="small">認証確認中…</p>
+<div class="row"><label>記録対象月<select id="month"></select></label><label>集計対象月<select id="summary-month"></select></label></div>
+<div class="actions"><button id="login" class="primary">Googleで管理者ログイン</button><button id="load">Firebaseから読み込む</button></div>
+<p id="load-status" class="small">ログインして読み込んでください。</p></section>
+<section class="card"><h2>② 日付ごとの実施・中止記録</h2>
+<label>日付<select id="date" disabled><option>月を読み込んでください</option></select></label>
+<div class="row"><label>元の担当者<select id="owner" disabled></select></label><label>状態<select id="status" disabled><option value="completed">実施済み</option><option value="cancelled">中止</option></select></label></div>
+<div id="completed-fields"><label>実際に担当した人（交代した場合はこちら）<select id="actual" disabled></select></label><p class="small">この人だけを実施回数に加算します。同行や見学の人は加算しません。</p></div>
+<div id="cancel-fields" hidden><div class="row"><label>中止理由<select id="reason" disabled><option value="game">練習試合・試合化</option><option value="rest">練習休み</option><option value="personal">個人的事情</option><option value="other">その他</option></select></label>
+<label>繰越<select id="carry" disabled><option value="pending">繰越待ち</option><option value="resolved">解消済み</option><option value="none">繰越対象外</option></select></label></div>
+<label id="resolve-label" hidden>繰越を解消した日<input id="resolved" type="date"></label>
+<p class="small" id="window-note"></p></div>
+<label>管理者メモ（250文字以内）<textarea id="note" maxlength="250" disabled placeholder="例：急な練習試合で中止。繰越希望を確認"></textarea></label>
+<div class="notice">中止になった日の元担当者は固定記録します。3〜4か月後の再割当候補になりますが、本人都合と曜日条件を優先します。「練習試合・試合化」「練習休み」で中止を保存すると、カレンダーの当番も同時に取り消します。×・○の回答は履歴として残し、入力は停止します。誤記録を取り消すと元の予定に戻ります。個人的事情・その他は台帳だけに記録します。2026年12月の確定表は変更しません。</div>
+<div class="actions" style="margin-top:10px"><button id="save" class="primary" disabled>実施・中止の記録を保存</button><button id="remove" class="danger" disabled>誤記録を取り消す</button></div>
+<p id="save-status" class="small" role="status">未保存です。</p></section>
+<section class="card"><h2>③ 実施回数と繰越の管理者集計</h2>
+<p class="small">「集計対象月」より前に記録された当番だけを集計します。未記録の過去日については、実績が不明なため自動で実施済みにはしません。</p>
+<div id="counts" class="stats">集計待ちです。</div>
+<p id="pending" class="small"></p></section>
+<section class="card"><h2>④ 記録一覧</h2><div id="history" class="small">未読み込み</div></section>
+<footer class="small">管理者以外にはこの台帳は公開しません。変更は管理者権限でFirebaseへ保存し、変更履歴も別記録します。この画面は本番用です。管理者権限が確認できた場合のみ保存・訂正できます。 <a href="./admin-dashboard.html">← 年間当番管理へ戻る</a></footer>
+</main><script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {addMonths} from './month-rollover-core.mjs';
+import {buildDutyLedgerRecord,eligibleCarryWindow,ledgerTotals} from './duty-ledger-core.mjs';
+import {todayTokyo} from './core.mjs';
+import {persistLedger,planLedgerCalendar} from './ledger-calendar-core.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'basket-ledger-admin'),auth=getAuth(app),db=getFirestore(app);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const path='teams/'+teamId+'/dutyLedger';
+const ledgerCollection=collection(db,path);
+let members=[],days=[],records=[],ready=false,busy=false,currentMonth='',isAdmin=false;
+const memberMap=()=>Object.fromEntries(members.map(x=>[x.id,x.name]));
+const message=(id,value,kind='small')=>{$(id).textContent=value;$(id).className=kind};
+const memberOptions=()=>'<option value="">— 選択してください —</option>'+members.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>').join('');
+function update(){
+ $('login').hidden=!!auth.currentUser;
+ $('load').disabled=busy||!auth.currentUser;
+ for(const id of ['date','owner','status','actual','reason','carry','note'])$(id).disabled=busy||!ready;
+ $('save').disabled=busy||!ready;
+ $('remove').disabled=busy||!ready||!records.some(x=>x.date===$('date').value);
+}
+function toggle(){
+ const cancelled=$('status').value==='cancelled';
+ $('completed-fields').hidden=cancelled;$('cancel-fields').hidden=!cancelled;
+ $('resolve-label').hidden=!cancelled||$('carry').value!=='resolved';
+ try{const w=eligibleCarryWindow($('date').value);$('window-note').textContent='繰越の原則目安：'+w.from+'〜'+w.through+'（必要なら管理者が延長を判断）';}
+ catch{$('window-note').textContent='';}
+ update();
+}
+function options(){
+ const choices=[];for(let m='2026-12';m<='2027-11';m=addMonths(m,1))choices.push(m);
+ $('month').innerHTML=choices.map(m=>'<option value="'+m+'">'+m+'</option>').join('');
+ $('summary-month').innerHTML=choices.map(m=>'<option value="'+m+'">'+m+'</option>').join('');
+ const current=todayTokyo().slice(0,7);
+ $('month').value=choices.includes(current)?current:'2026-12';
+ $('summary-month').value=choices.includes(addMonths(current,1))?addMonths(current,1):'2027-11';
+}
+function displayEntry(){
+ if(!ready||!days.length)return;
+ const day=days.find(d=>d.date===$('date').value),entry=records.find(r=>r.date===$('date').value);
+ $('owner').value=entry?.scheduledOwnerId||day?.ownerId||'';
+ $('status').value=entry?.status||'completed';
+ // A confirmed swap is only a suggestion; count actual duty after completion.
+ $('actual').value=entry?.actualOwnerId||day?.confirmedSubstituteId||day?.ownerId||'';
+ $('reason').value=entry?.reason||'game';
+ $('carry').value=entry?.carryState||'pending';
+ $('resolved').value=entry?.carryResolvedDate||'';
+ $('note').value=entry?.note||'';
+ if(day?.type!=='practice'&&!entry){$('status').value='cancelled';$('actual').value='';}
+ toggle();
+}
+function totals(){
+ if(!members.length)return;
+ const memberIds=members.map(x=>x.id),names=memberMap();
+ try{
+  const month=$('summary-month').value;
+  const data=ledgerTotals(memberIds,records,month);
+  $('counts').innerHTML='<table><thead><tr><th>メンバー</th><th>実施回数</th><th>繰越優先</th></tr></thead><tbody>'+
+   members.map(m=>'<tr><td>'+esc(m.name)+'</td><td>'+data.counts[m.id]+'回</td><td>'+data.carry[m.id]+'件</td></tr>').join('')+'</tbody></table>';
+  $('pending').textContent='未解消の中止記録：'+data.unresolved.length+'件'+
+   (data.upcoming.length?'／3か月前のため待機中 '+data.upcoming.join('、'):'')+
+   (data.overdue.length?'／⚠ 4か月超でも未解消 '+data.overdue.join('、'):'');
+  const selected=records.filter(r=>r.date.startsWith(currentMonth)).sort((a,b)=>a.date.localeCompare(b.date));
+  $('history').innerHTML=selected.length?selected.map(r=>'<div style="padding:9px;border-bottom:1px solid #e5edf3"><b>'+esc(r.date)+'</b> '+(r.status==='completed'?'実施':'中止')+
+   '｜元担当：'+esc(names[r.scheduledOwnerId]||r.scheduledOwnerId)+
+   (r.status==='completed'?'｜実施者：'+esc(names[r.actualOwnerId]||r.actualOwnerId):'｜繰越：'+esc(r.carryState))+
+   (r.note?'｜'+esc(r.note):'')+'</div>').join(''):'この月の実績・中止記録はまだありません。';
+ }catch(e){message('pending','集計失敗：'+(e.message||String(e)),'error');}
+}
+async function load(){
+ const user=auth.currentUser;if(!user||busy)return;
+ busy=true;ready=false;update();message('load-status','Firebaseから管理者権限・名簿・日程・台帳を読み込み中…');
+ try{
+  const month=$('month').value;
+  const [admin,meta,memberSnaps,daySnaps,ledgerSnaps]=await Promise.all([
+   getDocFromServer(doc(db,'admins',user.uid)),
+   getDocFromServer(doc(db,'teams',teamId,'months',month)),
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',month,'days')),
+   getDocsFromServer(ledgerCollection)
+  ]);
+  if(!admin.exists()||admin.data().enabled!==true)throw Error('管理者権限を確認できません');
+  if(!meta.exists())throw Error('この月の当番表はまだ登録されていません');
+  if(memberSnaps.size!==12)throw Error('現在のメンバーが12人ではありません');
+  if(auth.currentUser?.uid!==user.uid||$('month').value!==month)throw Error('処理中に月・認証が変わりました');
+  members=memberSnaps.docs.map(s=>({id:s.id,...s.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  days=daySnaps.docs.map(s=>({date:s.id,...s.data()})).sort((a,b)=>a.date.localeCompare(b.date));
+  records=ledgerSnaps.docs.map(s=>({date:s.id,...s.data()}));
+  if(!days.length)throw Error('この月の日別予定を取得できません');
+  currentMonth=month;
+  $('owner').innerHTML=memberOptions();$('actual').innerHTML=memberOptions();
+  $('date').innerHTML=days.map(d=>'<option value="'+esc(d.date)+'">'+esc(d.date)+'：'+(d.type==='practice'?'練習':d.type==='game'?'試合':'休み')+'</option>').join('');
+  ready=true;displayEntry();totals();
+  message('load-status','✅ '+currentMonth+' の予定'+days.length+'件と実績台帳'+records.length+'件を読み込みました。','ok');
+  message('save-status','日付を選んで実績または中止を記録できます。');
+ }catch(e){ready=false;days=[];message('load-status','読み込み失敗：'+(e.code||e.message||String(e)),'error');}
+ finally{busy=false;update();}
+}
+$('month').onchange=()=>{ready=false;days=[];currentMonth='';$('date').innerHTML='';$('history').textContent='月を読み込んでください。';update()};
+$('summary-month').onchange=totals;
+$('date').onchange=displayEntry;
+$('status').onchange=toggle;
+$('carry').onchange=toggle;
+onAuthStateChanged(auth,user=>{ready=false;days=[];members=[];records=[];isAdmin=false;
+ message('auth-status',user?'ログイン済み。対象月を読み込んでください。':'Googleで管理者ログインしてください。');
+ update();},e=>message('auth-status','認証失敗：'+(e.code||e.message),'error'));
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>message('auth-status','ログイン失敗：'+(e.code||e.message),'error'));
+$('load').onclick=load;
+$('save').onclick=async()=>{
+ const user=auth.currentUser;if(!ready||busy||!user)return;
+ const date=$('date').value,day=days.find(x=>x.date===date);
+ if(!day)return message('save-status','日別予定が見つかりません','error');
+ const values={date,status:$('status').value,scheduledOwnerId:$('owner').value,
+  actualOwnerId:$('status').value==='completed'?$('actual').value:null,
+  reason:$('status').value==='cancelled'?$('reason').value:null,
+  carryState:$('status').value==='cancelled'?$('carry').value:null,
+  carryResolvedDate:$('status').value==='cancelled'&&$('carry').value==='resolved'?$('resolved').value:null,
+  note:$('note').value,traineeIds:date==='2026-12-09'?['sawa']:[]};
+ let result;
+ try{
+  result=buildDutyLedgerRecord(values,members.map(x=>x.id),todayTokyo());
+  planLedgerCalendar({date,day,prior:records.find(x=>x.date===date),record:result,revision:1});
+  if(!confirm(date+' の「'+(result.status==='completed'?'実施済み':'中止')+'」記録をFirebaseに保存します。実施回数・繰越集計に反映します。試合・休みの中止はカレンダーの当番も取り消します。保存しますか？'))return;
+ }catch(e){message('save-status',e.message,'error');return;}
+ busy=true;update();message('save-status','台帳と監査履歴に保存中…');
+ try{
+  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,uid:user.uid,date,record:result,
+   expected:records.find(x=>x.date===date)??null,expectedDay:day,authMatches:()=>auth.currentUser?.uid===user.uid});
+  message('save-status','✅ 記録と変更履歴を保存しました。最新データを読み込み直します。','ok');
+  busy=false;await load();
+ }catch(e){message('save-status','保存できませんでした：'+(e.code||e.message||String(e)),'error');}
+ finally{busy=false;update();}
+};
+$('remove').onclick=async()=>{
+ const user=auth.currentUser,date=$('date').value,existing=records.find(x=>x.date===date);
+ if(!ready||busy||!user||!existing)return;
+ if(!confirm(date+' の台帳記録を取り消しますか？取消履歴を保持し、実施回数・繰越集計から除外します。この記録で中止した予定は元に戻ります。'))return;
+ busy=true;update();message('save-status','記録を取り消し中…');
+ try{
+  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,uid:user.uid,date,record:null,
+   expected:existing,expectedDay:days.find(x=>x.date===date),authMatches:()=>auth.currentUser?.uid===user.uid});
+  message('save-status','✅ 誤記録を取り消しました。','ok');
+  busy=false;await load();
+ }catch(e){message('save-status','取消に失敗：'+(e.code||e.message||String(e)),'error');}
+ finally{busy=false;update();}
+};
+options();update();
+</script></body></html>
