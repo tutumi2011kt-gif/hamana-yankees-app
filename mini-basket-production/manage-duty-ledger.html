@@ -33,7 +33,7 @@ table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px
 <div id="counts" class="stats">集計待ちです。</div>
 <p id="pending" class="small"></p></section>
 <section class="card"><h2>④ 記録一覧</h2><div id="history" class="small">未読み込み</div></section>
-<footer class="small">管理者以外にはこの台帳は公開しません。変更は管理者権限でFirebaseへ保存し、変更履歴も別記録します。本番公開前の開発候補画面です。</footer>
+<footer class="small">管理者以外にはこの台帳は公開しません。変更は管理者権限でFirebaseへ保存し、変更履歴も別記録します。この画面は本番用です。管理者権限が確認できた場合のみ保存・訂正できます。 <a href="./admin-dashboard.html">← 年間当番管理へ戻る</a></footer>
 </main><script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {addMonths} from './month-rollover-core.mjs';
