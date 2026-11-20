@@ -30,7 +30,7 @@ export function proposeFairDraft({month,days,members,records,corrections={},toda
   typeof today!=='string')throw Error('将来の当番表データが不足しています');
  const activeIds=members.map(m=>m.id);
  const totals=adjustedDutyCounts(activeIds,records,corrections,month);
- const projected={...totals.effective}, assignedDates=Object.fromEntries(members.map(m=>[m.id,[]]));
+ const projected={...totals.effective}, assignedDates=Object.fromEntries(members.map(m=>[m.id,[...(totals.historyDates[m.id]||[])]]));
  for(const row of priorPlans){
   if(row.type==='practice'&&row.ownerId&&row.date<month+'-01'&&row.date>=today&&
     Object.prototype.hasOwnProperty.call(projected,row.ownerId)){
