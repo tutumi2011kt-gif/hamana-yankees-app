@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#eaf3fb">
+<title>🏀 管理者｜年間当番管理 2027年1〜11月</title>
+<style>
+*{box-sizing:border-box}body{margin:0;color:#253952;background:#f2f7fb;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:900px;margin:auto;padding:12px 10px 56px}header{padding:16px 14px;background:linear-gradient(115deg,#e4f2ff,#fff1df);border:1px solid #dbe8f1;border-radius:16px}
+h1{font-size:21px;margin:0 0 5px}h2{font-size:16px;margin:0 0 10px}p{margin:7px 0}.small{font-size:12px;color:#647b8f}.tiny{font-size:11px;color:#708498}
+.card{background:#fff;border:1px solid #dfe7ef;border-radius:14px;padding:13px;margin:11px 0}.status{padding:9px 11px;border-radius:9px;background:#eaf3fd;font-size:12px;white-space:pre-wrap}
+.status.bad{background:#fff0f1;color:#9c2947}.status.good{background:#eaf8f0;color:#176744}.hint{border-left:4px solid #cf8c37;background:#fff6e8;padding:10px;font-size:12px}
+button{font:inherit;cursor:pointer;min-height:44px;border:1px solid #c7d8e7;background:white;color:inherit;border-radius:9px;padding:7px}
+button:disabled{cursor:default;opacity:.6}button.primary{background:#235886;color:#fff;border-color:#235886;font-weight:850;padding:9px 15px}
+.months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.months button{font-size:14px;font-weight:850;padding:7px 1px}.months button.current{background:#e3f1fe;border:2px solid #216399}
+.months small{font-size:10px;font-weight:550;display:block;color:#63788d}.actions{display:flex;flex-wrap:wrap;gap:8px}.action{flex:1 1 180px;display:block;text-align:center;text-decoration:none;color:#1f557f;background:#e9f3fb;border:1px solid #cbdfe9;padding:11px 6px;border-radius:9px;font-weight:800;min-height:44px}
+.action.green{color:#166a47;background:#e8f6ee;border-color:#bddcca}.action.disabled{background:#f0f2f4;color:#6f7b87;pointer-events:none}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metric{background:#f3f8fc;border:1px solid #e0e9f1;border-radius:10px;text-align:center;padding:10px 3px}.metric b{font-size:22px;display:block}.metric span{font-size:11px;color:#60768c}
+.week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.week{margin-top:12px}.week span{font-size:12px;font-weight:750;text-align:center}.week span:first-child{color:#ae4058}.week span:last-child{color:#3671a7}
+.day{padding:4px 2px;min-height:68px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}
+.owner{font-weight:800;display:block;font-size:10px;margin-top:4px}.note{font-size:9px;display:block;color:#677d8e}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px 5px;border-bottom:1px solid #e5eaf0;text-align:left}th{white-space:nowrap;background:#f5f8fb}
+footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.months{grid-template-columns:repeat(4,minmax(0,1fr))}.metrics{gap:4px}.day{min-height:67px}.action{flex-basis:130px}}
+</style></head><body><main>
+<header><h1>🏀 年間当番管理</h1><p>2027年1月〜11月｜管理者専用</p>
+<div class="hint">実際の本番データを読み取り、月ごとの公開状況・当番予定・実施回数を確認します。<b>画面を開く・月を切り替えるだけでは、当番表や保護者データを変更しません。</b></div></header>
+<section class="card"><h2>① 管理者ログイン</h2><div id="auth-state" class="status">Googleの管理者ログインを確認中…</div>
+<div class="actions" style="margin-top:9px"><button id="login" class="primary">Googleで管理者ログイン</button><button id="refresh" disabled>最新データを再読み込み</button></div></section>
+<section class="card"><h2>② 管理する月を選ぶ</h2><div id="months" class="months"></div>
+<p id="month-status" class="status">ログイン後に各月の公開状況を確認します。</p></section>
+<section class="card"><h2 id="month-title">③ 月別当番カレンダー</h2>
+<div id="metrics" class="metrics"><div class="metric"><b>—</b><span>練習</span></div><div class="metric"><b>—</b><span>試合</span></div><div class="metric"><b>—</b><span>休み</span></div></div>
+<div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+<div id="calendar" class="calendar"></div>
+<p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。存在しない月の予定は推測して表示しません。</p>
+<h2>対象月の管理操作</h2><div id="month-actions" class="actions"></div></section>
+<section class="card"><h2>④ メンバー別の当番回数</h2>
+<p class="small"><b>予定回数と実際の実施回数は別管理</b>です。実際に当番を終えた場合だけ実施回数を加算します。試合による中止は実施回数に含まず、元担当者の繰越待ちに記録します。補填を予定に入れただけでは繰越は解消しません。</p>
+<div id="counts-status" class="status">実績台帳を読み込みます。</div><div class="scroll"><table><thead><tr><th>メンバー</th><th>選択月の予定</th><th>記録済み実施</th><th>繰越待ち</th></tr></thead><tbody id="member-counts"></tbody></table></div>
+<div class="actions" style="margin-top:12px"><a class="action green" href="./manage-duty-ledger.html">✏️ 実施・中止・繰越を記録・訂正</a></div></section>
+<section class="card"><h2>⑤ 管理者ツール</h2><div class="actions">
+<a class="action" href="./manage-members.html">メンバー管理</a>
+<a class="action" href="./manage-january.html">1月の仮当番表管理</a>
+<a class="action" href="./manage-january-publish.html">1月の公開承認</a>
+<a class="action" href="./admin-login.html">ログインと権限確認</a>
+</div><p class="small">2月以降の新しい月の「自動仮割当→下書き保存→公開承認」は、管理画面へ順次統合します。現時点で未作成・未公開の月について、この画面で作成済みと表示することはありません。</p></section>
+<footer>この画面は管理者専用です。保護者画面と2026年12月確定表は変更しません。公開承認の操作は月専用の確認画面でのみ行います。</footer>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import {ledgerTotals} from './duty-ledger-core.mjs?v=admin-20261120';
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=getAuth(app),db=getFirestore(app);
+const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const short=m=>Number(m.slice(5))+'月';
+let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0;
+function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
+function resetPrivate(){
+ isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;requestToken++;
+ $('calendar').textContent='';$('member-counts').textContent='';$('month-actions').textContent='';
+ status('counts-status','管理者ログインが必要です。');status('month-status','管理者ログインが必要です。');
+ $('refresh').disabled=true;renderMonths();
+}
+function renderMonths(){
+ $('months').innerHTML=months.map(m=>{
+  const info=monthsMeta[m],state=!isAdmin?'🔒':!info?'未取得':!info.exists?'未作成':info.published?'公開済み':'下書き・未公開';
+  return '<button type="button" data-month="'+m+'" class="'+(m===selectedMonth?'current':'')+'">'+short(m)+'<small>'+esc(state)+'</small></button>';
+ }).join('');
+}
+function renderCounts(){
+ if(!isAdmin||!members.length)return;
+ const scheduled=Object.fromEntries(members.map(m=>[m.id,0]));
+ selectedDays.filter(d=>d.type==='practice'&&d.ownerId).forEach(d=>{if(d.ownerId in scheduled)scheduled[d.ownerId]++});
+ let totals;
+ try{totals=ledgerTotals(members.map(m=>m.id),records,'2027-12')}catch(e){
+  status('counts-status','台帳の集計に失敗しました：'+(e.message||String(e)),'bad');return;
+ }
+ $('member-counts').innerHTML=members.map(m=>'<tr><td><b>'+esc(m.name)+'</b></td><td>'+scheduled[m.id]+'回</td><td>'+totals.counts[m.id]+'回</td><td>'+totals.carry[m.id]+'件</td></tr>').join('');
+ const sum=Object.values(totals.counts).reduce((a,b)=>a+b,0);
+ const overdue=totals.overdue?.length||0;
+ status('counts-status','台帳に登録された実施：合計'+sum+'回／記録された中止・繰越待ち：'+(totals.unresolved?.length??0)+'件。'+
+  (overdue?'⚠ 4か月超の未解消繰越があります。':'')+
+  ' 未記録の日は「実施済み」と推測して加算しません。');
+}
+function showDays(){
+ $('month-title').textContent='③ '+Number(selectedMonth.slice(0,4))+'年'+short(selectedMonth)+' 当番カレンダー';
+ if(!isAdmin)return;
+ const exists=monthsMeta[selectedMonth]?.exists===true;
+ const byId=Object.fromEntries(members.map(m=>[m.id,m.name]));
+ const total=selectedDays.filter(d=>d.type==='practice').length;
+ const game=selectedDays.filter(d=>d.type==='game').length;
+ const rest=selectedDays.filter(d=>d.type==='rest').length;
+ $('metrics').innerHTML=[['練習',total],['試合',game],['休み',rest]].map(([label,value])=>
+  '<div class="metric"><b>'+(exists?value:'—')+'</b><span>'+label+'</span></div>').join('');
+ if(!exists){$('calendar').innerHTML='<p class="small" style="grid-column:span 7">この月の当番表はまだFirebaseに作成されていません。</p>';return;}
+ const map=new Map(selectedDays.map(d=>[d.date,d]));
+ const y=Number(selectedMonth.slice(0,4)),m=Number(selectedMonth.slice(5));
+ const end=new Date(Date.UTC(y,m,0)).getUTCDate(),start=new Date(Date.UTC(y,m-1,1)).getUTCDay();
+ let html='';
+ for(let i=0;i<start;i++)html+='<div class="day empty"></div>';
+ for(let i=1;i<=end;i++){
+  const date=selectedMonth+'-'+String(i).padStart(2,'0'),d=map.get(date);
+  const type=d?.type||'',owner=d?.ownerId?(byId[d.ownerId]||'担当ID未確認'):'';
+  const label=type==='practice'?'練習':type==='game'?'🏀試合':type==='rest'?'休み':'';
+  html+='<div class="day '+esc(type)+'"><span class="date">'+i+'</span>'+
+   (label?'<span class="note">'+esc(label)+'</span>':'')+
+   (owner?'<span class="owner">'+esc(owner)+'</span>':'')+
+   (type==='practice'&&!owner?'<span class="note">⚠担当未設定</span>':'')+'</div>';
+ }
+ $('calendar').innerHTML=html;
+}
+function renderActions(){
+ if(!isAdmin)return;
+ const info=monthsMeta[selectedMonth];
+ let html='';
+ if(selectedMonth==='2027-01'){
+  html='<a class="action" href="./manage-january.html">1月の予定・担当者を確認</a>'+
+       '<a class="action green" href="./manage-january-publish.html">1月の公開・承認状況を確認</a>';
+ }else{
+  html='<span class="action disabled" aria-disabled="true">この月の仮当番作成・公開操作は準備中</span>';
+ }
+ $('month-actions').innerHTML=html;
+ const published=info?.published===true;
+ status('month-status',!info?.exists?selectedMonth+'：未作成です。管理者が作成・公開するまで保護者には表示されません。':
+  selectedMonth+'：'+(published?'✅ 公開済み（保護者向け公開名簿にも登録あり）':'🔒 未公開・下書き')+
+  '／予定の日数 '+selectedDays.length+'件。閲覧だけではFirebaseへ変更しません。',published?'good':'');
+}
+async function chooseMonth(m){
+ if(!months.includes(m))return;
+ selectedMonth=m;renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();
+ const version=++requestToken;
+ if(!isAdmin)return;
+ status('month-status',m+' の最新当番表を読み込み中…');
+ try{
+  const ref=doc(db,'teams',teamId,'months',m),snap=await getDocFromServer(ref);
+  if(version!==requestToken)return;
+  const meta=snap.exists()?snap.data():null;
+  monthsMeta[m]={exists:!!meta,published:meta?.publication==='published'&&roster?.publishedMonths?.includes(m),metadata:meta};
+  const daySnaps=meta?await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days')):null;
+  if(version!==requestToken)return;
+  selectedDays=daySnaps?daySnaps.docs.map(x=>({date:x.id,...x.data()})).sort((a,b)=>a.date.localeCompare(b.date)):[];
+  readyMonth=m;renderMonths();showDays();renderActions();renderCounts();
+ }catch(e){
+  if(version!==requestToken)return;
+  selectedDays=[];status('month-status','月データを確認できません：'+(e.code||e.message||String(e)),'bad');
+  $('calendar').textContent='読み込み失敗。推測の予定は表示しません。';
+ }
+}
+async function refreshAll(){
+ const user=auth.currentUser;if(!user||busy)return;
+ busy=true;$('refresh').disabled=true;status('auth-state','管理者権限と年間データを確認中…');
+ try{
+  const admin=await getDocFromServer(doc(db,'admins',user.uid));
+  if(!admin.exists()||admin.data().enabled!==true||
+    !user.providerData.some(p=>p.providerId==='google.com'))throw Error('管理者として登録されたGoogleアカウントが必要です');
+  const [memberDocs,ledgerDocs,publicRoster]=await Promise.all([
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocsFromServer(collection(db,'teams',teamId,'dutyLedger')),
+   getDocFromServer(doc(db,'teams',teamId,'public','roster'))
+  ]);
+  if(auth.currentUser?.uid!==user.uid)throw Error('読み込み中にGoogleアカウントが変更されました');
+  if(memberDocs.size!==12)throw Error('登録メンバー数が12人ではありません。データを確認してください。');
+  if(!publicRoster.exists()||!Array.isArray(publicRoster.data().publishedMonths))throw Error('公開済み月一覧を確認できません');
+  members=memberDocs.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  records=ledgerDocs.docs.map(x=>({date:x.id,...x.data()}));
+  roster=publicRoster.data();
+  isAdmin=true;monthsMeta={};renderMonths();
+  status('auth-state','✅ 管理者認証OK。12人の名簿、実績台帳、公開状態を読み取りました。','good');
+  await chooseMonth(selectedMonth);
+ }catch(e){resetPrivate();status('auth-state','読み込みできません：'+(e.code||e.message||String(e)),'bad')}
+ finally{busy=false;$('refresh').disabled=!isAdmin}
+}
+$('months').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b)chooseMonth(b.dataset.month)});
+$('refresh').onclick=refreshAll;
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>status('auth-state','Googleログイン失敗：'+(e.code||e.message),'bad'));
+onAuthStateChanged(auth,user=>{
+ resetPrivate();
+ $('login').hidden=!!user;
+ if(user){status('auth-state','Googleログイン済み。管理者権限を確認中…');void refreshAll()}
+ else status('auth-state','管理者のGoogleアカウントでログインしてください。');
+},e=>status('auth-state','認証状態を確認できません：'+(e.code||e.message),'bad'));
+renderMonths();
+</script></body></html>
