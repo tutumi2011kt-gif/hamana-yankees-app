@@ -210,7 +210,8 @@ async function reallocateDraftMonth(target,{automatic=false}={}){
   publicSnap.data().members.some(m=>!members.some(x=>x.id===m.id)))
   throw Error('名簿が更新されました。年間管理画面を再読み込みしてください。');
  const rows=daySnap.docs.map(x=>({date:x.id,...x.data()}));
- const plan=proposeFairDraft({month:target,days:rows,members,records,corrections,today:todayTokyo()});
+ const priorPlans=await priorScheduledDays(target);
+ const plan=proposeFairDraft({month:target,days:rows,members,records,corrections,today:todayTokyo(),priorPlans});
  if(!plan.updates.length)return {changed:0,skipped:plan.warnings.join('・')||'調整不要'};
  if(!automatic){
   const names=Object.fromEntries(members.map(m=>[m.id,m.name]));
