@@ -95,7 +95,7 @@ $('load').addEventListener('click',async()=>{
   const dateList=calendarDates();
   if(monthSnap.exists()&&dateList.some(d=>!daySnaps.docs.some(s=>s.id===d.date)))throw Error('下書きの日付が不足しています。変更前に管理者が確認してください。');
   if(daySnaps.docs.some(s=>!dateList.some(d=>d.date===s.id)))throw Error('水・金・土・日以外の日付データがあります。上書きしません。');
-  if(memberSnaps.size!==12)throw Error('メンバーが12人ではありません。名簿を確認してください。');
+  if(memberSnaps.size<12)throw Error('初期メンバー12人を確認できません。');
   members=memberSnaps.docs.map(s=>({...normalizeMember({id:s.id,...s.data()}),unavailableDates:s.data().unavailableDates||[]}));
   rows=monthSnap.exists()?dateList.map(d=>{
    const found=daySnaps.docs.find(s=>s.id===d.date)?.data();
@@ -127,7 +127,7 @@ $('automatic').addEventListener('click',async()=>{
  working=true;update();
  try{
   const latest=await getDocsFromServer(collection(db,'teams',teamId,'members'));
-  if(latest.size!==12)throw Error('メンバー12人を確認できません');
+  if(latest.size<12)throw Error('初期メンバー12人を確認できません');
   members=latest.docs.map(s=>({...normalizeMember({id:s.id,...s.data()}),unavailableDates:s.data().unavailableDates||[]}));
   const counts={},carry={};
   for(const el of document.querySelectorAll('[data-count]'))counts[el.dataset.count]=el.value===''?NaN:Number(el.value);
