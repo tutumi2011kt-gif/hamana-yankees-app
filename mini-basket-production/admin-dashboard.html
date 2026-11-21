@@ -180,6 +180,7 @@ async function chooseMonth(m){
 }
 async function refreshAll(){
  const user=auth.currentUser;if(!user||busy)return;
+ clearReview();
  busy=true;$('refresh').disabled=true;status('auth-state','管理者権限と年間データを確認中…');
  try{
   const admin=await getDocFromServer(doc(db,'admins',user.uid));
@@ -284,13 +285,12 @@ async function prepareFutureReview(startMonth,cause){
     correctionSignature(sources.corrections)!==correctionSignature(corrections)||
     rosterSignature(sources.publicRoster)!==rosterSignature(roster))
   throw Error('メンバー・実績・補正または公開月が更新されています。「最新データを再読み込み」を押してください。');
- const monthsData=[];
- for(const month of months){
+ const monthsData=await Promise.all(months.map(async month=>{
   const ref=doc(db,'teams',teamId,'months',month),m=await getDocFromServer(ref);
   const data=m.exists()?m.data():null;
   const snaps=data?await getDocsFromServer(collection(db,'teams',teamId,'months',month,'days')):null;
-  monthsData.push({month,meta:data,days:snaps?snaps.docs.map(x=>({date:x.id,...x.data()})).sort((a,b)=>a.date.localeCompare(b.date)):[]});
- }
+  return {month,meta:data,days:snaps?snaps.docs.map(x=>({date:x.id,...x.data()})).sort((a,b)=>a.date.localeCompare(b.date)):[]};
+ }));
  const priorPlans=[],plans=[],warnings=[],skipped=[],today=todayTokyo();
  for(const item of monthsData){
   const {month,meta,days}=item;
