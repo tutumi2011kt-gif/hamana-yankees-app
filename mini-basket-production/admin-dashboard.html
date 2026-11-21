@@ -470,6 +470,72 @@ $('calendar').addEventListener('click',async event=>{
  const b=event.target.closest('button[data-game-date]');
  if(!b||busy||!isAdmin||!gameMode||readyMonth!==selectedMonth)return;
  const date=b.dataset.gameDate,day=selectedDays.find(d=>d.date===date),original=records.find(r=>r.date===date);
+ if(day?.type==='game'){
+  let prior;
+  try{prior=shouldRestorePractice({date,day,record:original,month:selectedMonth});}
+  catch(error){status('game-status','練習へ戻せません：'+error.message,'bad');return;}
+  const who=prior.originalOwnerId?(members.find(m=>m.id===prior.originalOwnerId)?.name||prior.originalOwnerId):'担当者未設定';
+  if(!confirm(date+' の試合を取り消し、以前の練習に戻しますか？\n元の担当者：'+who+
+    (prior.origin==='ledger'?'\nこの試合による繰越待ちも取り消します。':'')+
+    '\n\n翌月以降に承認済みの当番変更は自動では戻しません。'))return;
+  const chosen=selectedMonth,user=auth.currentUser;
+  if(!user)return;
+  busy=true;gameMode=false;renderActions();showDays();clearReview();
+  let saved=false;
+  status('game-status','⏳ 元の練習・当番へ戻しています…');
+  try{
+   if(prior.origin==='ledger'){
+    await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,
+     uid:user.uid,date,record:null,expected:original,expectedDay:day,
+     authMatches:()=>auth.currentUser?.uid===user.uid});
+   }else{
+    const dayRef=doc(db,'teams',teamId,'months',chosen,'days',date),
+     ledgerRef=doc(db,'teams',teamId,'dutyLedger',date);
+    await runTransaction(db,async tx=>{
+     const [adminSnap,monthSnap,daySnap,ledgerSnap]=await Promise.all([
+      tx.get(doc(db,'admins',user.uid)),tx.get(doc(db,'teams',teamId,'months',chosen)),
+      tx.get(dayRef),tx.get(ledgerRef)
+     ]);
+     if(auth.currentUser?.uid!==user.uid||!adminSnap.exists()||adminSnap.data().enabled!==true||
+       !monthSnap.exists()||!daySnap.exists()||ledgerSnap.exists())
+      throw Error('管理者権限または試合の記録が変更されました。再読み込みしてください');
+     if(daySignature({date,...daySnap.data()})!==daySignature(day)||
+       JSON.stringify(daySnap.data().gameBefore??null)!==JSON.stringify(day.gameBefore??null))
+      throw Error('試合日の情報が別の端末で変更されています。再読み込みしてください');
+     const current=shouldRestorePractice({date,day:daySnap.data(),record:null,month:chosen});
+     if(current.origin!=='unassigned')throw Error('元の当番情報が確認できません');
+     tx.update(dayRef,{type:'practice',ownerId:null,
+      confirmedSubstituteId:daySnap.data().gameBefore.confirmedSubstituteId??null,
+      ledgerCancellationRevision:daySnap.data().gameBefore.ledgerCancellationRevision??null,
+      gameBefore:deleteField(),gameRecordedBy:deleteField(),gameRecordedAt:deleteField(),
+      updatedAt:serverTimestamp()});
+     tx.set(doc(collection(db,'teams',teamId,'dutyLedgerAudit')),{
+      action:'restore-game-with-no-owner',date,previousType:'game',nextType:'practice',
+      updatedBy:user.uid,updatedAt:serverTimestamp()});
+    });
+   }
+   saved=true;
+   const fresh=await getDocsFromServer(collection(db,'teams',teamId,'dutyLedger'));
+   records=fresh.docs.map(x=>({date:x.id,...x.data()}));
+   await chooseMonth(chosen);
+   status('game-status','✅ '+date+' を元の練習・当番（'+who+'）へ戻しました。'+
+    (prior.origin==='ledger'?'繰越待ちも取り消しました。':'')+
+    '翌月以降の承認済み変更はそのままです。','good');
+   try{
+    status('rebalance-status','復元後の再割当候補を計算しています（未保存）。');
+    await prepareFutureReview(addMonths(chosen,1),'game-restored:'+date);
+    status('rebalance-status','復元後の再割当候補を表示しました。承認まで将来の当番は変更されません。');
+   }catch(error){
+    clearReview();
+    status('rebalance-status','⚠ 元の練習へ戻しましたが、候補表示に失敗：'+
+     (error.code||error.message||String(error)),'bad');
+   }
+  }catch(error){
+   status('game-status',(saved?'⚠ 練習へ復元済みですが、表示更新に失敗：':'練習へ戻せません：')+
+    (error.code||error.message||String(error)),'bad');
+  }finally{busy=false;renderActions();showDays();renderCounts();if(pendingReview)renderReview()}
+  return;
+ }
  let proposed;
  try{proposed=shouldMarkGame({date,day,record:original,month:selectedMonth});}
  catch(e){status('game-status','変更不可：'+e.message,'bad');return;}
