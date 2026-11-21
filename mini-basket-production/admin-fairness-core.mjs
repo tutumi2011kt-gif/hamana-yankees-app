@@ -22,6 +22,33 @@ export function shouldMarkGame({date,day,record,month}){
  if(day.confirmedSubstituteId)throw Error('交代確定済みのため、先に管理者で交代確定を確認してください');
  return {date,originalOwnerId:day.ownerId||null,carryPending:Boolean(day.ownerId)};
 }
+// Only reverse an explicitly recorded game conversion. Keep unrelated games
+// and completed/cleared carryovers intact instead of guessing prior duties.
+export function shouldRestorePractice({date,day,record,month}){
+ if(typeof date!=='string'||date<'2027-01-01'||date>'2027-11-30'||
+  date.slice(0,7)!==month||day?.type!=='game')
+  throw Error('2027年1〜11月の試合日だけが対象です');
+ if(record){
+  if(record.status!=='cancelled'||record.reason!=='game'||
+   record.carryState!=='pending'||record.carryResolvedDate)
+   throw Error('繰越が処理済み、または試合以外の記録です。台帳で確認してください');
+  const before=record.calendarBefore,after=record.calendarAfter;
+  if(before?.type!=='practice'||!before.ownerId||
+   record.scheduledOwnerId!==before.ownerId||
+   after?.type!=='game'||after.ownerId!==null||
+   day.ownerId!=null||day.ledgerCancellationRevision!==after.ledgerCancellationRevision)
+   throw Error('試合への変更前の担当者情報が確認できません。台帳で確認してください');
+  if(day.gameBefore)throw Error('試合の記録が重複しています。台帳で確認してください');
+  return {origin:'ledger',originalOwnerId:before.ownerId};
+ }
+ const before=day.gameBefore;
+ if(before?.type!=='practice'||before.ownerId!=null||
+  day.ownerId!=null||day.confirmedSubstituteId!=null||
+  (day.ledgerCancellationRevision??null)!==(before.ledgerCancellationRevision??null))
+  throw Error('元の練習・当番情報が確認できない試合です。自動で戻さず管理者が確認してください');
+ return {origin:'unassigned',originalOwnerId:null};
+}
+
 // Rebalance only an EXISTING, unlisted DRAFT month. Never touch confirmed,
 // manually verified, published, past, December, games, or rest days.
 export function proposeFairDraft({month,days,members,records,corrections={},today,priorPlans=[]}){
