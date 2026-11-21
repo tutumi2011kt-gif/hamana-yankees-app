@@ -154,6 +154,12 @@ async function reload(){
   }else{
    if(!dayDocs.empty)throw Error('月情報がないのに日別データがあります。安全のため作成を停止します');
    if(publicRoster.publishedMonths.includes(month))throw Error('公開月に含まれています。非公開の下書きを作れません');
+   if(month==='2027-01'){
+    stage='january';planned=[];
+    show('load-status','1月の保存・公開承認は専用の既存画面から管理します。','good');
+    renderCalendar(planned);
+    return;
+   }
    stage='new';
    const rows=preliminaryPracticeDays(month),priorPlans=await readPriorPlans();
    const result=proposeFairDraft({month,days:rows,members:memberList,records:ledger,corrections,
@@ -219,6 +225,7 @@ $('save').onclick=async()=>{
     publicMonthListChanged:false,createdBy:user.uid,createdAt:now});
   });
   show('save-status','✅ '+month+'の仮当番表を非公開の下書きとして保存しました。保護者公開操作は行っていません。','good');
+  loading=false;
   await reload();
  }catch(error){show('save-status','保存できませんでした：'+(error.code||error.message||String(error)),'bad');}
  finally{loading=false;layout()}
