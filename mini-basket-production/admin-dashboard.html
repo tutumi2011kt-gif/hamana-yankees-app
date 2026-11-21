@@ -562,18 +562,24 @@ $('calendar').addEventListener('click',async event=>{
     authMatches:()=>auth.currentUser?.uid===user.uid});
   }else{
    await runTransaction(db,async tx=>{
-    const dayRef=doc(db,'teams',teamId,'months',chosen,'days',date);
-    const [adm,meta,fresh]=await Promise.all([
-     tx.get(doc(db,'admins',user.uid)),
-     tx.get(doc(db,'teams',teamId,'months',chosen)),tx.get(dayRef)
+    const dayRef=doc(db,'teams',teamId,'months',chosen,'days',date),
+     ledgerRef=doc(db,'teams',teamId,'dutyLedger',date);
+    const [adm,meta,fresh,ledgerSnap]=await Promise.all([
+     tx.get(doc(db,'admins',user.uid)),tx.get(doc(db,'teams',teamId,'months',chosen)),
+     tx.get(dayRef),tx.get(ledgerRef)
     ]);
     if(!adm.exists()||adm.data().enabled!==true||auth.currentUser?.uid!==user.uid||
-      !meta.exists()||!fresh.exists()||fresh.data().type!=='practice'||
-      fresh.data().ownerId||fresh.data().confirmedSubstituteId)
+      !meta.exists()||!fresh.exists()||ledgerSnap.exists()||
+      daySignature({date,...fresh.data()})!==daySignature(day)||
+      fresh.data().type!=='practice'||fresh.data().ownerId||
+      fresh.data().confirmedSubstituteId||fresh.data().gameBefore)
      throw Error('当番表が変更されています。再読み込みしてください');
-    tx.update(dayRef,{type:'game',ownerId:null,updatedAt:serverTimestamp()});
+    const gameBefore={type:'practice',ownerId:null,confirmedSubstituteId:null,
+     ledgerCancellationRevision:fresh.data().ledgerCancellationRevision??null};
+    tx.update(dayRef,{type:'game',ownerId:null,confirmedSubstituteId:null,
+     gameBefore,gameRecordedBy:user.uid,gameRecordedAt:serverTimestamp(),updatedAt:serverTimestamp()});
     tx.set(doc(collection(db,'teams',teamId,'dutyLedgerAudit')),{action:'game-with-no-owner',
-     date,updatedBy:user.uid,updatedAt:serverTimestamp()});
+     date,calendarBefore:gameBefore,updatedBy:user.uid,updatedAt:serverTimestamp()});
    });
   }
   gameSaved=true;
