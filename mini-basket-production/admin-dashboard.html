@@ -377,10 +377,14 @@ $('approve-review').onclick=async()=>{
       snap.data().confirmedSubstituteId||change.date<=todayTokyo())
       throw Error(change.date+' は他の操作で変更されています。');
     }
-    const latestMembers=memberSnaps.map((x,i)=>({id:memberIds[i],...(x.exists()?x.data():{})}));
-    if(latestMembers.some((m,i)=>!memberSnaps[i].exists()||
-      !isDayAllowed(m,p.changes.find(c=>c.to===m.id).date)))
-     throw Error('当番可能曜日または在籍期間が変更されました。再計算してください。');
+    const latestMembers=Object.fromEntries(memberSnaps.map((x,i)=>[memberIds[i],
+     x.exists()?{id:memberIds[i],...x.data()}:null]));
+    for(const change of p.changes){
+     const chosen=latestMembers[change.to];
+     if(!chosen||!isDayAllowed(chosen,change.date)||
+      (Array.isArray(chosen.unavailableDates)&&chosen.unavailableDates.includes(change.date)))
+      throw Error(change.date+'：曜日・在籍期間・不可日が変わりました。候補を再計算してください。');
+    }
     const now=serverTimestamp();
     for(let i=0;i<p.changes.length;i++)tx.update(dayRefs[i],{
      ownerId:p.changes[i].to,activityVerified:false,updatedAt:now
@@ -477,6 +481,7 @@ $('calendar').addEventListener('click',async event=>{
  const chosen=selectedMonth,user=auth.currentUser;
  if(!user)return;
  busy=true;gameMode=false;renderActions();showDays();
+ let gameSaved=false;
  status('game-status','⏳ 試合・当番取消と繰越記録を保存中…');
  try{
   if(proposed.originalOwnerId){
@@ -504,6 +509,7 @@ $('calendar').addEventListener('click',async event=>{
      date,updatedBy:user.uid,updatedAt:serverTimestamp()});
    });
   }
+  gameSaved=true;
   const latest=await getDocsFromServer(collection(db,'teams',teamId,'dutyLedger'));
   records=latest.docs.map(x=>({date:x.id,...x.data()}));
   await chooseMonth(chosen);
@@ -518,7 +524,7 @@ $('calendar').addEventListener('click',async event=>{
    status('rebalance-status','⚠ 試合への変更は保存済みです。ただし候補の表示に失敗：'+
     (error.code||error.message||String(error)),'bad');
   }
- }catch(e){status('game-status','保存できませんでした：'+(e.code||e.message||String(e)),'bad');}
+ }catch(e){status('game-status',(gameSaved?'⚠ 試合変更は保存済みです。表示更新に失敗：':'保存できませんでした：')+(e.code||e.message||String(e)),'bad');}
  finally{busy=false;renderActions();showDays();renderCounts();if(pendingReview)renderReview();}
 });
 $('member-counts').addEventListener('click',async event=>{
