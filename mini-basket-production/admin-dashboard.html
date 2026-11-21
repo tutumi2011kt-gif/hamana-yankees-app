@@ -44,11 +44,9 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 <div class="actions" style="margin-top:12px"><a class="action green" href="./manage-duty-ledger.html">✏️ 実施・中止・繰越を記録・訂正</a></div></section>
 <section class="card"><h2>⑤ 管理者ツール</h2><div class="actions">
 <a class="action" href="./manage-members.html">＋ 新入部員を追加・メンバー管理</a>
-<a class="action" href="./manage-january.html">1月の仮当番表管理</a>
-<a class="action" href="./manage-january-publish.html">1月の公開承認</a>
 <a class="action" href="./admin-login.html">ログインと権限確認</a>
-</div><p class="small">2月以降の新しい月の「自動仮割当→下書き保存→公開承認」は、管理画面へ順次統合します。現時点で未作成・未公開の月について、この画面で作成済みと表示することはありません。</p></section>
-<footer>この画面は管理者専用です。保護者画面と2026年12月確定表は変更しません。公開承認の操作は月専用の確認画面でのみ行います。</footer>
+</div><p class="small">当番表の確認と非公開の仮保存は、各月の「当番表を確認・確定・公開」から行います。2027年2月の保護者公開は無効です。</p></section>
+<footer>管理者専用。保護者画面・2026年12月確定表は変更しません。2027年2月の保護者公開は無効です。</footer>
 </main>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
@@ -66,7 +64,7 @@ const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=get
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short=m=>Number(m.slice(5))+'月';
-let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='',pendingReview=null,reviewBusy=false;
+let selectedMonth=(months.includes(new URLSearchParams(location.search).get('month'))?new URLSearchParams(location.search).get('month'):'2027-01'),isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='',pendingReview=null,reviewBusy=false;
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
  isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';pendingReview=null;reviewBusy=false;requestToken++;
@@ -138,14 +136,7 @@ function showDays(){
 function renderActions(){
  if(!isAdmin)return;
  const info=monthsMeta[selectedMonth];
- let html='';
- if(selectedMonth==='2027-01'){
-  html='<a class="action" href="./manage-january.html">1月の予定・担当者を確認</a>'+
-       '<a class="action green" href="./manage-january-publish.html">1月の公開・承認状況を確認</a>';
- }else{
-  html=!info?.exists?'<button type="button" class="action" id="create-draft">📋 '+short(selectedMonth)+'の仮当番を作成（非公開）</button>':
-   '<span class="action disabled" aria-disabled="true">下書きの公開承認は別途整備中。公開済みの月は変更不可。</span>';
- }
+ const html='<a class="action green" href="./manage-month-workflow.html?month='+encodeURIComponent(selectedMonth)+'">✅ 当番表を確認・確定・公開</a>';
  $('month-actions').innerHTML=html;
  const allowed=isAdmin&&!busy&&readyMonth===selectedMonth&&info?.exists===true;
  $('game-mode').disabled=!allowed;$('game-cancel').disabled=!allowed||!gameMode;
@@ -418,49 +409,6 @@ async function priorScheduledDays(month){
  }
  return rows;
 }
-$('month-actions').addEventListener('click',async event=>{
- const trigger=event.target.closest('#create-draft');
- if(!trigger||busy||!isAdmin||readyMonth!==selectedMonth)return;
- const month=selectedMonth;
- if(month<='2027-01'||month>'2027-11'||monthsMeta[month]?.exists)return;
- if(!confirm(month+' の仮当番表を新規作成しますか？\n水・金・土・日を「未確認の練習予定」として登録し、既存の実績・繰越・補正と曜日条件で仮担当者を割り当てます。'+
-  '\n試合・休みや日程はまだ未確認です。保護者には公開されません。'))return;
- const user=auth.currentUser;if(!user)return;
- busy=true;status('month-status',month+' の仮当番候補を計算中…');
- try{
-  const rows=preliminaryPracticeDays(month),priorPlans=await priorScheduledDays(month);
-  const plan=proposeFairDraft({month,days:rows,members,records,corrections,today:todayTokyo(),priorPlans});
-  const assigned=Object.fromEntries(plan.updates.map(u=>[u.date,u.to]));
-  const monthRef=doc(db,'teams',teamId,'months',month),rosterRef=doc(db,'teams',teamId,'public','roster');
-  await runTransaction(db,async tx=>{
-   const [adm,m,rosterSnap]=await Promise.all([
-    tx.get(doc(db,'admins',user.uid)),tx.get(monthRef),tx.get(rosterRef)
-   ]);
-   if(auth.currentUser?.uid!==user.uid||!adm.exists()||adm.data().enabled!==true)throw Error('管理者権限がありません');
-   if(m.exists())throw Error('すでに作成済みです。既存の当番表には上書きできません');
-   if(!rosterSnap.exists()||rosterSnap.data().members?.length!==members.length||
-     rosterSnap.data().publishedMonths?.includes(month))
-    throw Error('名簿または公開状態が変更されました。再読み込みしてください');
-   const now=serverTimestamp();
-   tx.set(monthRef,{publication:'draft',scheduleStatus:'awaiting-manager',scheduleVerified:false,
-    inputState:'closed',openAt:Timestamp.fromMillis(jstInputOpenMillis(month)),
-    cutoffAt:Timestamp.fromMillis(jstInputCutoffMillis(month)),autoGenerated:true,
-    createdBy:user.uid,createdAt:now,updatedAt:now,version:1});
-   for(const r of rows)tx.set(doc(db,'teams',teamId,'months',month,'days',r.date),{
-    ...r,ownerId:assigned[r.date]||null,activityVerified:false,
-    confirmedSubstituteId:null,updatedAt:now
-   });
-   tx.set(doc(collection(db,'teams',teamId,'draftCreationAudit')),{month,
-    assignedCount:plan.updates.length,warningCount:plan.warnings.length,
-    createdAt:now,createdBy:user.uid});
-  });
-  await chooseMonth(month);
-  status('month-status','✅ '+month+' の仮当番表を作成しました。未公開です。'+
-   (plan.warnings.length?'⚠ 候補不足：'+plan.warnings.join('・'):'') ,'good');
- }catch(e){status('month-status','作成できません：'+(e.code||e.message||String(e)),'bad');}
- finally{busy=false;renderActions();showDays();}
-});
-
 $('game-mode').onclick=()=>{
  if(!isAdmin||busy||readyMonth!==selectedMonth)return;
  gameMode=!gameMode;$('game-status').className='status';showDays();renderActions();
