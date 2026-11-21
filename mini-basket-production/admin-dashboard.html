@@ -472,7 +472,7 @@ $('calendar').addEventListener('click',async event=>{
  if(!confirm(date+' の練習を「試合・当番なし」に変更しますか？\n現在の当番：'+name+
   '\n\n担当者の元記録を残し、当番実施回数には加算しません。'+
   (proposed.carryPending?'\n取消分は繰越待ちに記録します。':'')+
-  '\n既にある未公開・未確認の翌月以降の仮当番は、公平に自動再割当します。'+
+  '\n翌月以降の再割当候補を表示します。管理者が承認するまで保存しません。'+
   '\n公開済みの将来月には手を加えません。'))return;
  const chosen=selectedMonth,user=auth.currentUser;
  if(!user)return;
@@ -506,14 +506,20 @@ $('calendar').addEventListener('click',async event=>{
   }
   const latest=await getDocsFromServer(collection(db,'teams',teamId,'dutyLedger'));
   records=latest.docs.map(x=>({date:x.id,...x.data()}));
-  const balance=await rebalanceFutureFrom(
-   new Date(Date.UTC(Number(chosen.slice(0,4)),Number(chosen.slice(5)),1)).toISOString().slice(0,7));
   await chooseMonth(chosen);
   status('game-status','✅ '+date+' を試合に変更。'+(proposed.carryPending?name+'さんの繰越待ちを記録。':'')+
-   '未公開の将来月で'+balance.monthsChanged+'か月・'+balance.changed+'日を再割当。'+
-   (balance.issues.length?'⚠ 一部再割当失敗：'+balance.issues.join('、'):'') ,'good');
+   '翌月以降の担当はまだ変更していません。','good');
+  try{
+   status('rebalance-status','翌月以降の再割当候補を計算中…（未保存）');
+   await prepareFutureReview(addMonths(chosen,1),'game:'+date);
+   status('rebalance-status','再割当候補を表示しました。管理者が承認するまで将来の当番は変わりません。');
+  }catch(error){
+   clearReview();
+   status('rebalance-status','⚠ 試合への変更は保存済みです。ただし候補の表示に失敗：'+
+    (error.code||error.message||String(error)),'bad');
+  }
  }catch(e){status('game-status','保存できませんでした：'+(e.code||e.message||String(e)),'bad');}
- finally{busy=false;renderActions();showDays();renderCounts();}
+ finally{busy=false;renderActions();showDays();renderCounts();if(pendingReview)renderReview();}
 });
 $('member-counts').addEventListener('click',async event=>{
  const button=event.target.closest('button[data-count-id]');
@@ -542,25 +548,29 @@ $('member-counts').addEventListener('click',async event=>{
     updatedBy:user.uid,updatedAt:serverTimestamp()});
   });
   corrections[id]=next;
-  const balance=await rebalanceFutureFrom('2027-02');
-  lastCountFeedback='✅ '+member.name+'さんの回数を'+adjusted+'回に補正しました。'+
-   '未公開の将来月で'+balance.changed+'日を再割当。'+
-   (balance.issues.length?'⚠ '+balance.issues.join('、'):'');
+  lastCountFeedback='✅ '+member.name+'さんの回数を'+adjusted+'回に補正しました。将来の担当は未変更です。';
+  try{
+   await prepareFutureReview('2027-02','count:'+id);
+   status('rebalance-status','回数補正を考慮した翌月以降の候補です。承認までは未保存です。');
+  }catch(error){
+   clearReview();
+   status('rebalance-status','⚠ 回数補正は保存済みですが、候補の表示に失敗：'+
+    (error.code||error.message||String(error)),'bad');
+  }
  }catch(e){lastCountFeedback='⚠ 回数補正に失敗：'+(e.code||e.message||String(e));}
- finally{busy=false;renderCounts();renderActions();showDays();}
+ finally{busy=false;renderCounts();renderActions();showDays();if(pendingReview)renderReview();}
 });
 $('rebalance').onclick=async()=>{
  if(busy||!isAdmin||readyMonth!==selectedMonth)return;
  busy=true;$('rebalance').disabled=true;
- const month=selectedMonth;
- status('rebalance-status',month+' の将来当番を照合中…');
+ status('rebalance-status','翌月以降の候補を読み取り・計算中…（未保存）');
  try{
-  const result=await reallocateDraftMonth(month,{automatic:false});
-  status('rebalance-status',result.changed?'✅ '+month+'：'+result.changed+'日を公平な仮割当へ更新しました。':
-   '変更なし：'+result.skipped,result.changed?'good':'');
-  if(result.changed)await chooseMonth(month);
- }catch(e){status('rebalance-status','再割当失敗：'+(e.code||e.message||String(e)),'bad');}
- finally{busy=false;renderActions();showDays();}
+  await prepareFutureReview(addMonths(selectedMonth,1),'manual:'+selectedMonth);
+  status('rebalance-status','候補を表示しました。管理者が承認するまで翌月以降は未変更です。');
+ }catch(error){
+  clearReview();
+  status('rebalance-status','候補計算の失敗：'+(error.code||error.message||String(error)),'bad');
+ }finally{busy=false;renderActions();showDays();if(pendingReview)renderReview();}
 };
 
 $('months').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b)chooseMonth(b.dataset.month)});
