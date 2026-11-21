@@ -44,7 +44,7 @@ export function shouldRestorePractice({date,day,record,month}){
  const before=day.gameBefore;
  if(before?.type!=='practice'||before.ownerId!=null||
   day.ownerId!=null||day.confirmedSubstituteId!=null||
-  day.ledgerCancellationRevision!==before.ledgerCancellationRevision)
+  (day.ledgerCancellationRevision??null)!==(before.ledgerCancellationRevision??null))
   throw Error('元の練習・当番情報が確認できない試合です。自動で戻さず管理者が確認してください');
  return {origin:'unassigned',originalOwnerId:null};
 }
