@@ -58,14 +58,21 @@ export function proposeFairDraft({month,days,members,records,corrections={},toda
    const score=m=>{
     const distances=assignedDates[m.id].map(d=>Math.abs(number(d)-number(row.date)));
     const minGap=distances.length?Math.min(...distances):30;
-    const pending=records.filter(r=>r.status==='cancelled'&&r.scheduledOwnerId===m.id&&
-      r.carryState==='pending'&&r.date<row.date).length;
-    // Carry priority is slightly stronger after the preferred 3-month wait.
-    const oldPending=records.filter(r=>r.status==='cancelled'&&r.scheduledOwnerId===m.id&&
-      r.carryState==='pending'&&r.date<row.date&&
-      number(row.date)-number(r.date)>=84).length;
-    return projected[m.id]*100+Math.max(0,7-minGap)*11-
-       Math.min(pending,2)*20-Math.min(oldPending,2)*30-
+    // The first possible month after cancellation takes priority, then the next
+    // month. A planned replacement does not clear the ledger carryover: only a
+    // recorded completed duty can do that. But it stops repeated priority here.
+    const outstanding=records.filter(r=>{
+     if(r.status!=='cancelled'||r.scheduledOwnerId!==m.id||r.carryState!=='pending')return false;
+     if(r.date.slice(0,7)>=row.date.slice(0,7))return false;
+     return !assignedDates[m.id].some(d=>d.slice(0,7)>r.date.slice(0,7)&&d<row.date);
+    });
+    const carryPriority=outstanding.reduce((best,r)=>{
+     const gap=(Number(row.date.slice(0,4))-Number(r.date.slice(0,4)))*12+
+      Number(row.date.slice(5,7))-Number(r.date.slice(5,7));
+     const weight=gap===1?90:gap===2?80:Math.max(40,70-5*(gap-3));
+     return Math.max(best,weight);
+    },0);
+    return projected[m.id]*100+Math.max(0,7-minGap)*11-carryPriority-
        (isPreferredWeekday(m,row.weekday)?6:0);
    };
    return score(a)-score(b)||a.id.localeCompare(b.id);
