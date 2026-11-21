@@ -25,7 +25,7 @@ table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px
 <label id="resolve-label" hidden>繰越を解消した日<input id="resolved" type="date"></label>
 <p class="small" id="window-note"></p></div>
 <label>管理者メモ（250文字以内）<textarea id="note" maxlength="250" disabled placeholder="例：急な練習試合で中止。繰越希望を確認"></textarea></label>
-<div class="notice">中止になった日の元担当者は固定記録します。3〜4か月後の再割当候補になりますが、本人都合と曜日条件を優先します。「練習試合・試合化」「練習休み」で中止を保存すると、カレンダーの当番も同時に取り消します。×・○の回答は履歴として残し、入力は停止します。誤記録を取り消すと元の予定に戻ります。個人的事情・その他は台帳だけに記録します。2026年12月の確定表は変更しません。</div>
+<div class="notice">中止になった日の元担当者は固定記録します。翌月を最優先、難しければ翌々月以降の近い月の再割当候補になりますが、本人都合と曜日条件を優先します。「練習試合・試合化」「練習休み」で中止を保存すると、カレンダーの当番も同時に取り消します。×・○の回答は履歴として残し、入力は停止します。誤記録を取り消すと元の予定に戻ります。個人的事情・その他は台帳だけに記録します。2026年12月の確定表は変更しません。</div>
 <div class="actions" style="margin-top:10px"><button id="save" class="primary" disabled>実施・中止の記録を保存</button><button id="remove" class="danger" disabled>誤記録を取り消す</button></div>
 <p id="save-status" class="small" role="status">未保存です。</p></section>
 <section class="card"><h2>③ 実施回数と繰越の管理者集計</h2>
@@ -37,7 +37,7 @@ table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px
 </main><script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {addMonths} from './month-rollover-core.mjs';
-import {buildDutyLedgerRecord,eligibleCarryWindow,ledgerTotals} from './duty-ledger-core.mjs';
+import {buildDutyLedgerRecord,eligibleCarryWindow,ledgerTotals} from './duty-ledger-core.mjs?v=20261121b';
 import {todayTokyo} from './core.mjs';
 import {persistLedger,planLedgerCalendar} from './ledger-calendar-core.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
@@ -62,7 +62,7 @@ function toggle(){
  const cancelled=$('status').value==='cancelled';
  $('completed-fields').hidden=cancelled;$('cancel-fields').hidden=!cancelled;
  $('resolve-label').hidden=!cancelled||$('carry').value!=='resolved';
- try{const w=eligibleCarryWindow($('date').value);$('window-note').textContent='繰越の原則目安：'+w.from+'〜'+w.through+'（必要なら管理者が延長を判断）';}
+ try{const w=eligibleCarryWindow($('date').value);$('window-note').textContent='繰越の優先目安：'+w.from+'〜'+w.through+'（必要なら管理者が延長を判断）';}
  catch{$('window-note').textContent='';}
  update();
 }
