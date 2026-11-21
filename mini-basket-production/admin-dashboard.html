@@ -17,7 +17,7 @@ button:disabled{cursor:default;opacity:.6}button.primary{background:#235886;colo
 .week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.week{margin-top:12px}.week span{font-size:12px;font-weight:750;text-align:center}.week span:first-child{color:#ae4058}.week span:last-child{color:#3671a7}
 .day{padding:4px 2px;min-height:68px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}.day.game-pick{cursor:pointer;border:2px solid #c47828;background:#fff7e7}.day.game-pick:focus-visible{outline:3px solid #2269b2}.day[disabled]{opacity:1}.mode-on{background:#fff0d6!important;border-color:#cb8e30!important;color:#7a4719!important}.spinner{display:flex;gap:3px;align-items:center;justify-content:center}.spinner b{font-size:16px;min-width:22px}.spinner .arrows{display:flex;flex-direction:column;gap:2px}.spinner button{height:25px;min-height:25px;font-size:12px;line-height:1;padding:2px 9px}.spinner button:disabled{opacity:.35}
 .owner{font-weight:800;display:block;font-size:10px;margin-top:4px}.note{font-size:9px;display:block;color:#677d8e}
-.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px 5px;border-bottom:1px solid #e5eaf0;text-align:left}th{white-space:nowrap;background:#f5f8fb}
+.scroll{overflow-x:auto}#review-panel[hidden]{display:none}.review-scroll{max-height:360px;overflow:auto;border:1px solid #e0e8f0;border-radius:9px}.review-month{font-size:13px;font-weight:800;background:#edf4fb;padding:7px 9px;border-top:1px solid #dde8f0}.review-entry{padding:7px 9px;border-bottom:1px solid #edf1f5;font-size:12px}.review-entry small{display:block;color:#6d8292}.review-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.review-actions button{flex:1 1 160px}.review-actions .approve{background:#18704e;color:white;border-color:#18704e}.review-summary{white-space:pre-wrap;font-size:12px}.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px 5px;border-bottom:1px solid #e5eaf0;text-align:left}th{white-space:nowrap;background:#f5f8fb}
 footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.months{grid-template-columns:repeat(4,minmax(0,1fr))}.metrics{gap:4px}.day{min-height:67px}.action{flex-basis:130px}}
 </style></head><body><main>
 <header><h1>🏀 年間当番管理</h1><p>2027年1月〜11月｜管理者専用</p>
@@ -31,7 +31,13 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
 <div id="calendar" class="calendar"></div>
 <p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。存在しない月の予定は推測して表示しません。</p><div class="actions"><button type="button" id="game-mode" class="primary" disabled>🏀 試合</button><button type="button" id="game-cancel" disabled>選択を解除</button></div><p id="game-status" class="status">試合日を登録する場合は「🏀 試合」を押してから、練習日を選択してください。</p>
-<h2>対象月の管理操作</h2><div id="month-actions" class="actions"></div><div class="actions" style="margin-top:9px"><button id="rebalance" type="button" disabled>⚖️ 将来の未公開月を公平に再割当</button></div><p id="rebalance-status" class="small">試合中止の繰越・実施回数の補正を使って、未公開の将来月だけ調整します。公開済みの当番表は自動変更しません。</p></section>
+<h2>対象月の管理操作</h2><div id="month-actions" class="actions"></div><div class="actions" style="margin-top:9px"><button id="rebalance" type="button" disabled>⚖️ 翌月以降の再割当候補を確認</button></div><p id="rebalance-status" class="small">翌月・翌々月を優先して候補を計算します。<b>「候補を承認」を押すまで、翌月以降の当番は変更されません。</b></p></section>
+<section id="review-panel" class="card" hidden aria-live="polite"><h2>📋 翌月以降の再割当候補を確認</h2>
+<p class="small">変更先の月が未公開で、まだ管理者が確認していない当番だけが対象です。候補が合わなければ「今回は変更しない」を選べます。</p>
+<div id="review-summary" class="status review-summary"></div>
+<div id="review-list" class="review-scroll"></div>
+<div class="review-actions"><button id="reject-review" type="button">今回は変更しない</button><button id="approve-review" type="button" class="approve">✅ この候補を承認して保存</button></div>
+<p id="review-status" class="small">管理者が承認するまでは未保存です。</p></section>
 <section class="card"><h2>④ メンバー別の当番回数</h2>
 <p class="small"><b>予定回数と実際の実施回数は別管理</b>です。実際に当番を終えた場合だけ実施回数を加算します。試合による中止は実施回数に含まず、元担当者の繰越待ちに記録します。補填を予定に入れただけでは繰越は解消しません。</p>
 <div id="counts-status" class="status">実績台帳を読み込みます。</div><div class="scroll"><table><thead><tr><th>メンバー</th><th>選択月の予定</th><th>補正後の実施回数　△▽</th><th>繰越待ち</th></tr></thead><tbody id="member-counts"></tbody></table></div><p class="small">△で＋1、▽で−1。補正前の実施済み回数も表示し、変更履歴は管理者用として保存します。</p>
@@ -49,9 +55,10 @@ import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp,Timestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
-import {ledgerTotals,buildDutyLedgerRecord} from './duty-ledger-core.mjs?v=admin-20261120';
+import {ledgerTotals,buildDutyLedgerRecord} from './duty-ledger-core.mjs?v=20261121b';
 import {persistLedger} from './ledger-calendar-core.mjs?v=admin-20261120';
-import {adjustedDutyCounts,shouldMarkGame,proposeFairDraft} from './admin-fairness-core.mjs?v=20261120';
+import {adjustedDutyCounts,shouldMarkGame,proposeFairDraft} from './admin-fairness-core.mjs?v=20261121b';
+import {isDayAllowed} from './weekday-conditions.mjs?v=20261121b';
 import {todayTokyo} from './core.mjs?v=admin';
 import {preliminaryPracticeDays,jstInputOpenMillis,jstInputCutoffMillis,addMonths} from './month-rollover-core.mjs?v=admin-20261120';
 const $=id=>document.getElementById(id);
@@ -59,10 +66,11 @@ const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=get
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short=m=>Number(m.slice(5))+'月';
-let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='';
+let selectedMonth='2027-01',isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='',pendingReview=null,reviewBusy=false;
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
- isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';requestToken++;
+ isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';pendingReview=null;reviewBusy=false;requestToken++;
+ $('review-panel').hidden=true;
  $('game-mode').disabled=true;$('rebalance').disabled=true;
  $('calendar').textContent='';$('member-counts').textContent='';$('month-actions').textContent='';
  status('counts-status','管理者ログインが必要です。');status('month-status','管理者ログインが必要です。');
@@ -141,7 +149,7 @@ function renderActions(){
  const allowed=isAdmin&&!busy&&readyMonth===selectedMonth&&info?.exists===true;
  $('game-mode').disabled=!allowed;$('game-cancel').disabled=!allowed||!gameMode;
  $('game-mode').className='primary'+(gameMode?' mode-on':'');
- $('rebalance').disabled=!allowed||selectedMonth<='2027-01'||info?.metadata?.publication!=='draft'||roster?.publishedMonths?.includes(selectedMonth);
+ $('rebalance').disabled=!allowed||selectedMonth>='2027-11';
  if(gameMode||!['status good','status bad'].includes($('game-status').className))
   $('game-status').textContent=gameMode?'🏀 試合モード：練習日を選んでください。登録前に確認します。':'「🏀 試合」を押してから練習日を選択すると試合に変更できます。';
  const published=info?.published===true;
@@ -172,6 +180,7 @@ async function chooseMonth(m){
 }
 async function refreshAll(){
  const user=auth.currentUser;if(!user||busy)return;
+ clearReview();
  busy=true;$('refresh').disabled=true;status('auth-state','管理者権限と年間データを確認中…');
  try{
   const admin=await getDocFromServer(doc(db,'admins',user.uid));
@@ -197,76 +206,207 @@ async function refreshAll(){
  finally{busy=false;$('refresh').disabled=!isAdmin}
 }
 
-async function reallocateDraftMonth(target,{automatic=false}={}){
- const user=auth.currentUser;
- if(!isAdmin||!user||target<='2027-01'||target>'2027-11')return {changed:0,skipped:'対象外'};
- const metaRef=doc(db,'teams',teamId,'months',target);
- const [monthSnap,daySnap,publicSnap]=await Promise.all([
-  getDocFromServer(metaRef),getDocsFromServer(collection(db,'teams',teamId,'months',target,'days')),
-  getDocFromServer(doc(db,'teams',teamId,'public','roster'))
+
+const timeValue=x=>typeof x?.toMillis==='function'?x.toMillis():null;
+function memberSignature(all){
+ return JSON.stringify(all.map(m=>[m.id,m.name,m.kana,m.status,m.startDate||m.start,m.endDate||m.end,
+  m.days,m.weekdayRule,m.approvedWeekendDates,m.preferredWeekdays,m.unavailableDates,timeValue(m.updatedAt)])
+  .sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));
+}
+function ledgerSignature(all){
+ return JSON.stringify(all.map(r=>[r.date,r.status,r.scheduledOwnerId,r.actualOwnerId,r.reason,
+  r.carryState,r.carryResolvedDate,r.revision,timeValue(r.updatedAt)]).sort((a,b)=>a[0].localeCompare(b[0])));
+}
+function correctionSignature(all){return JSON.stringify(Object.entries(all).sort((a,b)=>a[0].localeCompare(b[0])))}
+function rosterSignature(r){return JSON.stringify({
+ publishedMonths:[...(r?.publishedMonths||[])].sort(),
+ members:(r?.members||[]).map(m=>[m.id,m.name,m.kana,m.status]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))
+})}
+function daySignature(day){
+ return JSON.stringify([day?.date,day?.type,day?.ownerId||null,day?.weekday,
+  day?.activityVerified===true,day?.confirmedSubstituteId||null,
+  day?.ledgerCancellationRevision||null,timeValue(day?.updatedAt)]);
+}
+function clearReview(){
+ pendingReview=null;$('review-panel').hidden=true;$('review-list').textContent='';
+ $('approve-review').disabled=true;
+}
+function renderReview(){
+ const review=pendingReview;
+ if(!review){clearReview();return}
+ $('review-panel').hidden=false;
+ const count=review.monthPlans.reduce((sum,p)=>sum+p.changes.length,0);
+ const monthsAffected=review.monthPlans.length;
+ $('review-summary').textContent='対象：'+review.startMonth+'〜2027年11月\n候補：'+monthsAffected+'か月・'+count+'件\n'+
+  '翌月を最優先、難しければ翌々月以降の近い月で調整します。\n'+
+  'この候補は未保存です。管理者が承認するまで将来の当番は変わりません。';
+ $('review-list').innerHTML=review.monthPlans.map(p=>{
+  const people=Object.fromEntries(members.map(m=>[m.id,m.name]));
+  const rows=p.changes.map(c=>'<div class="review-entry"><b>'+esc(c.date)+'　'+esc(people[c.from]||'未設定')+
+   ' → '+esc(people[c.to]||'未設定')+'</b><small>変更先：'+esc(p.month)+' の未公開・未確認の練習日</small></div>').join('');
+  return '<div class="review-month">'+esc(p.month)+'：変更候補 '+p.changes.length+'件</div>'+rows;
+ }).join('')+
+ (review.skipped.length?'<div class="review-month">変更対象外・未作成の月</div>'+
+ '<div class="review-entry">'+review.skipped.map(esc).join('／')+'</div>':'')+
+ (review.warnings.length?'<div class="review-month">要確認</div>'+
+ '<div class="review-entry">'+review.warnings.map(esc).join('／')+'</div>':'');
+ if(!count)$('review-list').innerHTML='<div class="review-entry">現在、変更可能な未公開・未確認の当番候補はありません。公開済みや未作成の月は変更しません。</div>'+
+  $('review-list').innerHTML;
+ $('approve-review').disabled=!count||busy||reviewBusy;
+ $('reject-review').disabled=busy||reviewBusy;
+ status('review-status',count?'候補を確認し、問題なければ「この候補を承認して保存」を押してください。':'未保存の変更候補はありません。');
+}
+async function latestPlanningSources(){
+ const [publicSnap,memberSnap,ledgerSnap,correctionSnap]=await Promise.all([
+  getDocFromServer(doc(db,'teams',teamId,'public','roster')),
+  getDocsFromServer(collection(db,'teams',teamId,'members')),
+  getDocsFromServer(collection(db,'teams',teamId,'dutyLedger')),
+  getDocsFromServer(collection(db,'teams',teamId,'dutyCountAdjustments'))
  ]);
- if(!monthSnap.exists()||monthSnap.data().publication!=='draft'||
-   !publicSnap.exists()||publicSnap.data().publishedMonths?.includes(target))
-  return {changed:0,skipped:'下書き・未公開の月がありません'};
- if(!Array.isArray(publicSnap.data().members)||
-  publicSnap.data().members.length!==members.length||
-  publicSnap.data().members.some(m=>!members.some(x=>x.id===m.id)))
-  throw Error('名簿が更新されました。年間管理画面を再読み込みしてください。');
- const rows=daySnap.docs.map(x=>({date:x.id,...x.data()}));
- const priorPlans=await priorScheduledDays(target);
- const plan=proposeFairDraft({month:target,days:rows,members,records,corrections,today:todayTokyo(),priorPlans});
- if(!plan.updates.length)return {changed:0,skipped:plan.warnings.join('・')||'調整不要'};
- if(!automatic){
-  const names=Object.fromEntries(members.map(m=>[m.id,m.name]));
-  const preview=plan.updates.slice(0,12).map(c=>c.date+'：'+
-   (names[c.from]||'未設定')+' → '+names[c.to]).join('\n');
-  if(!confirm(target+' の未公開・未確認の当番だけを'+plan.updates.length+
-   '件再割当しますか？\n\n'+preview+
-   (plan.updates.length>12?'\nほか'+(plan.updates.length-12)+'件':'')+
-   '\n\n公開済み・確認済み・試合・休みは変更しません。'))return {changed:0,skipped:'キャンセル'};
+ if(!publicSnap.exists())throw Error('公開名簿を確認できません。');
+ return {
+  publicRoster:publicSnap.data(),
+  members:memberSnap.docs.map(x=>({id:x.id,...x.data()})),
+  records:ledgerSnap.docs.map(x=>({date:x.id,...x.data()})),
+  corrections:Object.fromEntries(correctionSnap.docs.map(x=>[x.id,Number(x.data().delta||0)]))
+ };
+}
+async function prepareFutureReview(startMonth,cause){
+ if(!isAdmin||!auth.currentUser)throw Error('管理者ログインが必要です。');
+ const start=startMonth<'2027-02'?'2027-02':startMonth;
+ clearReview();
+ if(start>'2027-11'){
+  pendingReview={startMonth:start,monthPlans:[],warnings:[],skipped:['11月以降に翌月の当番はありません']};
+  renderReview();return;
  }
- const originalVersion=Number(monthSnap.data().version??0);
- const refByDate=new Map(plan.updates.map(c=>[c.date,doc(db,'teams',teamId,'months',target,'days',c.date)]));
- await runTransaction(db,async tx=>{
-  const admRef=doc(db,'admins',user.uid),rosterRef=doc(db,'teams',teamId,'public','roster');
-  const refs=[admRef,metaRef,rosterRef,...refByDate.values()];
-  const snaps=await Promise.all(refs.map(ref=>tx.get(ref)));
-  const [adm,meta,rosterSnap,...daySnaps]=snaps;
-  if(auth.currentUser?.uid!==user.uid||!adm.exists()||adm.data().enabled!==true)
-   throw Error('管理者権限を再確認してください');
-  if(!meta.exists()||meta.data().publication!=='draft'||
-    Number(meta.data().version??0)!==originalVersion||
-    !rosterSnap.exists()||rosterSnap.data().publishedMonths?.includes(target))
-   throw Error('対象月が変更・公開されています。再読み込みしてください');
-  if(rosterSnap.data().members?.length!==members.length)
-   throw Error('名簿が変更されています。再読み込みしてください');
-  for(let i=0;i<plan.updates.length;i++){
-   const change=plan.updates[i],snap=daySnaps[i],day=snap.data();
-   if(!snap.exists()||day.type!=='practice'||day.activityVerified===true||
-     day.confirmedSubstituteId||change.date<=todayTokyo()||
-     (day.ownerId||null)!==change.from)
-    throw Error(change.date+' は保護済み、または他の管理者が変更しました');
+ const sources=await latestPlanningSources();
+ if(memberSignature(sources.members)!==memberSignature(members)||
+    ledgerSignature(sources.records)!==ledgerSignature(records)||
+    correctionSignature(sources.corrections)!==correctionSignature(corrections)||
+    rosterSignature(sources.publicRoster)!==rosterSignature(roster))
+  throw Error('メンバー・実績・補正または公開月が更新されています。「最新データを再読み込み」を押してください。');
+ const monthsData=await Promise.all(months.map(async month=>{
+  const ref=doc(db,'teams',teamId,'months',month),m=await getDocFromServer(ref);
+  const data=m.exists()?m.data():null;
+  const snaps=data?await getDocsFromServer(collection(db,'teams',teamId,'months',month,'days')):null;
+  return {month,meta:data,days:snaps?snaps.docs.map(x=>({date:x.id,...x.data()})).sort((a,b)=>a.date.localeCompare(b.date)):[]};
+ }));
+ const priorPlans=[],plans=[],warnings=[],skipped=[],today=todayTokyo();
+ for(const item of monthsData){
+  const {month,meta,days}=item;
+  if(month<start){priorPlans.push(...days);continue}
+  if(!meta){skipped.push(month+'（未作成）');continue}
+  if(meta.publication!=='draft'||sources.publicRoster.publishedMonths.includes(month)){
+   skipped.push(month+'（公開済み・管理対象外）');priorPlans.push(...days);continue;
   }
-  for(const change of plan.updates)
-   tx.update(refByDate.get(change.date),{ownerId:change.to,activityVerified:false,updatedAt:serverTimestamp()});
-  tx.update(metaRef,{scheduleVerified:false,version:originalVersion+1,updatedAt:serverTimestamp(),updatedBy:user.uid});
-  tx.set(doc(collection(db,'teams',teamId,'fairnessRebalanceAudit')),{
-   month:target,changes:plan.updates,reason:automatic?'game-or-count-adjustment':'manual-review',
-   actorUid:user.uid,updatedAt:serverTimestamp()});
- });
- return {changed:plan.updates.length,skipped:plan.warnings.join('・')};
-}
-async function rebalanceFutureFrom(sourceMonth){
- let changed=0,monthsChanged=0,issues=[];
- for(let y=sourceMonth;y<='2027-11';y=new Date(Date.UTC(Number(y.slice(0,4)),Number(y.slice(5)),1)).toISOString().slice(0,7)){
-  if(y<='2027-01')continue;
-  try{
-   const result=await reallocateDraftMonth(y,{automatic:true});
-   if(result.changed){changed+=result.changed;monthsChanged++;}
-  }catch(e){issues.push(y+': '+(e.code||e.message||String(e)));break;}
+  const result=proposeFairDraft({month,days,members:sources.members,records:sources.records,
+   corrections:sources.corrections,today,priorPlans});
+  warnings.push(...result.warnings);
+  const changes=result.updates.filter(c=>c.from!==c.to);
+  if(changes.length){
+   plans.push({month,version:Number(meta.version??0),changes:changes.map(c=>({
+    ...c,signature:daySignature(days.find(x=>x.date===c.date))
+   }))});
+  }
+  const edits=new Map(result.updates.map(x=>[x.date,x.to]));
+  priorPlans.push(...days.map(x=>({...x,ownerId:edits.get(x.date)??x.ownerId})));
  }
- return {changed,monthsChanged,issues};
+ pendingReview={startMonth:start,reason:cause,monthPlans:plans,warnings,skipped,
+  signatures:{members:memberSignature(sources.members),ledger:ledgerSignature(sources.records),
+   corrections:correctionSignature(sources.corrections),roster:rosterSignature(sources.publicRoster)}};
+ renderReview();
 }
+$('reject-review').onclick=()=>{
+ if(busy||reviewBusy)return;
+ clearReview();status('rebalance-status','将来の再割当候補は取り消しました。翌月以降の当番は変更していません。');
+};
+$('approve-review').onclick=async()=>{
+ const review=pendingReview,user=auth.currentUser;
+ if(!review||busy||reviewBusy||!isAdmin||!user||!review.monthPlans.length)return;
+ const total=review.monthPlans.reduce((sum,m)=>sum+m.changes.length,0);
+ if(!confirm('翌月以降の未公開当番 '+review.monthPlans.length+'か月・'+total+
+  '件を、一覧の候補どおりに保存しますか？\n\n「OK」を押した場合だけ将来の当番担当者が変更されます。'+
+  '\n試合・休み・公開済み・確認済みの当番は変更しません。'))return;
+ busy=true;reviewBusy=true;$('approve-review').disabled=true;$('reject-review').disabled=true;
+ status('review-status','承認内容を再検証中です。まだ変更していません。');
+ let savedMonths=0,savedDays=0;
+ try{
+  const fresh=await latestPlanningSources();
+  if(memberSignature(fresh.members)!==review.signatures.members||
+   ledgerSignature(fresh.records)!==review.signatures.ledger||
+   correctionSignature(fresh.corrections)!==review.signatures.corrections||
+   rosterSignature(fresh.publicRoster)!==review.signatures.roster)
+   throw Error('候補作成後にメンバー・実績・補正・公開月が変わりました。再度、候補を作成してください。');
+  // Precheck all month/day snapshots before changing any month.
+  for(const p of review.monthPlans){
+   const metaSnap=await getDocFromServer(doc(db,'teams',teamId,'months',p.month));
+   if(!metaSnap.exists()||metaSnap.data().publication!=='draft'||
+    Number(metaSnap.data().version??0)!==p.version||
+    fresh.publicRoster.publishedMonths.includes(p.month))
+    throw Error(p.month+' の公開状態か下書きが変更されました。再計算してください。');
+   for(const c of p.changes){
+    const d=await getDocFromServer(doc(db,'teams',teamId,'months',p.month,'days',c.date));
+    if(!d.exists()||daySignature({date:c.date,...d.data()})!==c.signature)
+     throw Error(c.date+' の担当者・日程が変更されました。候補を再計算してください。');
+   }
+  }
+  // Each month is saved in one audited transaction; no day changes on preview.
+  // If a month fails, report the number already committed rather than claiming all-or-nothing.
+  for(const p of review.monthPlans){
+   const metaRef=doc(db,'teams',teamId,'months',p.month),
+    rosterRef=doc(db,'teams',teamId,'public','roster');
+   const dayRefs=p.changes.map(c=>doc(db,'teams',teamId,'months',p.month,'days',c.date));
+   const memberIds=[...new Set(p.changes.map(c=>c.to))];
+   const memberRefs=memberIds.map(id=>doc(db,'teams',teamId,'members',id));
+   await runTransaction(db,async tx=>{
+    const refs=[doc(db,'admins',user.uid),metaRef,rosterRef,...dayRefs,...memberRefs];
+    const snapshots=await Promise.all(refs.map(x=>tx.get(x)));
+    const [admin,meta,publicSnap,...rest]=snapshots;
+    const daySnaps=rest.slice(0,dayRefs.length),memberSnaps=rest.slice(dayRefs.length);
+    if(auth.currentUser?.uid!==user.uid||!admin.exists()||admin.data().enabled!==true)
+     throw Error('管理者権限がありません。');
+    if(!meta.exists()||meta.data().publication!=='draft'||
+      Number(meta.data().version??0)!==p.version||!publicSnap.exists()||
+      publicSnap.data().publishedMonths?.includes(p.month)||
+      rosterSignature(publicSnap.data())!==review.signatures.roster)
+     throw Error(p.month+' は公開または変更されています。');
+    for(let i=0;i<p.changes.length;i++){
+     const change=p.changes[i],snap=daySnaps[i];
+     if(!snap.exists()||daySignature({date:change.date,...snap.data()})!==change.signature||
+      snap.data().type!=='practice'||snap.data().activityVerified===true||
+      snap.data().confirmedSubstituteId||change.date<=todayTokyo())
+      throw Error(change.date+' は他の操作で変更されています。');
+    }
+    const latestMembers=Object.fromEntries(memberSnaps.map((x,i)=>[memberIds[i],
+     x.exists()?{id:memberIds[i],...x.data()}:null]));
+    for(const change of p.changes){
+     const chosen=latestMembers[change.to];
+     if(!chosen||!isDayAllowed(chosen,change.date)||
+      (Array.isArray(chosen.unavailableDates)&&chosen.unavailableDates.includes(change.date)))
+      throw Error(change.date+'：曜日・在籍期間・不可日が変わりました。候補を再計算してください。');
+    }
+    const now=serverTimestamp();
+    for(let i=0;i<p.changes.length;i++)tx.update(dayRefs[i],{
+     ownerId:p.changes[i].to,activityVerified:false,updatedAt:now
+    });
+    tx.update(metaRef,{scheduleVerified:false,version:p.version+1,updatedAt:now,updatedBy:user.uid});
+    tx.set(doc(collection(db,'teams',teamId,'fairnessRebalanceAudit')),{
+     month:p.month,changes:p.changes.map(({date,from,to})=>({date,from,to})),
+     reason:'manager-explicit-B-approval',sourceMonth:review.startMonth,
+     actorUid:user.uid,updatedAt:now});
+   });
+   savedMonths++;savedDays+=p.changes.length;
+  }
+  clearReview();status('rebalance-status','✅ 管理者の承認により'+savedMonths+'か月・'+savedDays+
+   '件の将来当番を更新しました。公開済み月には変更していません。','good');
+  await chooseMonth(selectedMonth);
+ }catch(e){
+  const message=(savedMonths?'⚠ '+savedMonths+'か月・'+savedDays+'件は保存済みです。残りは未保存。':'⚠ 保存前に中止しました。将来の当番は変更していません。')+
+   ' '+(e.code||e.message||String(e));
+  clearReview();status('rebalance-status',message,'bad');
+ }finally{busy=false;reviewBusy=false;renderActions();showDays();renderCounts()}
+};
+
 async function priorScheduledDays(month){
  const rows=[];
  for(let m='2027-01';m<month;m=addMonths(m,1)){
@@ -336,11 +476,12 @@ $('calendar').addEventListener('click',async event=>{
  if(!confirm(date+' の練習を「試合・当番なし」に変更しますか？\n現在の当番：'+name+
   '\n\n担当者の元記録を残し、当番実施回数には加算しません。'+
   (proposed.carryPending?'\n取消分は繰越待ちに記録します。':'')+
-  '\n既にある未公開・未確認の翌月以降の仮当番は、公平に自動再割当します。'+
+  '\n翌月以降の再割当候補を表示します。管理者が承認するまで保存しません。'+
   '\n公開済みの将来月には手を加えません。'))return;
  const chosen=selectedMonth,user=auth.currentUser;
  if(!user)return;
  busy=true;gameMode=false;renderActions();showDays();
+ let gameSaved=false;
  status('game-status','⏳ 試合・当番取消と繰越記録を保存中…');
  try{
   if(proposed.originalOwnerId){
@@ -368,16 +509,23 @@ $('calendar').addEventListener('click',async event=>{
      date,updatedBy:user.uid,updatedAt:serverTimestamp()});
    });
   }
+  gameSaved=true;
   const latest=await getDocsFromServer(collection(db,'teams',teamId,'dutyLedger'));
   records=latest.docs.map(x=>({date:x.id,...x.data()}));
-  const balance=await rebalanceFutureFrom(
-   new Date(Date.UTC(Number(chosen.slice(0,4)),Number(chosen.slice(5)),1)).toISOString().slice(0,7));
   await chooseMonth(chosen);
   status('game-status','✅ '+date+' を試合に変更。'+(proposed.carryPending?name+'さんの繰越待ちを記録。':'')+
-   '未公開の将来月で'+balance.monthsChanged+'か月・'+balance.changed+'日を再割当。'+
-   (balance.issues.length?'⚠ 一部再割当失敗：'+balance.issues.join('、'):'') ,'good');
- }catch(e){status('game-status','保存できませんでした：'+(e.code||e.message||String(e)),'bad');}
- finally{busy=false;renderActions();showDays();renderCounts();}
+   '翌月以降の担当はまだ変更していません。','good');
+  try{
+   status('rebalance-status','翌月以降の再割当候補を計算中…（未保存）');
+   await prepareFutureReview(addMonths(chosen,1),'game:'+date);
+   status('rebalance-status','再割当候補を表示しました。管理者が承認するまで将来の当番は変わりません。');
+  }catch(error){
+   clearReview();
+   status('rebalance-status','⚠ 試合への変更は保存済みです。ただし候補の表示に失敗：'+
+    (error.code||error.message||String(error)),'bad');
+  }
+ }catch(e){status('game-status',(gameSaved?'⚠ 試合変更は保存済みです。表示更新に失敗：':'保存できませんでした：')+(e.code||e.message||String(e)),'bad');}
+ finally{busy=false;renderActions();showDays();renderCounts();if(pendingReview)renderReview();}
 });
 $('member-counts').addEventListener('click',async event=>{
  const button=event.target.closest('button[data-count-id]');
@@ -406,25 +554,29 @@ $('member-counts').addEventListener('click',async event=>{
     updatedBy:user.uid,updatedAt:serverTimestamp()});
   });
   corrections[id]=next;
-  const balance=await rebalanceFutureFrom('2027-02');
-  lastCountFeedback='✅ '+member.name+'さんの回数を'+adjusted+'回に補正しました。'+
-   '未公開の将来月で'+balance.changed+'日を再割当。'+
-   (balance.issues.length?'⚠ '+balance.issues.join('、'):'');
+  lastCountFeedback='✅ '+member.name+'さんの回数を'+adjusted+'回に補正しました。将来の担当は未変更です。';
+  try{
+   await prepareFutureReview('2027-02','count:'+id);
+   status('rebalance-status','回数補正を考慮した翌月以降の候補です。承認までは未保存です。');
+  }catch(error){
+   clearReview();
+   status('rebalance-status','⚠ 回数補正は保存済みですが、候補の表示に失敗：'+
+    (error.code||error.message||String(error)),'bad');
+  }
  }catch(e){lastCountFeedback='⚠ 回数補正に失敗：'+(e.code||e.message||String(e));}
- finally{busy=false;renderCounts();renderActions();showDays();}
+ finally{busy=false;renderCounts();renderActions();showDays();if(pendingReview)renderReview();}
 });
 $('rebalance').onclick=async()=>{
  if(busy||!isAdmin||readyMonth!==selectedMonth)return;
  busy=true;$('rebalance').disabled=true;
- const month=selectedMonth;
- status('rebalance-status',month+' の将来当番を照合中…');
+ status('rebalance-status','翌月以降の候補を読み取り・計算中…（未保存）');
  try{
-  const result=await reallocateDraftMonth(month,{automatic:false});
-  status('rebalance-status',result.changed?'✅ '+month+'：'+result.changed+'日を公平な仮割当へ更新しました。':
-   '変更なし：'+result.skipped,result.changed?'good':'');
-  if(result.changed)await chooseMonth(month);
- }catch(e){status('rebalance-status','再割当失敗：'+(e.code||e.message||String(e)),'bad');}
- finally{busy=false;renderActions();showDays();}
+  await prepareFutureReview(addMonths(selectedMonth,1),'manual:'+selectedMonth);
+  status('rebalance-status','候補を表示しました。管理者が承認するまで翌月以降は未変更です。');
+ }catch(error){
+  clearReview();
+  status('rebalance-status','候補計算の失敗：'+(error.code||error.message||String(error)),'bad');
+ }finally{busy=false;renderActions();showDays();if(pendingReview)renderReview();}
 };
 
 $('months').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b)chooseMonth(b.dataset.month)});
