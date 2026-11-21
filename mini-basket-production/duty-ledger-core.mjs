@@ -17,7 +17,7 @@ export function validLedgerDate(date){
 export function eligibleCarryWindow(date){
  if(!validLedgerDate(date))throw Error('繰越元の日付が不正です');
  const source=date.slice(0,7);
- return {from:addMonths(source,3),through:addMonths(source,4)};
+ return {from:addMonths(source,1),through:addMonths(source,2)};
 }
 export function buildDutyLedgerRecord({
  date,status,scheduledOwnerId,actualOwnerId=null,reason=null,carryState=null,
@@ -26,7 +26,7 @@ export function buildDutyLedgerRecord({
  if(!validLedgerDate(date)||date<LEDGER_START||date>LEDGER_END)throw Error('台帳対象外の日付です');
  if(!validLedgerDate(today))throw Error('基準日が不正です');
  const valid=new Set(memberIds);
- if(!valid.has(scheduledOwnerId))throw Error('元担当者を12人の名簿から選んでください');
+ if(!valid.has(scheduledOwnerId))throw Error('元担当者をメンバー名簿から選んでください');
  if(!DUTY_STATUSES.includes(status))throw Error('実施／中止を選んでください');
  if(typeof note!=='string'||note.length>250)throw Error('備考は250文字以内です');
  if(!Array.isArray(traineeIds)||traineeIds.some(id=>!valid.has(id)||id===scheduledOwnerId))throw Error('見学者の指定が不正です');
