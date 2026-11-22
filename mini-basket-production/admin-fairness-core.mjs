@@ -1,4 +1,4 @@
-import {isDayAllowed,isPreferredWeekday} from './weekday-conditions.mjs';
+import {isDayAllowed,isPreferredWeekday} from './weekday-conditions.mjs?v=20261122-yui';
 import {ledgerTotals} from './duty-ledger-core.mjs';
 
 // Admin-only display correction: preserves the source duty-ledger records.
