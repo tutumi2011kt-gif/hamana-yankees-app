@@ -513,6 +513,7 @@ $('draft-rows').addEventListener('change',event=>{
   row.ownerId=next&&isDayAllowed(next,row.date,row.weekday)&&
    !(next.unavailableDates||[]).includes(row.date)?next.id:null;
  }
+ draftPreview.initialWarnings=[];
  $('draft-agree').checked=false;
  draftFeedback='🔒 下書き内容を変更しました。保存前にすべての確認をやり直してください。';
  showDays();renderCounts();renderDraftRows();
