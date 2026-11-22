@@ -443,6 +443,174 @@ $('approve-review').onclick=async()=>{
  }finally{busy=false;reviewBusy=false;renderActions();showDays();renderCounts()}
 };
 
+
+// Inline provisional duty workflow. Preview is in memory; this section NEVER
+// writes publication='published', inputState='open' or public/roster.
+function checkDraftRows(rows,m){
+ const membersNormalized=members.map(normalizeMember);
+ const audit=auditDraft(m,rows,membersNormalized);
+ const unassigned=rows.filter(r=>r.type==='practice'&&!r.ownerId);
+ const unavailable=rows.filter(r=>r.type==='practice'&&r.ownerId&&
+  members.find(p=>p.id===r.ownerId)?.unavailableDates?.includes(r.date));
+ const issues=[...audit.problems,...unassigned.map(r=>r.date+' の担当者が未設定'),
+  ...unavailable.map(r=>r.date+' は担当者の不可日です')];
+ return {ok:issues.length===0,issues,warnings:audit.warnings};
+}
+function renderDraftRows(){
+ if(!draftPreview||draftPreview.month!==selectedMonth){$('draft-rows').textContent='';return}
+ const rows=draftPreview.rows;
+ const choices=[['practice','練習（仮）'],['game','🏀 試合'],['rest','休み']];
+ $('draft-rows').innerHTML=rows.map(row=>{
+  const validOwners=members.filter(p=>isDayAllowed(p,row.date,row.weekday)&&
+   !(p.unavailableDates||[]).includes(row.date)).sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  const kinds=choices.map(([type,name])=>'<option value="'+type+'" '+(row.type===type?'selected':'')+'>'+name+'</option>').join('');
+  const owners='<option value="">— 未設定 —</option>'+validOwners.map(p=>'<option value="'+esc(p.id)+'" '+
+   (p.id===row.ownerId?'selected':'')+'>'+esc(p.name)+'</option>').join('');
+  const weekday=['日','月','火','水','木','金','土'][row.weekday];
+  return '<div class="draft-row"><span>'+esc(row.date.slice(5))+'（'+weekday+'）</span>'+
+   '<select aria-label="'+esc(row.date)+'の活動予定" data-draft-date="'+esc(row.date)+'" data-draft-field="type" '+
+   (draftBusy||busy?'disabled':'')+'>'+kinds+'</select>'+
+   '<select aria-label="'+esc(row.date)+'の担当者" data-draft-date="'+esc(row.date)+'" data-draft-field="ownerId" '+
+   (row.type!=='practice'||draftBusy||busy?'disabled':'')+'>'+owners+'</select></div>';
+ }).join('');
+ renderDraftControls();
+}
+function renderDraftControls(){
+ const p=draftPreview,allowed=isAdmin&&selectedMonth>='2027-02'&&selectedMonth<='2027-11'&&
+  monthsMeta[selectedMonth]?.exists===false&&p?.month===selectedMonth&&readyMonth===selectedMonth;
+ const audit=allowed?checkDraftRows(p.rows,selectedMonth):{ok:false,issues:[],warnings:[]};
+ $('draft-agree').disabled=!allowed||draftBusy||busy||!audit.ok;
+ $('draft-save').disabled=!allowed||draftBusy||busy||!audit.ok||!$('draft-agree').checked;
+ if(allowed&&draftExpanded){
+  const warnings=[...p.initialWarnings,...audit.issues,...audit.warnings];
+  $('draft-feedback').textContent=warnings.length?'⚠ '+warnings.join('／'):
+    (draftFeedback||'🔒 仮当番はまだ未保存です。確認後、下書きのみ保存できます。');
+  $('draft-feedback').className='status'+(audit.ok?'':' bad');
+ }
+}
+$('month-actions').addEventListener('click',event=>{
+ const btn=event.target.closest('#month-review');if(!btn||btn.disabled||busy||draftBusy)return;
+ draftExpanded=!draftExpanded;renderActions();renderDraftControls();
+ if(draftExpanded)$('draft-panel').scrollIntoView({behavior:'smooth',block:'nearest'});
+});
+$('draft-rows').addEventListener('change',event=>{
+ const input=event.target.closest('select[data-draft-date][data-draft-field]');
+ if(!input||draftBusy||busy||!draftPreview||draftPreview.month!==selectedMonth)return;
+ const row=draftPreview.rows.find(x=>x.date===input.dataset.draftDate);
+ if(!row)return;
+ if(input.dataset.draftField==='type'){
+  if(!['practice','game','rest'].includes(input.value))return;
+  if(row.type==='practice')row._previousOwner=row.ownerId;
+  row.type=input.value;
+  if(row.type!=='practice')row.ownerId=null;
+  else{
+   const previous=members.find(m=>m.id===row._previousOwner);
+   row.ownerId=previous&&isDayAllowed(previous,row.date,row.weekday)&&
+    !(previous.unavailableDates||[]).includes(row.date)?previous.id:null;
+  }
+ }else if(input.dataset.draftField==='ownerId'){
+  const next=members.find(m=>m.id===input.value);
+  row.ownerId=next&&isDayAllowed(next,row.date,row.weekday)&&
+   !(next.unavailableDates||[]).includes(row.date)?next.id:null;
+ }
+ $('draft-agree').checked=false;
+ draftFeedback='🔒 下書き内容を変更しました。保存前にすべての確認をやり直してください。';
+ showDays();renderCounts();renderDraftRows();
+});
+$('draft-agree').onchange=renderDraftControls;
+$('draft-save').onclick=async()=>{
+ const preview=draftPreview,target=selectedMonth,user=auth.currentUser;
+ if(!preview||!user||!isAdmin||draftBusy||busy||preview.month!==target||
+   target<'2027-02'||target>'2027-11'||monthsMeta[target]?.exists!==false||
+   readyMonth!==target||!$('draft-agree').checked)return;
+ const audit=checkDraftRows(preview.rows,target);
+ if(!audit.ok){status('draft-feedback','保存できません：'+audit.issues.join('／'),'bad');return;}
+ const expected=preliminaryPracticeDays(target).map(r=>r.date);
+ if(preview.rows.length!==expected.length||preview.rows.some((r,i)=>r.date!==expected[i]))
+  return status('draft-feedback','活動予定日の数・順序が変わったため保存できません。','bad');
+ if(!confirm('2027年'+Number(target.slice(5))+'月の仮当番を'+preview.rows.length+
+  '日分、非公開の下書きとして保存しますか？\n\nこの操作は保護者へ共有せず、公開月一覧も変更しません。'+
+  '\n練習・試合・休みは仮の予定です。'))return;
+ draftBusy=true;renderDraftControls();renderActions();
+ status('draft-feedback','🔒 管理者専用の下書きとして保存しています。保護者には公開しません。');
+ let saved=false;
+ try{
+  const [memberDocs,ledgerDocs,correctionDocs,publicSnap,dayDocs,monthSnap]=await Promise.all([
+   getDocsFromServer(collection(db,'teams',teamId,'members')),
+   getDocsFromServer(collection(db,'teams',teamId,'dutyLedger')),
+   getDocsFromServer(collection(db,'teams',teamId,'dutyCountAdjustments')),
+   getDocFromServer(doc(db,'teams',teamId,'public','roster')),
+   getDocsFromServer(collection(db,'teams',teamId,'months',target,'days')),
+   getDocFromServer(doc(db,'teams',teamId,'months',target))
+  ]);
+  const newerMembers=memberDocs.docs.map(d=>({id:d.id,...d.data()}));
+  const newerLedger=ledgerDocs.docs.map(d=>({date:d.id,...d.data()}));
+  const newerAdjustments=Object.fromEntries(correctionDocs.docs.map(d=>[d.id,Number(d.data().delta??0)]));
+  if(auth.currentUser?.uid!==user.uid||monthSnap.exists()||!dayDocs.empty||
+   !publicSnap.exists()||publicSnap.data().publishedMonths?.includes(target)||
+   memberSignature(newerMembers)!==preview.signatureMembers||
+   ledgerSignature(newerLedger)!==preview.signatureLedger||
+   correctionSignature(newerAdjustments)!==preview.signatureCorrections||
+   rosterSignature(publicSnap.data())!==preview.signatureRoster)
+   throw Error('別端末で公開状態・名簿・実績・当番が変更された可能性があります。再読み込みしてやり直してください。');
+  const monthRef=doc(db,'teams',teamId,'months',target),
+   publicRef=doc(db,'teams',teamId,'public','roster'),
+   dayRefs=preview.rows.map(row=>doc(db,'teams',teamId,'months',target,'days',row.date)),
+   memberIds=members.map(m=>m.id),
+   memberRefs=memberIds.map(id=>doc(db,'teams',teamId,'members',id));
+  await runTransaction(db,async tx=>{
+   // Read every required document BEFORE any writes.
+   const refs=[doc(db,'admins',user.uid),monthRef,publicRef,...memberRefs,...dayRefs];
+   const snapshots=await Promise.all(refs.map(ref=>tx.get(ref)));
+   const [adminSnap,metaSnap,rosterSnap,...rest]=snapshots;
+   const freshMembers=rest.slice(0,memberRefs.length),
+    freshDays=rest.slice(memberRefs.length);
+   if(auth.currentUser?.uid!==user.uid||!adminSnap.exists()||adminSnap.data().enabled!==true)
+    throw Error('管理者権限が確認できません。');
+   if(metaSnap.exists()||freshDays.some(x=>x.exists())||
+    !rosterSnap.exists()||rosterSnap.data().publishedMonths?.includes(target)||
+    rosterSignature(rosterSnap.data())!==preview.signatureRoster)
+    throw Error('月データ・公開月一覧が変更されています。保存しません。');
+   if(freshMembers.some(s=>!s.exists()))throw Error('登録メンバーが変更されています。');
+   const currentMembers=freshMembers.map((snap,i)=>({id:memberIds[i],...snap.data()}));
+   if(memberSignature(currentMembers)!==preview.signatureMembers)
+    throw Error('メンバーの在籍期間・曜日条件が変更されています。保存しません。');
+   const freshAudit=checkDraftRows(preview.rows,target);
+   if(!freshAudit.ok)throw Error('仮当番の条件が不正です：'+freshAudit.issues.join('／'));
+   for(const row of preview.rows){
+    if(row.type!=='practice')continue;
+    const who=currentMembers.find(m=>m.id===row.ownerId);
+    if(!who||!isDayAllowed(who,row.date,row.weekday)||who.unavailableDates?.includes(row.date))
+     throw Error(row.date+' の当番候補は現在の条件を満たしません。');
+   }
+   const now=serverTimestamp();
+   tx.set(monthRef,{publication:'draft',inputState:'closed',scheduleStatus:'awaiting-manager',
+    scheduleVerified:false,autoGenerated:true,
+    openAt:Timestamp.fromMillis(jstInputOpenMillis(target)),
+    cutoffAt:Timestamp.fromMillis(jstInputCutoffMillis(target)),
+    createdAt:now,createdBy:user.uid,updatedAt:now,updatedBy:user.uid,version:1});
+   for(const row of preview.rows)tx.set(doc(db,'teams',teamId,'months',target,'days',row.date),{
+    date:row.date,weekday:row.weekday,type:row.type,ownerId:row.type==='practice'?row.ownerId:null,
+    eventLocation:'',traineeIds:[],confirmedSubstituteId:null,activityVerified:false,updatedAt:now});
+   tx.set(doc(collection(db,'teams',teamId,'draftCreationAudit')),{month:target,action:'inline-private-draft',
+    createdBy:user.uid,createdAt:now,dayCount:preview.rows.length,publication:'draft',
+    rosterPublishedMonthsModified:false});
+   // Intentionally NO write to public/roster and NO publication/open state.
+  });
+  saved=true;
+  draftFeedback='✅ '+target+' の仮当番を「下書き・非公開」として保存しました。保護者には共有していません。';
+  await chooseMonth(target);
+  draftExpanded=true;renderActions();
+  status('draft-feedback',draftFeedback,'good');
+ }catch(e){
+  status('draft-feedback',(saved?'保存済みですが表示更新に失敗：':'保存できません：')+
+   (e.code||e.message||String(e)),'bad');
+ }finally{
+  draftBusy=false;
+  renderActions();renderDraftControls();showDays();renderCounts();
+ }
+};
+
 async function priorScheduledDays(month){
  const rows=[];
  for(let m='2027-01';m<month;m=addMonths(m,1)){
