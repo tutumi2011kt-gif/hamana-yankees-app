@@ -46,6 +46,18 @@ test('Only Nagisa can use advance explicit weekend approval',()=>{
  assert.equal(isDayAllowed(approved,dates.sun,0),false);
  assert.equal(isDayAllowed({...byId.yui,approvedWeekendDates:[dates.sat]},dates.sat,6),false);
 });
+test('Yui becomes eligible for Wednesday and Sunday on 2027-04-01',()=>{
+ const yui=byId.yui;
+ assert.equal(isDayAllowed(yui,'2027-03-28'),false,'March Sunday must remain prohibited');
+ assert.equal(isDayAllowed(yui,'2027-03-31'),true,'March Wednesday allowed');
+ assert.equal(isDayAllowed(yui,'2027-04-04'),true,'April Sunday allowed');
+ assert.equal(isDayAllowed(yui,'2027-04-07'),true,'April Wednesday allowed');
+ assert.equal(isDayAllowed(yui,'2027-04-02'),false,'April Friday prohibited');
+ assert.equal(isDayAllowed(yui,'2027-04-03'),false,'April Saturday prohibited');
+ assert.equal(isDayAllowed(yui,'2027-11-07'),true,'November Sunday allowed');
+ assert.equal(isDayAllowed({...yui,status:'paused'},'2027-04-04'),false,'Inactive Yui prohibited');
+ assert.equal(isDayAllowed({...yui,unavailableDates:['2027-04-04']},'2027-04-04'),true,'isDayAllowed handles weekday only; caller checks unavailable dates');
+});
 test('February non-existent date rejected',()=>assert.equal(weekdayOf('2027-02-29'),null));
 test('Missing start date rejected',()=>assert.equal(isDayAllowed({...byId.mia,start:null},dates.sat,6),false));
 test('Retired member rejected',()=>assert.equal(isDayAllowed({...byId.mia,status:'retired'},dates.sat,6),false));
