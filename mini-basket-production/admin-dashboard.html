@@ -76,7 +76,7 @@ const short=m=>Number(m.slice(5))+'月';
 let selectedMonth=(months.includes(new URLSearchParams(location.search).get('month'))?new URLSearchParams(location.search).get('month'):'2027-01'),isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='',pendingReview=null,reviewBusy=false,draftPreview=null,draftExpanded=false,draftBusy=false,draftFeedback='';
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
- draftPreview=null;draftExpanded=false;draftBusy=false;draftFeedback='';$('draft-panel').hidden=true;
+ draftPreview=null;draftExpanded=false;draftBusy=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;
  isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';pendingReview=null;reviewBusy=false;requestToken++;
  $('review-panel').hidden=true;
  $('game-mode').disabled=true;$('rebalance').disabled=true;
@@ -177,7 +177,7 @@ function renderActions(){
 }
 async function chooseMonth(m){
  if(!months.includes(m))return;
- selectedMonth=m;draftPreview=null;draftExpanded=false;draftFeedback='';$('draft-panel').hidden=true;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
+ selectedMonth=m;draftPreview=null;draftExpanded=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
  const version=++requestToken;
  if(!isAdmin)return;
  status('month-status',m+' の最新当番表を読み込み中…');
@@ -578,6 +578,7 @@ $('draft-save').onclick=async()=>{
    const freshAudit=checkDraftRows(preview.rows,target);
    if(!freshAudit.ok)throw Error('仮当番の条件が不正です：'+freshAudit.issues.join('／'));
    for(const row of preview.rows){
+    if(row.date<=todayTokyo())throw Error(row.date+' は過去の日付です。仮当番を新規作成できません。');
     if(row.type!=='practice')continue;
     const who=currentMembers.find(m=>m.id===row.ownerId);
     if(!who||!isDayAllowed(who,row.date,row.weekday)||who.unavailableDates?.includes(row.date))
@@ -598,16 +599,18 @@ $('draft-save').onclick=async()=>{
    // Intentionally NO write to public/roster and NO publication/open state.
   });
   saved=true;
-  draftFeedback='✅ '+target+' の仮当番を「下書き・非公開」として保存しました。保護者には共有していません。';
+  const message='✅ '+target+' の仮当番を「下書き・非公開」として保存しました。保護者へは共有していません。';
+  clearReview();
   await chooseMonth(target);
-  draftExpanded=true;renderActions();
-  status('draft-feedback',draftFeedback,'good');
+  draftFeedback=message;draftExpanded=true;renderActions();
+  status('draft-feedback',message,'good');
  }catch(e){
   status('draft-feedback',(saved?'保存済みですが表示更新に失敗：':'保存できません：')+
    (e.code||e.message||String(e)),'bad');
  }finally{
   draftBusy=false;
   renderActions();renderDraftControls();showDays();renderCounts();
+  if(saved)status('draft-feedback',draftFeedback,'good');
  }
 };
 
