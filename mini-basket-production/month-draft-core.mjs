@@ -1,5 +1,5 @@
 // Pure draft calendar checks. No automatic parent assignment and no inferred game dates.
-import {isDayAllowed,isPreferredWeekday} from './weekday-conditions.mjs';
+import {isDayAllowed,isPreferredWeekday} from './weekday-conditions.mjs?v=20261122-yui';
 export const DRAFT_MONTH='2027-01';
 export const VALID_TYPES=['practice','game','rest'];
 export const DAY_NAMES=['日','月','火','水','木','金','土'];
