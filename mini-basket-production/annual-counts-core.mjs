@@ -2,7 +2,7 @@
 // A provisional assignment is NOT a completed duty or a published parent month.
 // The caller fetches existing month docs; this module never writes to Firebase.
 import {preliminaryPracticeDays} from './month-rollover-core.mjs';
-import {proposeFairDraft,adjustedDutyCounts} from './admin-fairness-core.mjs';
+import {proposeFairDraft,adjustedDutyCounts} from './admin-fairness-core.mjs?v=20261122-yui';
 
 export const ANNUAL_FIRST='2026-12';
 export const ANNUAL_LAST='2027-11';
