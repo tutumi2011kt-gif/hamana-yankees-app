@@ -86,7 +86,7 @@ function resetPrivate(){
 }
 function renderMonths(){
  $('months').innerHTML=months.map(m=>{
-  const info=monthsMeta[m],state=!isAdmin?'🔒':!info?'未取得':!info.exists?'未作成':info.published?'公開済み':'下書き・未公開';
+  const info=monthsMeta[m],pending=draftPreview?.month===m,state=!isAdmin?'🔒':!info?'未取得':!info.exists?(pending?'仮候補・未保存':'未作成'):info.published?'公開済み':'下書き・未公開';
   return '<button type="button" data-month="'+m+'" class="'+(m===selectedMonth?'current':'')+'">'+short(m)+'<small>'+esc(state)+'</small></button>';
  }).join('');
 }
@@ -117,14 +117,14 @@ function renderCounts(){
 function showDays(){
  $('month-title').textContent='③ '+Number(selectedMonth.slice(0,4))+'年'+short(selectedMonth)+' 当番カレンダー';
  if(!isAdmin)return;
- const exists=monthsMeta[selectedMonth]?.exists===true;
+ const exists=monthsMeta[selectedMonth]?.exists===true,previewing=!exists&&draftPreview?.month===selectedMonth;
  const byId=Object.fromEntries(members.map(m=>[m.id,m.name]));
  const total=selectedDays.filter(d=>d.type==='practice').length;
  const game=selectedDays.filter(d=>d.type==='game').length;
  const rest=selectedDays.filter(d=>d.type==='rest').length;
  $('metrics').innerHTML=[['練習',total],['試合',game],['休み',rest]].map(([label,value])=>
-  '<div class="metric"><b>'+(exists?value:'—')+'</b><span>'+label+'</span></div>').join('');
- if(!exists){$('calendar').innerHTML='<p class="small" style="grid-column:span 7">この月の当番表はまだFirebaseに作成されていません。</p>';return;}
+  '<div class="metric"><b>'+(exists||previewing?value:'—')+'</b><span>'+label+'</span></div>').join('');
+ if(!exists&&!previewing){$('calendar').innerHTML='<p class="small" style="grid-column:span 7">未作成の仮当番を計算中です。保護者には公開されません。</p>';return;}
  const map=new Map(selectedDays.map(d=>[d.date,d]));
  const y=Number(selectedMonth.slice(0,4)),m=Number(selectedMonth.slice(5));
  const end=new Date(Date.UTC(y,m,0)).getUTCDate(),start=new Date(Date.UTC(y,m-1,1)).getUTCDay();
@@ -134,9 +134,10 @@ function showDays(){
   const date=selectedMonth+'-'+String(i).padStart(2,'0'),d=map.get(date);
   const type=d?.type||'',owner=d?.ownerId?(byId[d.ownerId]||'担当ID未確認'):'';
   const label=type==='practice'?'練習':type==='game'?'🏀試合':type==='rest'?'休み':'';
-  const clickGame=gameMode&&!busy&&readyMonth===selectedMonth&&(type==='practice'||type==='game');
-  html+=(clickGame?'<button type="button" data-game-date="'+esc(date)+'" class="day '+esc(type)+' game-pick" aria-label="'+esc(date)+(type==='game'?' を元の練習・当番に戻す':' を試合に変更')+'">':'<div class="day '+esc(type)+'">')+'<span class="date">'+i+'</span>'+
+  const clickGame=!previewing&&gameMode&&!busy&&readyMonth===selectedMonth&&(type==='practice'||type==='game');
+  html+=(clickGame?'<button type="button" data-game-date="'+esc(date)+'" class="day '+esc(type)+' game-pick" aria-label="'+esc(date)+(type==='game'?' を元の練習・当番に戻す':' を試合に変更')+'">':'<div class="day '+esc(type)+(previewing?' preview':'')+'">')+'<span class="date">'+i+'</span>'+
    (label?'<span class="note">'+esc(label)+'</span>':'')+
+    (previewing&&d?'<span class="note">未保存</span>':'')+
    (clickGame&&type==='game'?'<span class="note">↩ 練習に戻す</span>':'')+
    (owner?'<span class="owner">'+esc(owner)+'</span>':'')+
    (type==='practice'&&!owner?'<span class="note">⚠担当未設定</span>':'')+(clickGame?'</button>':'</div>');
@@ -145,23 +146,38 @@ function showDays(){
 }
 function renderActions(){
  if(!isAdmin)return;
- const info=monthsMeta[selectedMonth];
- const html='<a class="action green" href="./manage-month-workflow.html?month='+encodeURIComponent(selectedMonth)+'">✅ 当番表を確認・確定・公開</a>';
- $('month-actions').innerHTML=html;
- const allowed=isAdmin&&!busy&&readyMonth===selectedMonth&&info?.exists===true;
+ const info=monthsMeta[selectedMonth],draftable=selectedMonth>='2027-02'&&selectedMonth<='2027-11';
+ $('month-actions').innerHTML='<button class="action green" type="button" id="month-review">✅ 当番表を確認・確定・公開</button>';
+ $('month-review').disabled=busy||draftBusy||readyMonth!==selectedMonth;
+ const allowed=isAdmin&&!busy&&!draftBusy&&readyMonth===selectedMonth&&info?.exists===true;
  $('game-mode').disabled=!allowed;$('game-cancel').disabled=!allowed||!gameMode;
  $('game-mode').className='primary'+(gameMode?' mode-on':'');
  $('rebalance').disabled=!allowed||selectedMonth>='2027-11';
  if(gameMode||!['status good','status bad'].includes($('game-status').className))
   $('game-status').textContent=gameMode?'🏀 試合モード：練習日を押すと試合へ、試合日を押すと元の練習・当番へ戻します。':'「🏀 試合」を押して日付を選択すると、練習と試合を切り替えられます。';
+ $('draft-panel').hidden=!draftExpanded;
+ $('draft-editor').hidden=!(draftExpanded&&draftable&&draftPreview?.month===selectedMonth&&!info?.exists);
+ if(draftExpanded){
+  $('draft-intro').textContent=draftable?'🔒 2027年2〜11月の保護者公開は無効です。ここでは非公開の下書きだけを作成・保存します。':
+   '1月の既存データは変更しません。公開承認の安全確認は従来の1月専用画面を使用します。';
+  if(draftable&&!info?.exists&&draftPreview?.month===selectedMonth){
+   renderDraftRows();
+   $('draft-feedback').textContent=draftFeedback||'🔒 仮当番候補（未保存）です。活動予定を確認してください。';
+  }else if(draftable&&info?.exists){
+   $('draft-feedback').textContent=info.published?'⚠ 既に公開扱いの月です。公開・非公開保存の両操作を停止しています。':
+    '✅ Firebaseに下書き保存済み。保護者へは非公開です。試合に変更するときは上のカレンダーをご利用ください。';
+  }else if(!draftable){
+   $('draft-feedback').innerHTML='1月の当番表は既存の安全確認手順を維持します。<a href="./manage-january.html">1月の当番確認</a>／<a href="./manage-january-publish.html">1月の公開承認</a>';
+  }else $('draft-feedback').textContent='候補を計算中です。未保存です。';
+ }
  const published=info?.published===true;
- status('month-status',!info?.exists?selectedMonth+'：未作成です。管理者が作成・公開するまで保護者には表示されません。':
+ status('month-status',!info?.exists?(draftPreview?.month===selectedMonth?selectedMonth+'：🔒 仮当番を表示中（未保存・保護者へ非公開）。日程は未確認です。':selectedMonth+'：未作成。保護者には非公開です。'):
   selectedMonth+'：'+(published?'✅ 公開済み（保護者向け公開名簿にも登録あり）':'🔒 未公開・下書き')+
   '／予定の日数 '+selectedDays.length+'件。閲覧だけではFirebaseへ変更しません。',published?'good':'');
 }
 async function chooseMonth(m){
  if(!months.includes(m))return;
- selectedMonth=m;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
+ selectedMonth=m;draftPreview=null;draftExpanded=false;draftFeedback='';$('draft-panel').hidden=true;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
  const version=++requestToken;
  if(!isAdmin)return;
  status('month-status',m+' の最新当番表を読み込み中…');
@@ -173,6 +189,24 @@ async function chooseMonth(m){
   const daySnaps=meta?await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days')):null;
   if(version!==requestToken)return;
   selectedDays=daySnaps?daySnaps.docs.map(x=>({date:x.id,...x.data()})).sort((a,b)=>a.date.localeCompare(b.date)):[];
+  if(!meta&&m>='2027-02'&&m<='2027-11'){
+   if(roster?.publishedMonths?.includes(m))throw Error('公開済み月一覧に含まれています。候補の作成を停止しました。');
+   const unlinked=await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days'));
+   if(version!==requestToken)return;
+   if(!unlinked.empty)throw Error('月設定がない既存日付データがあります。上書きしません。');
+   const priorPlans=await priorScheduledDays(m);
+   if(version!==requestToken)return;
+   const prelim=preliminaryPracticeDays(m),proposal=proposeFairDraft({
+    month:m,days:prelim,members,records,corrections,today:todayTokyo(),priorPlans});
+   const assigned=Object.fromEntries(proposal.updates.map(x=>[x.date,x.to]));
+   selectedDays=prelim.map(row=>({...row,ownerId:assigned[row.date]??null,
+    activityVerified:false,confirmedSubstituteId:null}));
+   draftPreview={month:m,rows:selectedDays,initialWarnings:proposal.warnings,
+    signatureMembers:memberSignature(members),signatureLedger:ledgerSignature(records),
+    signatureCorrections:correctionSignature(corrections),signatureRoster:rosterSignature(roster)};
+   draftFeedback=proposal.warnings.length?'⚠ 候補不足：'+proposal.warnings.join('／'):
+    '🔒 未保存の仮当番を表示しています。カレンダーから日程と担当者を確認してください。';
+  }
   readyMonth=m;renderMonths();showDays();renderActions();renderCounts();
  }catch(e){
   if(version!==requestToken)return;
@@ -205,7 +239,7 @@ async function refreshAll(){
   status('auth-state','✅ 管理者認証OK。'+members.length+'人の名簿、実績台帳、公開状態を読み取りました。','good');
   await chooseMonth(selectedMonth);
  }catch(e){resetPrivate();status('auth-state','読み込みできません：'+(e.code||e.message||String(e)),'bad')}
- finally{busy=false;$('refresh').disabled=!isAdmin}
+ finally{busy=false;$('refresh').disabled=!isAdmin;if(isAdmin){renderActions();renderDraftControls()}}
 }
 
 
