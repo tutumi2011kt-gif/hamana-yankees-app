@@ -1,13 +1,14 @@
-// 管理者確認済みの当番曜日（2026-11-16 更新）。曜日番号: 日0・水3・金5・土6
+// 管理者確認済みの当番曜日（2026-11-22 更新）。曜日番号: 日0・水3・金5・土6
 // "days" is allowed for regular automatic drafts. Nothing in here rewrites confirmed past duties.
 // 村松さわ: 2027-01-01開始、水・土・日。金曜は絶対不可。
-export const WEEKDAY_PROFILE_VERSION='2026-11-16';
+export const WEEKDAY_PROFILE_VERSION='2026-11-22';
+export const YUI_SUNDAY_START='2027-04-01';
 export const WEEKDAYS=[0,3,5,6];
 export const WEEKDAY_LABELS={0:'日',3:'水',5:'金',6:'土'};
 export const WEEKDAY_UPDATES=Object.freeze({
  wakana:{days:[0,3,5,6],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'全曜日可'},
  mia:{days:[6],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'土曜日以外は絶対不可'},
- yui:{days:[3],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'水曜日以外は絶対不可'},
+ yui:{days:[3],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'2027年3月までは水曜のみ。2027年4月以降は水曜・日曜（通常仮割当）'},
  an:{days:[0,6],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'土・日曜日以外は絶対不可'},
  mai:{days:[0,3,5,6],preferredWeekdays:[3],weekdayRule:'soft',weekdayNote:'水曜日を優先。他の曜日も可能'},
  koharu:{days:[3],preferredWeekdays:[],weekdayRule:'hard',weekdayNote:'水曜日以外は絶対不可'},
@@ -33,6 +34,12 @@ export function isDayAllowed(member,date,weekday=weekdayOf(date)){
  if(!activeOnDate(member,date)||!WEEKDAYS.includes(weekday))return false;
  const days=member.days;
  if(!Array.isArray(days))return false; // 未確認は絶対に割り当てない
+ // Yui's fixed historic Wednesday rule changes only for automatic assignment
+ // dates from April 2027 onward. Leave parent volunteer ○ independent.
+ // Do not change any stored 2026/12 or 2027/01-03 assignment data.
+ if(member.id==='yui'){
+  return weekday===3||(date>=YUI_SUNDAY_START&&weekday===0);
+ }
  if(days.includes(weekday))return true;
  // 例外はなぎさの明示確認済み日だけ。絶対条件は絶対に緩めない。
  return member.id==='nagisa'&&member.weekdayRule==='conditional-weekend'
