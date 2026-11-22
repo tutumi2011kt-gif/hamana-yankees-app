@@ -217,6 +217,7 @@ async function chooseMonth(m){
   const daySnaps=meta?await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days')):null;
   if(version!==requestToken)return;
   selectedDays=daySnaps?daySnaps.docs.map(x=>({date:x.id,...x.data()})).sort((a,b)=>a.date.localeCompare(b.date)):[];
+   if(annualSource)annualSource[m]={exists:!!meta,rows:selectedDays.map(x=>({...x}))};
   if(!meta&&m>='2027-02'&&m<='2027-11'){
    if(roster?.publishedMonths?.includes(m))throw Error('公開済み月一覧に含まれています。候補の作成を停止しました。');
    const unlinked=await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days'));
@@ -242,6 +243,29 @@ async function chooseMonth(m){
   $('calendar').textContent='読み込み失敗。推測の予定は表示しません。';
  }
 }
+
+async function refreshAnnualCountSources(){
+ if(!isAdmin||!auth.currentUser)return;
+ const user=auth.currentUser,version=++annualRequest;
+ annualLoading=true;annualLastError='';
+ status('counts-status','2026年12月〜2027年11月の当番実績と将来の予定を読み込み中…');
+ try{
+  const sourceRows=await Promise.all(ANNUAL_MONTHS.map(async month=>{
+   const monthSnap=await getDocFromServer(doc(db,'teams',teamId,'months',month));
+   if(!monthSnap.exists())return [month,{exists:false,rows:[]}];
+   const days=await getDocsFromServer(collection(db,'teams',teamId,'months',month,'days'));
+   return [month,{exists:true,rows:days.docs.map(x=>({date:x.id,...x.data()})).sort((a,b)=>a.date.localeCompare(b.date))}];
+  }));
+  if(!isAdmin||auth.currentUser?.uid!==user.uid||version!==annualRequest)return;
+  annualSource=Object.fromEntries(sourceRows);
+  annualLastError='';
+ }catch(e){
+  if(version!==annualRequest)return;
+  annualSource=null;annualLastError=e.code||e.message||String(e);
+ }finally{
+  if(version===annualRequest){annualLoading=false;renderCounts();}
+ }
+}
 async function refreshAll(){
  const user=auth.currentUser;if(!user||busy)return;
  clearReview();
@@ -263,9 +287,10 @@ async function refreshAll(){
   records=ledgerDocs.docs.map(x=>({date:x.id,...x.data()}));
   corrections=Object.fromEntries(correctionDocs.docs.map(x=>[x.id,Number(x.data().delta||0)]));
   roster=publicRoster.data();
-  isAdmin=true;monthsMeta={};renderMonths();
+  isAdmin=true;monthsMeta={};annualSource=null;annualLastError='';renderMonths();
   status('auth-state','✅ 管理者認証OK。'+members.length+'人の名簿、実績台帳、公開状態を読み取りました。','good');
   await chooseMonth(selectedMonth);
+   await refreshAnnualCountSources();
  }catch(e){resetPrivate();status('auth-state','読み込みできません：'+(e.code||e.message||String(e)),'bad')}
  finally{busy=false;$('refresh').disabled=!isAdmin;if(isAdmin){renderActions();renderDraftControls()}}
 }
@@ -464,6 +489,7 @@ $('approve-review').onclick=async()=>{
   clearReview();status('rebalance-status','✅ 管理者の承認により'+savedMonths+'か月・'+savedDays+
    '件の将来当番を更新しました。公開済み月には変更していません。','good');
   await chooseMonth(selectedMonth);
+  await refreshAnnualCountSources();
  }catch(e){
   const message=(savedMonths?'⚠ '+savedMonths+'か月・'+savedDays+'件は保存済みです。残りは未保存。':'⚠ 保存前に中止しました。将来の当番は変更していません。')+
    ' '+(e.code||e.message||String(e));
