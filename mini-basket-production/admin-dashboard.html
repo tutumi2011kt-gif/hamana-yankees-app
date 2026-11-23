@@ -60,6 +60,34 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 </div><p class="small">当番表の仮作成・確認・非公開保存はこの年間管理画面内で行います。2〜11月の保護者公開機能はありません。</p></section>
 <footer>管理者専用。保護者画面・2026年12月確定表は変更しません。2027年2〜11月の保護者公開は無効です。</footer>
 </main>
+<script>
+// Draw a safe date-only calendar immediately. Actual owners remain admin-only
+// and are loaded by the Firebase module; this fallback never writes data.
+(function(){
+ var p=new URLSearchParams(location.search),m=p.get('month')||'2027-01';
+ if(!/^2027-(0[1-9]|1[01])$/.test(m))m='2027-01';
+ var y=Number(m.slice(0,4)),n=Number(m.slice(5));
+ var length=new Date(Date.UTC(y,n,0)).getUTCDate(),start=new Date(Date.UTC(y,n-1,1)).getUTCDay();
+ var html='';
+ for(var i=0;i<start;i++)html+='<div class="day empty" aria-hidden="true"></div>';
+ for(var d=1;d<=length;d++)html+='<div class="day loading-day"><span class="date">'+d+'</span><span class="note">読込中</span></div>';
+ document.getElementById('calendar').innerHTML=html;
+ function showBootWarning(message){
+  if(window.__basketManagerLoaded)return;
+  document.getElementById('calendar-feedback').textContent=message;
+  document.getElementById('calendar-feedback').style.color='#a32d4b';
+  document.getElementById('month-status').textContent='管理者用データの読み込みが完了していません。ページを再読み込みしてください。';
+ }
+ window.addEventListener('error',function(ev){
+  if(!window.__basketManagerLoaded&&ev.message)
+   showBootWarning('⚠ 管理画面のプログラムを読み込めませんでした。日付のみ表示しています。ページを再読み込みしてください。');
+ });
+ window.setTimeout(function(){
+  if(!window.__basketManagerLoaded)
+   showBootWarning('⚠ 管理画面の読み込みに時間がかかっています。日付のみ表示しています。通信状況をご確認のうえ再読み込みしてください。');
+ },15000);
+})();
+</script>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
@@ -73,6 +101,7 @@ import {auditDraft,normalizeMember} from './month-draft-core.mjs?v=20261122-yui'
 import {todayTokyo} from './core.mjs?v=admin';
 import {preliminaryPracticeDays,jstInputOpenMillis,jstInputCutoffMillis,addMonths} from './month-rollover-core.mjs?v=admin-20261120';
 import {ANNUAL_MONTHS,summarizeAnnualCounts} from './annual-counts-core.mjs?v=20261122-yui';
+window.__basketManagerLoaded=true;
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=getAuth(app),db=getFirestore(app);
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
