@@ -81,12 +81,12 @@ const short=m=>Number(m.slice(5))+'月';
 let selectedMonth=(months.includes(new URLSearchParams(location.search).get('month'))?new URLSearchParams(location.search).get('month'):'2027-01'),isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='',pendingReview=null,reviewBusy=false,draftPreview=null,draftExpanded=false,draftBusy=false,draftFeedback='',annualSource=null,annualRequest=0,annualLoading=false,annualLastError='',calendarLoadFailed=false;
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
- annualSource=null;annualLastError='';annualLoading=false;annualRequest++;
+ annualSource=null;annualLastError='';annualLoading=false;annualRequest++;calendarLoadFailed=false;
  draftPreview=null;draftExpanded=false;draftBusy=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;
  isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';pendingReview=null;reviewBusy=false;requestToken++;
  $('review-panel').hidden=true;
  $('game-mode').disabled=true;$('rebalance').disabled=true;
- $('calendar').textContent='';$('member-counts').textContent='';$('month-actions').textContent='';
+ renderCalendarDatesOnly(selectedMonth);setCalendarFeedback('管理者ログイン後に担当者を読み込みます。');$('member-counts').textContent='';$('month-actions').textContent='';
  status('counts-status','管理者ログインが必要です。');status('month-status','管理者ログインが必要です。');
  $('refresh').disabled=true;renderMonths();
 }
@@ -144,9 +144,23 @@ function renderCounts(){
  if(lastCountFeedback)note=lastCountFeedback+'\n'+note;
  status('counts-status',note,annualLastError?'bad':lastCountFeedback.startsWith('✅')?'good':'');
 }
+
+function renderCalendarDatesOnly(month){
+ const [year,number]=month.split('-').map(Number);
+ const length=new Date(Date.UTC(year,number,0)).getUTCDate(),start=new Date(Date.UTC(year,number-1,1)).getUTCDay();
+ let markup='';
+ for(let i=0;i<start;i++)markup+='<div class="day empty" aria-hidden="true"></div>';
+ for(let i=1;i<=length;i++)markup+='<div class="day loading-day"><span class="date">'+i+'</span><span class="note">未確認</span></div>';
+ $('calendar').innerHTML=markup;
+}
+function setCalendarFeedback(message,error=false){
+ $('calendar-feedback').textContent=message;
+ $('calendar-feedback').style.color=error?'#a32d4b':'#526d85';
+ $('calendar-retry').style.display=error&&isAdmin?'inline-block':'none';
+}
 function showDays(){
  $('month-title').textContent='③ '+Number(selectedMonth.slice(0,4))+'年'+short(selectedMonth)+' 当番カレンダー';
- if(!isAdmin)return;
+ if(!isAdmin){renderCalendarDatesOnly(selectedMonth);return;}
  const exists=monthsMeta[selectedMonth]?.exists===true,previewing=!exists&&draftPreview?.month===selectedMonth;
  const byId=Object.fromEntries(members.map(m=>[m.id,m.name]));
  const total=selectedDays.filter(d=>d.type==='practice').length;
@@ -154,7 +168,7 @@ function showDays(){
  const rest=selectedDays.filter(d=>d.type==='rest').length;
  $('metrics').innerHTML=[['練習',total],['試合',game],['休み',rest]].map(([label,value])=>
   '<div class="metric"><b>'+(exists||previewing?value:'—')+'</b><span>'+label+'</span></div>').join('');
- if(!exists&&!previewing){$('calendar').innerHTML='<p class="small" style="grid-column:span 7">未作成の仮当番を計算中です。保護者には公開されません。</p>';return;}
+ if(calendarLoadFailed||!exists&&!previewing){renderCalendarDatesOnly(selectedMonth);return;}
  const map=new Map(selectedDays.map(d=>[d.date,d]));
  const y=Number(selectedMonth.slice(0,4)),m=Number(selectedMonth.slice(5));
  const end=new Date(Date.UTC(y,m,0)).getUTCDate(),start=new Date(Date.UTC(y,m-1,1)).getUTCDay();
@@ -173,6 +187,8 @@ function showDays(){
    (type==='practice'&&!owner?'<span class="note">⚠担当未設定</span>':'')+(clickGame?'</button>':'</div>');
  }
  $('calendar').innerHTML=html;
+ setCalendarFeedback(previewing?'🔒 未保存の仮当番候補です。担当者はFirebaseの確定情報ではありません。':
+  '✅ Firebaseから取得した当番カレンダーを表示しています。');
 }
 function renderActions(){
  if(!isAdmin)return;
@@ -207,10 +223,11 @@ function renderActions(){
 }
 async function chooseMonth(m){
  if(!months.includes(m))return;
- selectedMonth=m;draftPreview=null;draftExpanded=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
+ selectedMonth=m;calendarLoadFailed=false;draftPreview=null;draftExpanded=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
  const version=++requestToken;
  if(!isAdmin)return;
  status('month-status',m+' の最新当番表を読み込み中…');
+ setCalendarFeedback('📅 '+short(m)+' の日付を表示しています。当番情報を確認中です。');
  try{
   const ref=doc(db,'teams',teamId,'months',m),snap=await getDocFromServer(ref);
   if(version!==requestToken)return;
@@ -238,11 +255,13 @@ async function chooseMonth(m){
    draftFeedback=proposal.warnings.length?'⚠ 候補不足：'+proposal.warnings.join('／'):
     '🔒 未保存の仮当番を表示しています。カレンダーから日程と担当者を確認してください。';
   }
-  readyMonth=m;renderMonths();showDays();renderActions();renderCounts();
+  calendarLoadFailed=false;readyMonth=m;renderMonths();showDays();renderActions();renderCounts();
  }catch(e){
   if(version!==requestToken)return;
-  selectedDays=[];status('month-status','月データを確認できません：'+(e.code||e.message||String(e)),'bad');
-  $('calendar').textContent='読み込み失敗。推測の予定は表示しません。';
+  calendarLoadFailed=true;readyMonth=null;draftPreview=null;selectedDays=[];
+  status('month-status','月データを確認できません：'+(e.code||e.message||String(e)),'bad');
+  renderMonths();showDays();renderActions();
+  setCalendarFeedback('⚠ この月のデータ確認に失敗しました。日付のみ表示しています（担当者・練習予定は未確認）。「この月のカレンダーを再読み込み」を押してください。',true);
  }
 }
 
@@ -874,6 +893,7 @@ $('rebalance').onclick=async()=>{
 
 $('months').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b)chooseMonth(b.dataset.month)});
 $('refresh').onclick=refreshAll;
+$('calendar-retry').onclick=()=>{if(isAdmin&&!busy)void chooseMonth(selectedMonth)};
 $('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>status('auth-state','Googleログイン失敗：'+(e.code||e.message),'bad'));
 onAuthStateChanged(auth,user=>{
  resetPrivate();
