@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#ecf4fc">
+<title>🏀 2027年1月17日 練習試合の登録｜管理者</title>
+<style>
+*{box-sizing:border-box}body{background:#f3f7fb;color:#263d53;margin:0;font:15px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+main{max-width:720px;margin:auto;padding:15px 12px 55px}.card{padding:16px;margin:12px 0;background:white;border:1px solid #dce6ef;border-radius:14px}h1{font-size:22px;margin:4px 0 10px}h2{font-size:17px;margin:0 0 10px}.muted{font-size:12px;color:#536c83}
+p{margin:8px 0}.status{padding:11px;border-radius:9px;background:#eaf3fb;font-size:13px;white-space:pre-wrap}.status.error{color:#ad2441;background:#fff0f2}.status.success{color:#156c47;background:#ebf9ef}
+button,a.link{width:100%;display:block;margin-top:10px;padding:12px;border-radius:9px;border:1px solid #bdd0df;background:white;color:#23577f;min-height:46px;text-decoration:none;text-align:center;font:inherit;font-weight:800;cursor:pointer}
+button.primary{background:#215c88;color:white;border-color:#215c88}button:disabled{opacity:.45;cursor:not-allowed}.preview{padding:16px 12px;background:#fff4e1;border:1px solid #f0d6ad;border-radius:10px;text-align:center;max-width:260px;margin:10px auto}.crossed{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:#b73550;color:#9a6170;font-weight:800}.game{display:block;font-size:18px;font-weight:900}.place{display:block;font-size:15px;font-weight:750;color:#885619}.alert{padding:10px;border-radius:9px;background:#f9f4e8;color:#785a20;font-size:12px}
+</style></head><body><main>
+<section class="card"><h1>🏀 1月17日の練習試合</h1>
+<p>2027年1月17日（日）｜舞坂小学校</p>
+<div class="alert">管理者専用。保護者へ公開中の1月カレンダーの当日だけを変更します。ほかの日・公開月一覧は変更しません。</div></section>
+<section class="card"><h2>① 管理者として確認</h2>
+<p id="auth-status" class="status">管理者権限を確認中です。</p>
+<button type="button" id="login">Google管理者ログイン</button>
+<button type="button" id="reload" disabled>1月17日の最新データを再確認</button></section>
+<section class="card"><h2>② 保護者への表示イメージ</h2>
+<div class="preview"><b>17日（日）</b><span class="crossed" id="old-owner">現在の当番名を確認中</span>
+<span class="game">🏀 練習試合</span><span class="place">舞坂小学校</span></div>
+<p id="calendar-status" class="status">Firebaseの現在の当番と公開状況を読み込んでいます。</p>
+<div class="alert">元担当者の当番は「試合による中止」として繰越待ちに記録します。実施済み回数は加算しません。翌月以降の担当変更は管理者承認まで行いません。</div>
+<button type="button" id="commit" class="primary" disabled>🔒 確認して1月17日を練習試合に変更</button>
+<p id="write-status" class="status">まだFirebaseには何も変更していません。</p></section>
+<section class="card"><h2>③ 登録後の確認</h2><a class="link" href="./parent.html">保護者カレンダーを開く（1月を選択）</a>
+<a class="link" href="./admin-dashboard.html?month=2027-01">年間当番管理に戻る</a></section>
+</main>
+<script type="module">
+import {firebaseConfig,teamId} from './firebase-config.mjs';
+import {todayTokyo} from './core.mjs';
+import {buildDutyLedgerRecord} from './duty-ledger-core.mjs';
+import {calendarState,planLedgerCalendar,stableSignature} from './ledger-calendar-core.mjs';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+const $=id=>document.getElementById(id),DATE='2027-01-17',MONTH='2027-01';
+const TITLE='練習試合',PLACE='舞坂小学校';
+const app=initializeApp(firebaseConfig,'basket-jan17-game-admin'),auth=getAuth(app),db=getFirestore(app);
+const base='teams/'+teamId;
+const refs={
+ admin:uid=>doc(db,'admins',uid),
+ month:doc(db,base,'months',MONTH),
+ day:doc(db,base,'months',MONTH,'days',DATE),
+ ledger:doc(db,base,'dutyLedger',DATE),
+ roster:doc(db,base,'public','roster')
+};
+let authorized=false,loaded=null,busy=false,members=[],initialUser='';
+function info(id,value,type=''){
+ const el=$(id);el.textContent=value;el.className='status'+(type?' '+type:'');
+}
+function controls(){
+ $('login').hidden=!!auth.currentUser;
+ $('reload').disabled=!authorized||busy;
+ $('commit').disabled=!authorized||busy||!loaded||loaded.state!=='ready';
+}
+function describeOwner(id){
+ return members.find(m=>m.id===id)?.name||'担当者ID '+id;
+}
+async function load(){
+ const user=auth.currentUser;if(!authorized||!user||busy)return;
+ busy=true;loaded=null;controls();
+ info('calendar-status','1月17日の最新データを読み込み中…');
+ try{
+  const [admin,roster,month,day,ledger,people]=await Promise.all([
+   getDocFromServer(refs.admin(user.uid)),getDocFromServer(refs.roster),
+   getDocFromServer(refs.month),getDocFromServer(refs.day),getDocFromServer(refs.ledger),
+   getDocsFromServer(collection(db,base,'members'))
+  ]);
+  if(auth.currentUser?.uid!==user.uid||!admin.exists()||admin.data().enabled!==true)
+   throw Error('管理者権限が確認できません。');
+  members=people.docs.map(x=>({id:x.id,...x.data()}));
+  if(!month.exists()||month.data().publication!=='published'||!roster.exists()||
+   !(roster.data().publishedMonths||[]).includes(MONTH))
+   throw Error('1月が保護者に公開済みであることを確認できません。更新は停止します。');
+  if(!day.exists())throw Error('1月17日の当番データが見つかりません。');
+  const current=day.data(),existing=ledger.exists()?ledger.data():null;
+  if(current.type==='game'&&current.eventTitle===TITLE&&current.eventLocation===PLACE){
+   const owner=current.cancelledOwnerId?describeOwner(current.cancelledOwnerId):'登録なし';
+   $('old-owner').textContent=owner;
+   loaded={state:'already',day:current};
+   info('calendar-status','✅ すでに「練習試合・舞坂小学校」が登録されています。'+
+    (current.cancelledOwnerId?'元担当者：'+owner+'（取消）':'元担当者の情報はありません。'),'success');
+   info('write-status','再登録は不要です。保護者カレンダーで確認してください。','success');
+   return;
+  }
+  if(current.type!=='practice'||!current.ownerId||current.confirmedSubstituteId||existing||
+    current.activityVerified===true||current.gameBefore)
+   throw Error('現在の担当・交代・実績・試合の状態を安全に変更できません。ほかの日には触れず、管理者で当番台帳を確認してください。');
+  const selected=members.find(m=>m.id===current.ownerId);
+  if(!selected)throw Error('現在の担当者が名簿で確認できません。登録を停止しました。');
+  $('old-owner').textContent=selected.name;
+  loaded={state:'ready',day:current,ownerId:selected.id,ownerName:selected.name};
+  info('calendar-status','現在の1月17日：練習／当番 '+selected.name+' さん。\n'+
+   '保護者画面では名前に横線を付け、「🏀 練習試合」「舞坂小学校」と表示します。','success');
+ }catch(e){
+  $('old-owner').textContent='元の担当者を確認できません';
+  info('calendar-status','変更できません：'+(e.code||e.message||String(e)),'error');
+ }finally{busy=false;controls()}
+}
+$('commit').onclick=async()=>{
+ const user=auth.currentUser,choice=loaded;
+ if(!authorized||busy||!user||!choice||choice.state!=='ready'||user.uid!==initialUser)return;
+ if(!confirm('【公開中の1月カレンダーを変更します】\n2027年1月17日（日）\n'+
+  '取消する当番：'+choice.ownerName+'\n新しい表示：練習試合／舞坂小学校\n'+
+  '当番中止を繰越待ちとして記録します。\n\nこの内容でFirebaseへ保存しますか？'))return;
+ busy=true;controls();info('write-status','当番取消と練習試合の登録を保存中…');
+ let committed=false;
+ try{
+  const created=buildDutyLedgerRecord({
+   date:DATE,status:'cancelled',scheduledOwnerId:choice.ownerId,
+   actualOwnerId:null,reason:'game',carryState:'pending',carryResolvedDate:null,
+   note:TITLE+' '+PLACE,traineeIds:[]
+  },members.map(m=>m.id),todayTokyo());
+  const auditRef=doc(collection(db,base,'dutyLedgerAudit'));
+  await runTransaction(db,async tx=>{
+   // Every read precedes any write. Do not overwrite a concurrent day change.
+   const [admin,month,roster,day,ledger,member]=await Promise.all([
+    tx.get(refs.admin(user.uid)),tx.get(refs.month),tx.get(refs.roster),
+    tx.get(refs.day),tx.get(refs.ledger),
+    tx.get(doc(db,base,'members',choice.ownerId))
+   ]);
+   if(auth.currentUser?.uid!==user.uid||!admin.exists()||admin.data().enabled!==true||
+    !month.exists()||month.data().publication!=='published'||
+    !roster.exists()||!(roster.data().publishedMonths||[]).includes(MONTH)||
+    !member.exists()||ledger.exists()||!day.exists())
+    throw Error('管理者権限、公開状態、元担当者、または台帳の状態が変更されました。');
+   const latest=day.data();
+   if(latest.type!=='practice'||latest.ownerId!==choice.ownerId||
+      latest.confirmedSubstituteId||latest.activityVerified===true||latest.gameBefore||
+      stableSignature(calendarState(latest))!==stableSignature(calendarState(choice.day))||
+      (latest.updatedAt?.toMillis?.()??null)!==(choice.day.updatedAt?.toMillis?.()??null))
+    throw Error('1月17日の担当者または予定が別の端末で変わりました。再読み込みして確認してください。');
+   const now=serverTimestamp(),revision=1;
+   const plan=planLedgerCalendar({date:DATE,day:latest,prior:null,record:created,revision});
+   if(plan.dayPatch?.type!=='game'||plan.calendarBefore.ownerId!==choice.ownerId)
+    throw Error('中止前の当番情報が不明です。保存しません。');
+   const updatedDay={...plan.dayPatch,eventTitle:TITLE,eventLocation:PLACE,
+    cancelledOwnerId:choice.ownerId,updatedAt:now};
+   tx.update(refs.day,updatedDay);
+   tx.set(refs.ledger,{...created,calendarBefore:plan.calendarBefore,
+    calendarAfter:plan.calendarAfter,revision,updatedBy:user.uid,updatedAt:now});
+   tx.set(auditRef,{action:'jan17-published-game-cancellation',date:DATE,
+    originalOwnerId:choice.ownerId,previousDay:calendarState(latest),
+    eventTitle:TITLE,eventLocation:PLACE,updatedBy:user.uid,updatedAt:now});
+   // public/roster, other dates, answers and later months are never written.
+  });
+  committed=true;
+  info('write-status','✅ 1月17日を「練習試合・舞坂小学校」に変更しました。\n'+
+   choice.ownerName+' さんの当番取消と繰越待ちも記録済みです。保護者カレンダーで確認してください。','success');
+  await load();
+ }catch(e){info('write-status',(committed?'登録は保存済みですが、表示の確認に失敗：':'保存できませんでした：')+
+  (e.code||e.message||String(e)),'error');
+  if(!committed)await load();
+ }finally{busy=false;controls()}
+};
+$('reload').onclick=()=>load();
+$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider())
+ .catch(e=>info('auth-status','Googleログインに失敗：'+(e.code||e.message||String(e)),'error'));
+onAuthStateChanged(auth,async user=>{
+ authorized=false;loaded=null;initialUser=user?.uid||'';controls();
+ if(!user){info('auth-status','管理者のGoogleアカウントでログインしてください。');return}
+ try{
+  const snap=await getDocFromServer(refs.admin(user.uid));
+  if(auth.currentUser?.uid!==user.uid)return;
+  if(!snap.exists()||snap.data().enabled!==true||
+   !user.providerData.some(p=>p.providerId==='google.com'))throw Error('管理者登録済みのGoogleアカウントではありません。');
+  authorized=true;info('auth-status','✅ 管理者認証済み','success');
+  await load();
+ }catch(e){info('auth-status','管理者認証に失敗：'+(e.code||e.message||String(e)),'error')}
+ controls();
+});
+controls();
+</script></body></html>
