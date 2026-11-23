@@ -94,7 +94,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp,Timestamp,deleteField} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import {ledgerTotals,buildDutyLedgerRecord} from './duty-ledger-core.mjs?v=20261121b';
-import {persistLedger} from './ledger-calendar-core.mjs?v=admin-20261120';
+import {persistLedger} from './ledger-calendar-core.mjs?v=20261123game';
 import {adjustedDutyCounts,shouldMarkGame,shouldRestorePractice,proposeFairDraft} from './admin-fairness-core.mjs?v=20261122-yui';
 import {isDayAllowed} from './weekday-conditions.mjs?v=20261122-yui';
 import {auditDraft,normalizeMember} from './month-draft-core.mjs?v=20261122-yui';
@@ -754,7 +754,7 @@ $('calendar').addEventListener('click',async event=>{
   status('game-status','⏳ 元の練習・当番へ戻しています…');
   try{
    if(prior.origin==='ledger'){
-    await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,
+    await persistLedger({api:{doc,collection,runTransaction,serverTimestamp,deleteField},db,teamId,
      uid:user.uid,date,record:null,expected:original,expectedDay:day,
      authMatches:()=>auth.currentUser?.uid===user.uid});
    }else{
@@ -826,7 +826,7 @@ $('calendar').addEventListener('click',async event=>{
     actualOwnerId:null,reason:'game',carryState:'pending',carryResolvedDate:null,
     note:'年間管理画面から試合に変更',traineeIds:[]
    },members.map(m=>m.id),todayTokyo());
-   await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,
+   await persistLedger({api:{doc,collection,runTransaction,serverTimestamp,deleteField},db,teamId,
     uid:user.uid,date,record,expected:original??null,expectedDay:day,
     authMatches:()=>auth.currentUser?.uid===user.uid});
   }else{
