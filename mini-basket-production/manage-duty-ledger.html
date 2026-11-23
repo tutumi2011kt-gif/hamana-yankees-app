@@ -39,10 +39,10 @@ import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {addMonths} from './month-rollover-core.mjs';
 import {buildDutyLedgerRecord,eligibleCarryWindow,ledgerTotals} from './duty-ledger-core.mjs?v=20261121b';
 import {todayTokyo} from './core.mjs';
-import {persistLedger,planLedgerCalendar} from './ledger-calendar-core.mjs';
+import {persistLedger,planLedgerCalendar} from './ledger-calendar-core.mjs?v=20261123game';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import {getFirestore,doc,collection,getDocFromServer,getDocsFromServer,runTransaction,serverTimestamp,deleteField} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const $=id=>document.getElementById(id),app=initializeApp(firebaseConfig,'basket-ledger-admin'),auth=getAuth(app),db=getFirestore(app);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const path='teams/'+teamId+'/dutyLedger';
@@ -163,7 +163,7 @@ $('save').onclick=async()=>{
  }catch(e){message('save-status',e.message,'error');return;}
  busy=true;update();message('save-status','台帳と監査履歴に保存中…');
  try{
-  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,uid:user.uid,date,record:result,
+  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp,deleteField},db,teamId,uid:user.uid,date,record:result,
    expected:records.find(x=>x.date===date)??null,expectedDay:day,authMatches:()=>auth.currentUser?.uid===user.uid});
   message('save-status','✅ 記録と変更履歴を保存しました。最新データを読み込み直します。','ok');
   busy=false;await load();
@@ -176,7 +176,7 @@ $('remove').onclick=async()=>{
  if(!confirm(date+' の台帳記録を取り消しますか？取消履歴を保持し、実施回数・繰越集計から除外します。この記録で中止した予定は元に戻ります。'))return;
  busy=true;update();message('save-status','記録を取り消し中…');
  try{
-  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp},db,teamId,uid:user.uid,date,record:null,
+  await persistLedger({api:{doc,collection,runTransaction,serverTimestamp,deleteField},db,teamId,uid:user.uid,date,record:null,
    expected:existing,expectedDay:days.find(x=>x.date===date),authMatches:()=>auth.currentUser?.uid===user.uid});
   message('save-status','✅ 誤記録を取り消しました。','ok');
   busy=false;await load();
