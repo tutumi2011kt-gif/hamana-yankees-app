@@ -311,7 +311,7 @@ async function refreshAll(){
   isAdmin=true;monthsMeta={};annualSource=null;annualLastError='';renderMonths();
   status('auth-state','✅ 管理者認証OK。'+members.length+'人の名簿、実績台帳、公開状態を読み取りました。','good');
   await chooseMonth(selectedMonth);
-   await refreshAnnualCountSources();
+   void refreshAnnualCountSources();
  }catch(e){resetPrivate();status('auth-state','読み込みできません：'+(e.code||e.message||String(e)),'bad')}
  finally{busy=false;$('refresh').disabled=!isAdmin;if(isAdmin){renderActions();renderDraftControls()}}
 }
@@ -691,14 +691,15 @@ $('draft-save').onclick=async()=>{
 };
 
 async function priorScheduledDays(month){
- const rows=[];
- for(let m='2027-01';m<month;m=addMonths(m,1)){
-  const ref=doc(db,'teams',teamId,'months',m),meta=await getDocFromServer(ref);
-  if(!meta.exists())continue;
+ const range=[];
+ for(let m='2027-01';m<month;m=addMonths(m,1))range.push(m);
+ const groups=await Promise.all(range.map(async m=>{
+  const meta=await getDocFromServer(doc(db,'teams',teamId,'months',m));
+  if(!meta.exists())return [];
   const snaps=await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days'));
-  rows.push(...snaps.docs.map(s=>({date:s.id,...s.data()})));
- }
- return rows;
+  return snaps.docs.map(s=>({date:s.id,...s.data()}));
+ }));
+ return groups.flat();
 }
 $('game-mode').onclick=()=>{
  if(!isAdmin||busy||readyMonth!==selectedMonth)return;
