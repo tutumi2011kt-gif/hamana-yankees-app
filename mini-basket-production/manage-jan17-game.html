@@ -139,7 +139,12 @@ $('commit').onclick=async()=>{
    const updatedDay={...plan.dayPatch,activityVerified:false,eventTitle:TITLE,eventLocation:PLACE,
     cancelledOwnerId:choice.ownerId,updatedAt:now};
    tx.update(refs.day,updatedDay);
-   tx.set(refs.ledger,{...created,calendarBefore:plan.calendarBefore,
+   tx.set(refs.ledger,{...created,publicGameCancellation:{
+    previousEventTitle:latest.eventTitle??null,
+    previousEventLocation:latest.eventLocation??null,
+    previousCancelledOwnerId:latest.cancelledOwnerId??null,
+    previousActivityVerified:latest.activityVerified??null
+   },calendarBefore:plan.calendarBefore,
     calendarAfter:plan.calendarAfter,revision,updatedBy:user.uid,updatedAt:now});
    tx.set(auditRef,{action:'jan17-published-game-cancellation',date:DATE,
     originalOwnerId:choice.ownerId,previousDay:calendarState(latest),
