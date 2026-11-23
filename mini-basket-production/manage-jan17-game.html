@@ -53,7 +53,7 @@ function info(id,value,type=''){
 function controls(){
  $('login').hidden=!!auth.currentUser;
  $('reload').disabled=!authorized||busy;
- $('commit').disabled=!authorized||busy||!loaded||loaded.state!=='ready';
+ $('commit').disabled=!authorized||busy||!loaded||!['ready','enrich'].includes(loaded.state);
 }
 function describeOwner(id){
  return members.find(m=>m.id===id)?.name||'担当者ID '+id;
@@ -76,13 +76,28 @@ async function load(){
    throw Error('1月が保護者に公開済みであることを確認できません。更新は停止します。');
   if(!day.exists())throw Error('1月17日の当番データが見つかりません。');
   const current=day.data(),existing=ledger.exists()?ledger.data():null;
-  if(current.type==='game'&&current.eventTitle===TITLE&&current.eventLocation===PLACE){
+  if(current.type==='game'&&current.eventTitle===TITLE&&current.eventLocation===PLACE&&
+   current.cancelledOwnerId&&existing?.status==='cancelled'&&existing.scheduledOwnerId===current.cancelledOwnerId){
    const owner=current.cancelledOwnerId?describeOwner(current.cancelledOwnerId):'登録なし';
    $('old-owner').textContent=owner;
    loaded={state:'already',day:current};
    info('calendar-status','✅ すでに「練習試合・舞坂小学校」が登録されています。'+
     (current.cancelledOwnerId?'元担当者：'+owner+'（取消）':'元担当者の情報はありません。'),'success');
    info('write-status','再登録は不要です。保護者カレンダーで確認してください。','success');
+   return;
+  }
+  // The day may already have been cancelled by the generic game button.
+  // If so, reuse the existing ledger: only the parent-facing venue is missing.
+  if(current.type==='game'&&current.ownerId==null&&existing?.status==='cancelled'&&
+   existing.reason==='game'&&existing.carryState==='pending'&&
+   existing.calendarBefore?.type==='practice'&&existing.calendarBefore.ownerId&&
+   existing.calendarAfter?.ledgerCancellationRevision===current.ledgerCancellationRevision){
+   const old=members.find(m=>m.id===existing.calendarBefore.ownerId);
+   if(!old||existing.scheduledOwnerId!==old.id)throw Error('元の当番担当者を台帳で確認できません。');
+   $('old-owner').textContent=old.name;
+   loaded={state:'enrich',day:current,ledger:existing,ownerId:old.id,ownerName:old.name};
+   info('calendar-status','試合による当番取消はすでに記録済みです。元担当：'+old.name+
+    ' さん。横線・練習試合名・舞坂小学校の表示情報だけを追加します。','success');
    return;
   }
   if(current.type!=='practice'||!current.ownerId||current.confirmedSubstituteId||existing||
@@ -101,18 +116,18 @@ async function load(){
 }
 $('commit').onclick=async()=>{
  const user=auth.currentUser,choice=loaded;
- if(!authorized||busy||!user||!choice||choice.state!=='ready'||user.uid!==initialUser)return;
+ if(!authorized||busy||!user||!choice||!['ready','enrich'].includes(choice.state)||user.uid!==initialUser)return;
  if(!confirm('【公開中の1月カレンダーを変更します】\n2027年1月17日（日）\n'+
   '取消する当番：'+choice.ownerName+'\n新しい表示：練習試合／舞坂小学校\n'+
-  '当番中止を繰越待ちとして記録します。\n\nこの内容でFirebaseへ保存しますか？'))return;
+  (choice.state==='ready'?'当番中止を繰越待ちとして記録します。':'すでに記録済みの繰越待ちは変更せず、保護者表示のみ更新します。')+'\n\nこの内容でFirebaseへ保存しますか？'))return;
  busy=true;controls();info('write-status','当番取消と練習試合の登録を保存中…');
  let committed=false;
  try{
-  const created=buildDutyLedgerRecord({
+  const created=choice.state==='ready'?buildDutyLedgerRecord({
    date:DATE,status:'cancelled',scheduledOwnerId:choice.ownerId,
    actualOwnerId:null,reason:'game',carryState:'pending',carryResolvedDate:null,
    note:TITLE+' '+PLACE,traineeIds:[]
-  },members.map(m=>m.id),todayTokyo());
+  },members.map(m=>m.id),todayTokyo()):null;
   const auditRef=doc(collection(db,base,'dutyLedgerAudit'));
   await runTransaction(db,async tx=>{
    // Every read precedes any write. Do not overwrite a concurrent day change.
@@ -124,9 +139,32 @@ $('commit').onclick=async()=>{
    if(auth.currentUser?.uid!==user.uid||!admin.exists()||admin.data().enabled!==true||
     !month.exists()||month.data().publication!=='published'||
     !roster.exists()||!(roster.data().publishedMonths||[]).includes(MONTH)||
-    !member.exists()||ledger.exists()||!day.exists())
+    !member.exists()||!day.exists()||ledger.exists()!==(choice.state==='enrich'))
     throw Error('管理者権限、公開状態、元担当者、または台帳の状態が変更されました。');
    const latest=day.data();
+   if(choice.state==='enrich'){
+    const existing=ledger.data();
+    if(latest.type!=='game'||latest.ownerId!=null||
+     stableSignature(calendarState(latest))!==stableSignature(calendarState(choice.day))||
+     (latest.updatedAt?.toMillis?.()??null)!==(choice.day.updatedAt?.toMillis?.()??null)||
+     stableSignature(existing)!==stableSignature(choice.ledger)||
+     existing.status!=='cancelled'||existing.reason!=='game'||existing.carryState!=='pending'||
+     existing.scheduledOwnerId!==choice.ownerId||
+     existing.calendarBefore?.ownerId!==choice.ownerId||
+     existing.calendarAfter?.ledgerCancellationRevision!==latest.ledgerCancellationRevision)
+     throw Error('試合・当番取消の状態が変更されました。再確認してください。');
+    const now=serverTimestamp();
+    tx.update(refs.day,{eventTitle:TITLE,eventLocation:PLACE,cancelledOwnerId:choice.ownerId,updatedAt:now});
+    tx.update(refs.ledger,{publicGameCancellation:existing.publicGameCancellation??{
+     previousEventTitle:latest.eventTitle??null,
+     previousEventLocation:latest.eventLocation??null,
+     previousCancelledOwnerId:latest.cancelledOwnerId??null,
+     previousActivityVerified:latest.activityVerified??null
+    },updatedBy:user.uid,updatedAt:now});
+    tx.set(auditRef,{action:'jan17-published-game-display-update',date:DATE,originalOwnerId:choice.ownerId,
+     eventTitle:TITLE,eventLocation:PLACE,updatedBy:user.uid,updatedAt:now});
+    return;
+   }
    if(latest.type!=='practice'||latest.ownerId!==choice.ownerId||
       latest.confirmedSubstituteId||latest.gameBefore||
       stableSignature(calendarState(latest))!==stableSignature(calendarState(choice.day))||
