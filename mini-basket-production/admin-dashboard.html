@@ -288,8 +288,8 @@ async function chooseMonth(m){
  }catch(e){
   if(version!==requestToken)return;
   calendarLoadFailed=true;readyMonth=null;draftPreview=null;selectedDays=[];
-  status('month-status','月データを確認できません：'+(e.code||e.message||String(e)),'bad');
   renderMonths();showDays();renderActions();
+  status('month-status','月データを確認できません：'+(e.code||e.message||String(e)),'bad');
   setCalendarFeedback('⚠ この月のデータ確認に失敗しました。日付のみ表示しています（担当者・練習予定は未確認）。「この月のカレンダーを再読み込み」を押してください。',true);
  }
 }
