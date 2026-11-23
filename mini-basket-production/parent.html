@@ -15,6 +15,8 @@ button:disabled{opacity:1;cursor:default}.mode{display:grid;grid-template-column
 .day{border:1px solid #e0e8ef;border-radius:7px;background:#fff;min-width:0;min-height:81px;padding:5px 2px;overflow-wrap:anywhere;text-align:left;color:inherit;display:block;width:100%}.day:disabled{cursor:default}.day.tap-x{border:2px solid #c64a66;padding:4px 1px}.day.tap-o{border:2px solid #23865f;padding:4px 1px}.day.tap-x,.day.tap-o{cursor:pointer}
 .day.empty{border:0;background:none}.day.practice{background:#edf6ff}.day.game{background:#fff3e4}
 .day .num{font-weight:900;font-size:12px;padding-left:2px}.day .num.sun{color:#b94655}.day .num.sat{color:#3d77b5}.day .owner{font-weight:800;font-size:10px;line-height:1.35;display:block;margin-top:6px;white-space:normal;overflow-wrap:anywhere}.day .minor{font-size:9px;display:block;color:#677b8d;line-height:1.3;margin-top:3px}
+.day .cancelled-owner{font-size:10px;font-weight:800;display:block;margin-top:5px;color:#8f5660;text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:#b73550;overflow-wrap:anywhere}
+.day .game-location{font-size:9px;font-weight:750;line-height:1.3;color:#7b511b;display:block;margin-top:3px;overflow-wrap:anywhere}
 .day .cancel-hint{font-size:9px;display:block;color:#9d2747;font-weight:800;line-height:1.3;margin-top:4px}.day .pending-hint{font-size:9px;display:block;color:#6d4c16;font-weight:800;line-height:1.3;margin-top:4px}.day .bad{font-size:9px;display:block;color:#bf3b53;font-weight:700}.day .good{font-size:9px;display:block;color:#19805d;font-weight:700}.day.urgent{border:2px solid #c64a66;background:#fff1f3}.day .confirmed{font-size:9px;display:block;color:#136744;font-weight:800}.day .swap-request{font-size:10px;display:block;color:#bb2f4d;font-weight:900;line-height:1.35;margin-top:3px}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6d7e8c;margin:10px 0}
 .review-button{width:100%;min-height:52px;font-size:15px;font-weight:900;padding:10px;background:#244f80;border-color:#244f80;color:white}
@@ -164,7 +166,11 @@ function draw(){
   const swap=swapState(d,marks);
   const owner=isPractice?(people[d.ownerId]||'担当未登録'):'';
   const ownerLabel=swap.needsSwap?owner+' ×':owner;
-  const label=isGame?'🏀 試合':ownerLabel;
+  // Public metadata for cancelled games; private duty ledger stays admin-only.
+  const cancelledOwner=isGame&&d?.cancelledOwnerId?(people[d.cancelledOwnerId]||''):'';
+  const gameTitle=isGame&&typeof d?.eventTitle==='string'&&d.eventTitle.trim()?d.eventTitle.trim():'試合';
+  const gameLocation=isGame&&typeof d?.eventLocation==='string'?d.eventLocation.trim():'';
+  const label=isGame?'🏀 '+gameTitle:ownerLabel;
   const existing=marks.find(a=>a.memberId===selectedPerson);
   const tap=answerTapDecision({day:d,existing,kind:selectedMode,memberId:selectedPerson,
     uid:auth.currentUser?.uid,canWrite});
@@ -182,7 +188,9 @@ function draw(){
     (eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
    ' aria-label="'+esc(date+' '+(label||'当番なし')+(eligible?' '+(tap.action==='different-device'?'別端末の回答：管理者に相談':isOwnCancel?(selectedMode==='x'?'×を取り消す':'○を取り消す'):(selectedMode==='x'?'×を登録する':'○を登録する'))+selectedMark:''))+'"><span class="num '+(day.weekday===0?'sun':day.weekday===6?'sat':'')+'">'+n+'</span>'+
+   (isGame&&cancelledOwner?'<span class="cancelled-owner">'+esc(cancelledOwner)+'</span>':'')+
    (label?'<span class="owner">'+esc(label)+'</span>':'')+
+   (isGame&&gameLocation?'<span class="game-location">'+esc(gameLocation)+'</span>':'')+
    (d?.traineeIds?.length?'<span class="minor">教習：'+d.traineeIds.map(id=>esc(people[id]||id)).join('・')+'</span>':'')+
    extras+(staged?'<span class="pending-hint">未確定：'+esc(choiceLabel(staged))+'</span>':isOwnCancel?'<span class="cancel-hint">取消を選択できます</span>':'')+'</button>';
 
