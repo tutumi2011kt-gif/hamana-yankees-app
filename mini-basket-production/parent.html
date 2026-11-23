@@ -53,7 +53,7 @@ const key='mini-basket-parent-name-1';
 // A方式：回答は保存後に即時全員へ反映。公開まで書き込みスイッチは無効。
 let displayedClockMonth=todayTokyo().slice(0,7);
 let options=[monthPlus(displayedClockMonth,1),monthPlus(displayedClockMonth,2),monthPlus(displayedClockMonth,3)];
-let selectedMonth=options[0],selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false},lastInputWindowOpen=null;
+let selectedMonth=(options.includes(new URLSearchParams(location.search).get('month'))?new URLSearchParams(location.search).get('month'):options[0]),selectedPerson=localStorage.getItem(key)||'',selectedMode='x',names=[],published=[],monthData=null,days=[],answers=[],unsubscribeMonth=[],unsubscribeRoster=null,token=0,writing=false,lastSaveMessage='',ready={meta:false,days:false,answers:false},lastInputWindowOpen=null;
 const answerOverlay=new Map();
 const stagedChoices=new Map();
 let reviewOpen=false,requestIdForRetry=null;
