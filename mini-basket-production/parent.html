@@ -179,11 +179,11 @@ function draw(){
   const isOwnCancel=tap.action==='delete';
   const selectedMark=isOwnCancel?'（取消）':'';
   const volunteerMarks=marks.filter(a=>a.kind==='o'&&a.memberId!==d?.ownerId);
-  const extras=(swap.needsSwap&&!swap.confirmedId?'<span class="swap-request">交代求む</span>':'')+
+  const extras=isPractice?((swap.needsSwap&&!swap.confirmedId?'<span class="swap-request">交代求む</span>':'')+
     volunteerMarks.slice(0,2).map(a=>'<span class="good">'+esc(people[a.memberId]||'')+' ○</span>').join('')+
     (volunteerMarks.length>2?'<span class="minor">ほか'+(volunteerMarks.length-2)+'人 ○</span>':'')+
     (swap.status==='urgent'?'<span class="bad">⚠ 交代候補なし（要調整）</span>':'')+
-    (swap.confirmedId?'<span class="confirmed">✅ 交代確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'</span>':'');
+    (swap.confirmedId?'<span class="confirmed">✅ 交代確定：'+esc(people[swap.confirmedId]||swap.confirmedId)+'</span>':'')):'';
   const cls='day '+(isPractice?'practice':isGame?'game':'')+(swap.status==='urgent'?' urgent':'')+(staged?' is-staged':'')+
     (eligible?' tap-'+selectedMode:'');
   calendar+='<button type="button" class="'+cls+'" '+(eligible?'data-day="'+esc(date)+'"':'disabled')+
