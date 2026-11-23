@@ -4,7 +4,7 @@
 <title>🏀 管理者｜年間当番管理 2027年1〜11月</title>
 <style>
 *{box-sizing:border-box}body{margin:0;color:#253952;background:#f2f7fb;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
-main{max-width:900px;margin:auto;padding:12px 10px 56px}header{padding:16px 14px;background:linear-gradient(115deg,#e4f2ff,#fff1df);border:1px solid #dbe8f1;border-radius:16px}
+main{max-width:900px;min-width:0;margin:auto;padding:12px 10px 56px}header{padding:16px 14px;background:linear-gradient(115deg,#e4f2ff,#fff1df);border:1px solid #dbe8f1;border-radius:16px}
 h1{font-size:21px;margin:0 0 5px}h2{font-size:16px;margin:0 0 10px}p{margin:7px 0}.small{font-size:12px;color:#647b8f}.tiny{font-size:11px;color:#708498}
 .card{background:#fff;border:1px solid #dfe7ef;border-radius:14px;padding:13px;margin:11px 0}.status{padding:9px 11px;border-radius:9px;background:#eaf3fd;font-size:12px;white-space:pre-wrap}
 .status.bad{background:#fff0f1;color:#9c2947}.status.good{background:#eaf8f0;color:#176744}.hint{border-left:4px solid #cf8c37;background:#fff6e8;padding:10px;font-size:12px}
@@ -14,11 +14,11 @@ button:disabled{cursor:default;opacity:.6}button.primary{background:#235886;colo
 .months small{font-size:10px;font-weight:550;display:block;color:#63788d}.actions{display:flex;flex-wrap:wrap;gap:8px}button.action{font:inherit;cursor:pointer}.action{flex:1 1 180px;display:block;text-align:center;text-decoration:none;color:#1f557f;background:#e9f3fb;border:1px solid #cbdfe9;padding:11px 6px;border-radius:9px;font-weight:800;min-height:44px}
 .action.green{color:#166a47;background:#e8f6ee;border-color:#bddcca}.action.disabled{background:#f0f2f4;color:#6f7b87;pointer-events:none}
 .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metric{background:#f3f8fc;border:1px solid #e0e9f1;border-radius:10px;text-align:center;padding:10px 3px}.metric b{font-size:22px;display:block}.metric span{font-size:11px;color:#60768c}
-.week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.week{margin-top:12px}.week span{font-size:12px;font-weight:750;text-align:center}.week span:first-child{color:#ae4058}.week span:last-child{color:#3671a7}
-.day{padding:4px 2px;min-height:68px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}.day.game-pick{cursor:pointer;border:2px solid #c47828;background:#fff7e7}.day.game-pick:focus-visible{outline:3px solid #2269b2}.day[disabled]{opacity:1}.mode-on{background:#fff0d6!important;border-color:#cb8e30!important;color:#7a4719!important}.spinner{display:flex;gap:3px;align-items:center;justify-content:center}.spinner b{font-size:16px;min-width:22px}.spinner .arrows{display:flex;flex-direction:column;gap:2px}.spinner button{height:25px;min-height:25px;font-size:12px;line-height:1;padding:2px 9px}.spinner button:disabled{opacity:.35}
+.week,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;width:100%;min-width:0}.week{margin-top:12px}.week span{font-size:12px;font-weight:750;text-align:center}.week span:first-child{color:#ae4058}.week span:last-child{color:#3671a7}
+.day{min-width:0;min-height:68px;padding:4px 2px;border:1px solid #dee8f0;border-radius:7px;font-size:10px;overflow-wrap:anywhere;word-break:break-word;line-height:1.4}.day.loading-day{background:#f7f9fc;color:#657a8e;border-style:dashed}.day.loading-day .date{color:#33536c}.day .date{font-size:13px;font-weight:850}.day.practice{background:#ebf5ff}.day.game{background:#fff0dd}.day.rest{background:#eff2f5}.day.empty{border-color:transparent;background:transparent}.day.game-pick{cursor:pointer;border:2px solid #c47828;background:#fff7e7}.day.game-pick:focus-visible{outline:3px solid #2269b2}.day[disabled]{opacity:1}.mode-on{background:#fff0d6!important;border-color:#cb8e30!important;color:#7a4719!important}.spinner{display:flex;gap:3px;align-items:center;justify-content:center}.spinner b{font-size:16px;min-width:22px}.spinner .arrows{display:flex;flex-direction:column;gap:2px}.spinner button{height:25px;min-height:25px;font-size:12px;line-height:1;padding:2px 9px}.spinner button:disabled{opacity:.35}
 .owner{font-weight:800;display:block;font-size:10px;margin-top:4px}.note{font-size:9px;display:block;color:#677d8e}
 [hidden]{display:none!important}.draft-rows{display:grid;gap:6px;max-height:370px;overflow:auto;margin:9px 0}.draft-row{display:grid;grid-template-columns:100px minmax(100px,1fr) minmax(116px,1.3fr);align-items:center;gap:6px;border-bottom:1px solid #e4ebf1;padding:5px 2px}.draft-row span{font-size:12px;font-weight:700}.draft-row select{width:100%;min-height:39px;padding:6px 2px;border:1px solid #c5d6e5;border-radius:8px;background:white;font:inherit;font-size:12px}.draft-safety{border:1px solid #e8cfa6;background:#fff5e6;padding:10px;border-radius:9px;font-size:12px}.draft-check{display:flex;align-items:start;gap:8px;background:#f4f8fc;padding:12px;border-radius:9px;font-size:12px}.draft-check input{width:18px;height:18px;flex-shrink:0}.day.preview{border-style:dashed}.day.preview .note{color:#99641b}.scroll{overflow-x:auto}#review-panel[hidden]{display:none}.review-scroll{max-height:360px;overflow:auto;border:1px solid #e0e8f0;border-radius:9px}.review-month{font-size:13px;font-weight:800;background:#edf4fb;padding:7px 9px;border-top:1px solid #dde8f0}.review-entry{padding:7px 9px;border-bottom:1px solid #edf1f5;font-size:12px}.review-entry small{display:block;color:#6d8292}.review-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.review-actions button{flex:1 1 160px}.review-actions .approve{background:#18704e;color:white;border-color:#18704e}.review-summary{white-space:pre-wrap;font-size:12px}.scroll{overflow-x:auto}.annual-count-table{min-width:680px;table-layout:auto}.annual-count-table th{text-align:center;vertical-align:middle}.annual-count-table th:first-child,.annual-count-table td:first-child{position:sticky;left:0;z-index:1;min-width:115px;background:#fff}.annual-count-table th:first-child{z-index:2;background:#f5f8fb;text-align:left}.annual-count-table td{text-align:center}.annual-count-table td:first-child{text-align:left}.annual-count-table .count-number{font-size:15px;font-weight:800}.annual-count-table .count-notes{font-size:10px;line-height:1.2;white-space:nowrap;color:#708396}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px 5px;border-bottom:1px solid #e5eaf0;text-align:left}th{white-space:nowrap;background:#f5f8fb}
-footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.months{grid-template-columns:repeat(4,minmax(0,1fr))}.metrics{gap:4px}.day{min-height:67px}.action{flex-basis:130px}.draft-row{grid-template-columns:72px minmax(95px,1fr) minmax(110px,1.3fr);gap:4px}.draft-row select{font-size:11px}}
+footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.months{grid-template-columns:repeat(4,minmax(0,1fr))}.metrics{gap:4px}.day{min-height:72px}.day .date{font-size:13px}.action{flex-basis:130px}.draft-row{grid-template-columns:72px minmax(95px,1fr) minmax(110px,1.3fr);gap:4px}.draft-row select{font-size:11px}}
 </style></head><body><main>
 <header><h1>🏀 年間当番管理</h1><p>2027年1月〜11月｜管理者専用</p>
 <div class="hint">実際の本番データを読み取り、月ごとの公開状況・当番予定・実施回数を確認します。<b>画面を開く・月を切り替えるだけでは、当番表や保護者データを変更しません。</b></div></header>
@@ -29,8 +29,10 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 <section class="card"><h2 id="month-title">③ 月別当番カレンダー</h2>
 <div id="metrics" class="metrics"><div class="metric"><b>—</b><span>練習</span></div><div class="metric"><b>—</b><span>試合</span></div><div class="metric"><b>—</b><span>休み</span></div></div>
 <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
-<div id="calendar" class="calendar"></div>
-<p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。存在しない月の予定は推測して表示しません。</p><div class="actions"><button type="button" id="game-mode" class="primary" disabled>🏀 試合</button><button type="button" id="game-cancel" disabled>選択を解除</button></div><p id="game-status" class="status">「🏀 試合」を押して練習日を選ぶと試合へ変更、試合日を選ぶと元の練習・当番へ戻します。</p>
+<div id="calendar" class="calendar" aria-live="polite"></div>
+<p id="calendar-feedback" class="small">カレンダーを読み込み中です。データが確認できない日には担当者名を表示しません。</p>
+<div class="actions" style="margin-top:7px"><button id="calendar-retry" type="button" style="display:none">🔄 この月のカレンダーを再読み込み</button></div>
+<p class="small">水色：練習・当番あり／薄橙：試合・当番なし／灰色：休み。保存されていない月は未保存の仮候補を表示します。データ取得に失敗した場合、担当者名は推測しません。</p><div class="actions"><button type="button" id="game-mode" class="primary" disabled>🏀 試合</button><button type="button" id="game-cancel" disabled>選択を解除</button></div><p id="game-status" class="status">「🏀 試合」を押して練習日を選ぶと試合へ変更、試合日を選ぶと元の練習・当番へ戻します。</p>
 <h2>当番表の管理</h2><div id="month-actions" class="actions"></div>
 <div id="draft-panel" hidden>
 <p id="draft-intro" class="draft-safety">🔒 2月以降の保護者公開機能は無効です。ここでは非公開の仮当番だけを保存します。</p>
@@ -58,6 +60,34 @@ footer{font-size:11px;color:#6f8092;margin-top:14px}@media(max-width:500px){.mon
 </div><p class="small">当番表の仮作成・確認・非公開保存はこの年間管理画面内で行います。2〜11月の保護者公開機能はありません。</p></section>
 <footer>管理者専用。保護者画面・2026年12月確定表は変更しません。2027年2〜11月の保護者公開は無効です。</footer>
 </main>
+<script>
+// Draw a safe date-only calendar immediately. Actual owners remain admin-only
+// and are loaded by the Firebase module; this fallback never writes data.
+(function(){
+ var p=new URLSearchParams(location.search),m=p.get('month')||'2027-01';
+ if(!/^2027-(0[1-9]|1[01])$/.test(m))m='2027-01';
+ var y=Number(m.slice(0,4)),n=Number(m.slice(5));
+ var length=new Date(Date.UTC(y,n,0)).getUTCDate(),start=new Date(Date.UTC(y,n-1,1)).getUTCDay();
+ var html='';
+ for(var i=0;i<start;i++)html+='<div class="day empty" aria-hidden="true"></div>';
+ for(var d=1;d<=length;d++)html+='<div class="day loading-day"><span class="date">'+d+'</span><span class="note">読込中</span></div>';
+ document.getElementById('calendar').innerHTML=html;
+ function showBootWarning(message){
+  if(window.__basketManagerLoaded)return;
+  document.getElementById('calendar-feedback').textContent=message;
+  document.getElementById('calendar-feedback').style.color='#a32d4b';
+  document.getElementById('month-status').textContent='管理者用データの読み込みが完了していません。ページを再読み込みしてください。';
+ }
+ window.addEventListener('error',function(ev){
+  if(!window.__basketManagerLoaded&&ev.message)
+   showBootWarning('⚠ 管理画面のプログラムを読み込めませんでした。日付のみ表示しています。ページを再読み込みしてください。');
+ });
+ window.setTimeout(function(){
+  if(!window.__basketManagerLoaded)
+   showBootWarning('⚠ 管理画面の読み込みに時間がかかっています。日付のみ表示しています。通信状況をご確認のうえ再読み込みしてください。');
+ },15000);
+})();
+</script>
 <script type="module">
 import {firebaseConfig,teamId} from './firebase-config.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
@@ -71,20 +101,21 @@ import {auditDraft,normalizeMember} from './month-draft-core.mjs?v=20261122-yui'
 import {todayTokyo} from './core.mjs?v=admin';
 import {preliminaryPracticeDays,jstInputOpenMillis,jstInputCutoffMillis,addMonths} from './month-rollover-core.mjs?v=admin-20261120';
 import {ANNUAL_MONTHS,summarizeAnnualCounts} from './annual-counts-core.mjs?v=20261122-yui';
+window.__basketManagerLoaded=true;
 const $=id=>document.getElementById(id);
 const app=initializeApp(firebaseConfig,'basket-admin-annual-dashboard'),auth=getAuth(app),db=getFirestore(app);
 const months=Array.from({length:11},(_,i)=>'2027-'+String(i+1).padStart(2,'0'));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short=m=>Number(m.slice(5))+'月';
-let selectedMonth=(months.includes(new URLSearchParams(location.search).get('month'))?new URLSearchParams(location.search).get('month'):'2027-01'),isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='',pendingReview=null,reviewBusy=false,draftPreview=null,draftExpanded=false,draftBusy=false,draftFeedback='',annualSource=null,annualRequest=0,annualLoading=false,annualLastError='';
+let selectedMonth=(months.includes(new URLSearchParams(location.search).get('month'))?new URLSearchParams(location.search).get('month'):'2027-01'),isAdmin=false,members=[],records=[],roster=null,monthsMeta={},selectedDays=[],readyMonth=null,busy=false,requestToken=0,gameMode=false,corrections={},lastCountFeedback='',pendingReview=null,reviewBusy=false,draftPreview=null,draftExpanded=false,draftBusy=false,draftFeedback='',annualSource=null,annualRequest=0,annualLoading=false,annualLastError='',calendarLoadFailed=false;
 function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status'+(kind?' '+kind:'');}
 function resetPrivate(){
- annualSource=null;annualLastError='';annualLoading=false;annualRequest++;
+ annualSource=null;annualLastError='';annualLoading=false;annualRequest++;calendarLoadFailed=false;
  draftPreview=null;draftExpanded=false;draftBusy=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;
  isAdmin=false;members=[];records=[];roster=null;monthsMeta={};selectedDays=[];readyMonth=null;gameMode=false;corrections={};lastCountFeedback='';pendingReview=null;reviewBusy=false;requestToken++;
  $('review-panel').hidden=true;
  $('game-mode').disabled=true;$('rebalance').disabled=true;
- $('calendar').textContent='';$('member-counts').textContent='';$('month-actions').textContent='';
+ renderCalendarDatesOnly(selectedMonth);setCalendarFeedback('管理者ログイン後に担当者を読み込みます。');$('member-counts').textContent='';$('month-actions').textContent='';
  status('counts-status','管理者ログインが必要です。');status('month-status','管理者ログインが必要です。');
  $('refresh').disabled=true;renderMonths();
 }
@@ -142,9 +173,23 @@ function renderCounts(){
  if(lastCountFeedback)note=lastCountFeedback+'\n'+note;
  status('counts-status',note,annualLastError?'bad':lastCountFeedback.startsWith('✅')?'good':'');
 }
+
+function renderCalendarDatesOnly(month){
+ const [year,number]=month.split('-').map(Number);
+ const length=new Date(Date.UTC(year,number,0)).getUTCDate(),start=new Date(Date.UTC(year,number-1,1)).getUTCDay();
+ let markup='';
+ for(let i=0;i<start;i++)markup+='<div class="day empty" aria-hidden="true"></div>';
+ for(let i=1;i<=length;i++)markup+='<div class="day loading-day"><span class="date">'+i+'</span><span class="note">未確認</span></div>';
+ $('calendar').innerHTML=markup;
+}
+function setCalendarFeedback(message,error=false){
+ $('calendar-feedback').textContent=message;
+ $('calendar-feedback').style.color=error?'#a32d4b':'#526d85';
+ $('calendar-retry').style.display=error&&isAdmin?'inline-block':'none';
+}
 function showDays(){
  $('month-title').textContent='③ '+Number(selectedMonth.slice(0,4))+'年'+short(selectedMonth)+' 当番カレンダー';
- if(!isAdmin)return;
+ if(!isAdmin){renderCalendarDatesOnly(selectedMonth);return;}
  const exists=monthsMeta[selectedMonth]?.exists===true,previewing=!exists&&draftPreview?.month===selectedMonth;
  const byId=Object.fromEntries(members.map(m=>[m.id,m.name]));
  const total=selectedDays.filter(d=>d.type==='practice').length;
@@ -152,7 +197,7 @@ function showDays(){
  const rest=selectedDays.filter(d=>d.type==='rest').length;
  $('metrics').innerHTML=[['練習',total],['試合',game],['休み',rest]].map(([label,value])=>
   '<div class="metric"><b>'+(exists||previewing?value:'—')+'</b><span>'+label+'</span></div>').join('');
- if(!exists&&!previewing){$('calendar').innerHTML='<p class="small" style="grid-column:span 7">未作成の仮当番を計算中です。保護者には公開されません。</p>';return;}
+ if(calendarLoadFailed||!exists&&!previewing){renderCalendarDatesOnly(selectedMonth);return;}
  const map=new Map(selectedDays.map(d=>[d.date,d]));
  const y=Number(selectedMonth.slice(0,4)),m=Number(selectedMonth.slice(5));
  const end=new Date(Date.UTC(y,m,0)).getUTCDate(),start=new Date(Date.UTC(y,m-1,1)).getUTCDay();
@@ -171,6 +216,8 @@ function showDays(){
    (type==='practice'&&!owner?'<span class="note">⚠担当未設定</span>':'')+(clickGame?'</button>':'</div>');
  }
  $('calendar').innerHTML=html;
+ setCalendarFeedback(previewing?'🔒 未保存の仮当番候補です。担当者はFirebaseの確定情報ではありません。':
+  '✅ Firebaseから取得した当番カレンダーを表示しています。');
 }
 function renderActions(){
  if(!isAdmin)return;
@@ -205,10 +252,11 @@ function renderActions(){
 }
 async function chooseMonth(m){
  if(!months.includes(m))return;
- selectedMonth=m;draftPreview=null;draftExpanded=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
+ selectedMonth=m;calendarLoadFailed=false;draftPreview=null;draftExpanded=false;draftFeedback='';$('draft-agree').checked=false;$('draft-panel').hidden=true;gameMode=false;$('game-status').className='status';renderMonths();readyMonth=null;selectedDays=[];showDays();renderCounts();$('game-mode').disabled=true;$('rebalance').disabled=true;
  const version=++requestToken;
  if(!isAdmin)return;
  status('month-status',m+' の最新当番表を読み込み中…');
+ setCalendarFeedback('📅 '+short(m)+' の日付を表示しています。当番情報を確認中です。');
  try{
   const ref=doc(db,'teams',teamId,'months',m),snap=await getDocFromServer(ref);
   if(version!==requestToken)return;
@@ -236,11 +284,13 @@ async function chooseMonth(m){
    draftFeedback=proposal.warnings.length?'⚠ 候補不足：'+proposal.warnings.join('／'):
     '🔒 未保存の仮当番を表示しています。カレンダーから日程と担当者を確認してください。';
   }
-  readyMonth=m;renderMonths();showDays();renderActions();renderCounts();
+  calendarLoadFailed=false;readyMonth=m;renderMonths();showDays();renderActions();renderCounts();
  }catch(e){
   if(version!==requestToken)return;
-  selectedDays=[];status('month-status','月データを確認できません：'+(e.code||e.message||String(e)),'bad');
-  $('calendar').textContent='読み込み失敗。推測の予定は表示しません。';
+  calendarLoadFailed=true;readyMonth=null;draftPreview=null;selectedDays=[];
+  renderMonths();showDays();renderActions();
+  status('month-status','月データを確認できません：'+(e.code||e.message||String(e)),'bad');
+  setCalendarFeedback('⚠ この月のデータ確認に失敗しました。日付のみ表示しています（担当者・練習予定は未確認）。「この月のカレンダーを再読み込み」を押してください。',true);
  }
 }
 
@@ -290,7 +340,7 @@ async function refreshAll(){
   isAdmin=true;monthsMeta={};annualSource=null;annualLastError='';renderMonths();
   status('auth-state','✅ 管理者認証OK。'+members.length+'人の名簿、実績台帳、公開状態を読み取りました。','good');
   await chooseMonth(selectedMonth);
-   await refreshAnnualCountSources();
+   void refreshAnnualCountSources();
  }catch(e){resetPrivate();status('auth-state','読み込みできません：'+(e.code||e.message||String(e)),'bad')}
  finally{busy=false;$('refresh').disabled=!isAdmin;if(isAdmin){renderActions();renderDraftControls()}}
 }
@@ -670,14 +720,15 @@ $('draft-save').onclick=async()=>{
 };
 
 async function priorScheduledDays(month){
- const rows=[];
- for(let m='2027-01';m<month;m=addMonths(m,1)){
-  const ref=doc(db,'teams',teamId,'months',m),meta=await getDocFromServer(ref);
-  if(!meta.exists())continue;
+ const range=[];
+ for(let m='2027-01';m<month;m=addMonths(m,1))range.push(m);
+ const groups=await Promise.all(range.map(async m=>{
+  const meta=await getDocFromServer(doc(db,'teams',teamId,'months',m));
+  if(!meta.exists())return [];
   const snaps=await getDocsFromServer(collection(db,'teams',teamId,'months',m,'days'));
-  rows.push(...snaps.docs.map(s=>({date:s.id,...s.data()})));
- }
- return rows;
+  return snaps.docs.map(s=>({date:s.id,...s.data()}));
+ }));
+ return groups.flat();
 }
 $('game-mode').onclick=()=>{
  if(!isAdmin||busy||readyMonth!==selectedMonth)return;
@@ -872,6 +923,7 @@ $('rebalance').onclick=async()=>{
 
 $('months').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b)chooseMonth(b.dataset.month)});
 $('refresh').onclick=refreshAll;
+$('calendar-retry').onclick=()=>{if(isAdmin&&!busy)void chooseMonth(selectedMonth)};
 $('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>status('auth-state','Googleログイン失敗：'+(e.code||e.message),'bad'));
 onAuthStateChanged(auth,user=>{
  resetPrivate();
