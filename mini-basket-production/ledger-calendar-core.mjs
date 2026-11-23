@@ -27,7 +27,7 @@ export function planLedgerCalendar({date,day,prior,record,revision}){
  return {dayPatch:linked?original:null,calendarBefore:null,calendarAfter:null};
 }
 export async function persistLedger({api,db,teamId,uid,date,record,expected,expectedDay,authMatches=()=>true}){
- const {doc,collection,runTransaction,serverTimestamp}=api;
+ const {doc,collection,runTransaction,serverTimestamp,deleteField}=api;
  const root='teams/'+teamId,month=date.slice(0,7);
  const ledgerRef=doc(db,root+'/dutyLedger/'+date),dayRef=doc(db,root+'/months/'+month+'/days/'+date);
  const auditRef=doc(collection(db,root+'/dutyLedgerAudit'));
@@ -43,7 +43,24 @@ export async function persistLedger({api,db,teamId,uid,date,record,expected,expe
   if(!record&&!previous)throw Error('取り消す台帳記録がありません');
   const revision=Number(previous?.revision??0)+1;
   const plan=planLedgerCalendar({date,day:day.data(),prior:previous,record,revision});
-  if(plan.dayPatch)tx.update(dayRef,plan.dayPatch);
+  if(plan.dayPatch){
+   let patch=plan.dayPatch;
+   // A published practice-game cancellation may include parent-visible event
+   // metadata. Restore its original values atomically with the duty ledger.
+   if(!record&&previous?.publicGameCancellation){
+    if(typeof deleteField!=='function')throw Error('管理者画面を最新版に更新してから試合を取り消してください');
+    const saved=previous.publicGameCancellation;
+    const restoreField=value=>value===null||value===undefined?deleteField():value;
+    patch={...patch,
+     eventTitle:restoreField(saved.previousEventTitle),
+     eventLocation:restoreField(saved.previousEventLocation),
+     cancelledOwnerId:restoreField(saved.previousCancelledOwnerId),
+     activityVerified:restoreField(saved.previousActivityVerified),
+     updatedAt:serverTimestamp()
+    };
+   }
+   tx.update(dayRef,patch);
+  }
   if(record)tx.set(ledgerRef,{...record,calendarBefore:plan.calendarBefore,calendarAfter:plan.calendarAfter,
    revision,updatedBy:uid,updatedAt:serverTimestamp()});
   else tx.delete(ledgerRef);
