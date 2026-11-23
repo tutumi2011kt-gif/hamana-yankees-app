@@ -86,7 +86,7 @@ async function load(){
    return;
   }
   if(current.type!=='practice'||!current.ownerId||current.confirmedSubstituteId||existing||
-    current.activityVerified===true||current.gameBefore)
+    current.gameBefore)
    throw Error('現在の担当・交代・実績・試合の状態を安全に変更できません。ほかの日には触れず、管理者で当番台帳を確認してください。');
   const selected=members.find(m=>m.id===current.ownerId);
   if(!selected)throw Error('現在の担当者が名簿で確認できません。登録を停止しました。');
@@ -128,7 +128,7 @@ $('commit').onclick=async()=>{
     throw Error('管理者権限、公開状態、元担当者、または台帳の状態が変更されました。');
    const latest=day.data();
    if(latest.type!=='practice'||latest.ownerId!==choice.ownerId||
-      latest.confirmedSubstituteId||latest.activityVerified===true||latest.gameBefore||
+      latest.confirmedSubstituteId||latest.gameBefore||
       stableSignature(calendarState(latest))!==stableSignature(calendarState(choice.day))||
       (latest.updatedAt?.toMillis?.()??null)!==(choice.day.updatedAt?.toMillis?.()??null))
     throw Error('1月17日の担当者または予定が別の端末で変わりました。再読み込みして確認してください。');
@@ -136,7 +136,7 @@ $('commit').onclick=async()=>{
    const plan=planLedgerCalendar({date:DATE,day:latest,prior:null,record:created,revision});
    if(plan.dayPatch?.type!=='game'||plan.calendarBefore.ownerId!==choice.ownerId)
     throw Error('中止前の当番情報が不明です。保存しません。');
-   const updatedDay={...plan.dayPatch,eventTitle:TITLE,eventLocation:PLACE,
+   const updatedDay={...plan.dayPatch,activityVerified:false,eventTitle:TITLE,eventLocation:PLACE,
     cancelledOwnerId:choice.ownerId,updatedAt:now};
    tx.update(refs.day,updatedDay);
    tx.set(refs.ledger,{...created,calendarBefore:plan.calendarBefore,
@@ -149,10 +149,11 @@ $('commit').onclick=async()=>{
   committed=true;
   info('write-status','✅ 1月17日を「練習試合・舞坂小学校」に変更しました。\n'+
    choice.ownerName+' さんの当番取消と繰越待ちも記録済みです。保護者カレンダーで確認してください。','success');
+  busy=false;
   await load();
  }catch(e){info('write-status',(committed?'登録は保存済みですが、表示の確認に失敗：':'保存できませんでした：')+
   (e.code||e.message||String(e)),'error');
-  if(!committed)await load();
+  if(!committed){busy=false;await load();}
  }finally{busy=false;controls()}
 };
 $('reload').onclick=()=>load();
