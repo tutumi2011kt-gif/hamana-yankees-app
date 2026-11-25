@@ -789,6 +789,139 @@ $('draft-save').onclick=async()=>{
  }
 };
 
+
+$('feb-pub-consent').onchange=renderFebruaryPublication;
+$('feb-pub-button').onclick=async()=>{
+ const user=auth.currentUser,month=FEBRUARY_PUBLIC_MONTH,info=monthsMeta[month];
+ if(!isAdmin||!user||busy||draftBusy||febPublishBusy||selectedMonth!==month||
+  readyMonth!==month||!$('feb-pub-consent').checked||!info||calendarLoadFailed)return;
+ if(info.published||info?.metadata?.publication==='published'||roster?.publishedMonths?.includes(month))return;
+ const isNew=!info.exists;
+ if(info.exists&&info.metadata?.publication!=='draft')return;
+ if(isNew&&draftPreview?.month!==month)return;
+ const rows=selectedDays.map(row=>({...row}));
+ const validity=reviewFebruaryDays(rows,members,roster);
+ const expectedDates=preliminaryPracticeDays(month).map(d=>d.date);
+ if(!validity.ok||rows.length!==16||rows.some((r,i)=>r.date!==expectedDates[i])){
+  febPublishMessage='⚠ 2月の仮当番に未設定または不整合があります。保存・公開は行いません。';
+  renderFebruaryPublication();return;
+ }
+ const names=Object.fromEntries(members.map(m=>[m.id,m.name]));
+ const owners=rows.filter(r=>r.type==='practice').map(r=>r.date.slice(-2)+'日 '+(names[r.ownerId]||'担当不明')).join('\n');
+ if(!confirm('【保護者への公開】\n2027年2月の仮当番を閲覧専用で公開しますか？\n'+
+  '練習 '+validity.practice+'日／試合 '+validity.game+'日／休み '+validity.rest+'日\n'+
+  (isNew?'未保存の仮当番をそのままFirebaseに保存して公開します。\n':
+   'Firebaseに保存済みの担当者・日程は一切変更しません。\n')+
+  '×・○入力は開放しません。3〜11月は非公開のままです。\n\n【現在の練習当番】\n'+owners+
+  '\n\nこの内容で2月だけ公開しますか？'))return;
+ febPublishBusy=true;busy=true;renderActions();
+ status('feb-pub-status','管理者権限・2月の担当・公開状態を再確認しています。まだ公開していません。');
+ let committed=false;
+ try{
+  if(isNew){
+   const [memberDocs,ledgerDocs,correctionDocs]=await Promise.all([
+    getDocsFromServer(collection(db,'teams',teamId,'members')),
+    getDocsFromServer(collection(db,'teams',teamId,'dutyLedger')),
+    getDocsFromServer(collection(db,'teams',teamId,'dutyCountAdjustments'))
+   ]);
+   const recentMembers=memberDocs.docs.map(d=>({id:d.id,...d.data()}));
+   const recentLedger=ledgerDocs.docs.map(d=>({date:d.id,...d.data()}));
+   const recentCorrections=Object.fromEntries(correctionDocs.docs.map(d=>[d.id,Number(d.data().delta??0)]));
+   if(memberSignature(recentMembers)!==draftPreview.signatureMembers||
+      ledgerSignature(recentLedger)!==draftPreview.signatureLedger||
+      correctionSignature(recentCorrections)!==draftPreview.signatureCorrections)
+    throw Error('仮当番作成後にメンバーや実績が変更されました。最新データを読み直してください。');
+  }
+  const originalRoster=rosterSignature(roster);
+  const sourceVersion=Number(info.metadata?.version??0);
+  const dayRefs=rows.map(r=>doc(db,'teams',teamId,'months',month,'days',r.date));
+  const monthRef=doc(db,'teams',teamId,'months',month);
+  const publicRef=doc(db,'teams',teamId,'public','roster');
+  const memberRefs=members.map(m=>doc(db,'teams',teamId,'members',m.id));
+  const adminRef=doc(db,'admins',user.uid);
+  const auditRef=doc(collection(db,'teams',teamId,'monthPublicationAudit'));
+  await runTransaction(db,async tx=>{
+   // Read all data in advance; then publish only February, atomically.
+   const refs=[adminRef,monthRef,publicRef,...memberRefs,...dayRefs];
+   const snaps=await Promise.all(refs.map(ref=>tx.get(ref)));
+   const [adminSnap,monthSnap,rosterSnap,...other]=snaps;
+   const memberSnaps=other.slice(0,memberRefs.length),daySnaps=other.slice(memberRefs.length);
+   if(auth.currentUser?.uid!==user.uid||!adminSnap.exists()||adminSnap.data().enabled!==true)
+    throw Error('Google管理者権限を確認できません。');
+   if(!rosterSnap.exists()||rosterSignature(rosterSnap.data())!==originalRoster||
+     rosterSnap.data().publishedMonths?.includes(month))
+    throw Error('保護者公開月またはメンバー名簿が変更されました。再読み込みしてください。');
+   if(memberSnaps.some(m=>!m.exists()))throw Error('名簿に不足があります。公開を停止しました。');
+   const currentMembers=memberSnaps.map((snap,i)=>({id:members[i].id,...snap.data()}));
+   if(memberSignature(currentMembers)!==memberSignature(members))
+    throw Error('担当可能曜日・在籍状態などが変更されています。再読み込みしてください。');
+   if(isNew){
+    if(monthSnap.exists()||daySnaps.some(s=>s.exists()))
+     throw Error('2月の保存データが別の端末で追加されています。上書きせずに停止しました。');
+   }else{
+    if(!monthSnap.exists()||monthSnap.data().publication!=='draft'||
+       Number(monthSnap.data().version??0)!==sourceVersion||
+       daySnaps.some(s=>!s.exists()))
+     throw Error('2月の保存データまたは公開状態が変更されています。');
+    for(let i=0;i<rows.length;i++){
+     const latest={date:rows[i].date,...daySnaps[i].data()};
+     if(febDaySignature(latest)!==febDaySignature(rows[i]))
+      throw Error(rows[i].date+' の担当者・活動日が変更されました。再読み込みしてください。');
+    }
+   }
+   const currentReview=reviewFebruaryDays(rows,currentMembers,rosterSnap.data());
+   if(!currentReview.ok)throw Error('公開前の検査に失敗：'+currentReview.issues.slice(0,4).join('／'));
+   const now=serverTimestamp();
+   if(isNew){
+    tx.set(monthRef,{publication:'published',inputState:'closed',
+     scheduleStatus:'provisional-view-only',scheduleVerified:false,autoGenerated:true,
+     openAt:Timestamp.fromMillis(jstInputOpenMillis(month)),
+     cutoffAt:Timestamp.fromMillis(jstInputCutoffMillis(month)),
+     version:1,createdBy:user.uid,createdAt:now,updatedBy:user.uid,
+     updatedAt:now,approvedBy:user.uid,approvedAt:now,viewOnly:true});
+    for(const row of rows){
+     tx.set(doc(db,'teams',teamId,'months',month,'days',row.date),{
+      date:row.date,weekday:row.weekday,type:row.type,
+      ownerId:row.type==='practice'?row.ownerId:null,
+      confirmedSubstituteId:null,activityVerified:false,
+      eventLocation:row.eventLocation||'',eventTitle:row.eventTitle||'',
+      traineeIds:Array.isArray(row.traineeIds)?row.traineeIds:[],updatedAt:now
+     });
+    }
+   }else{
+    tx.update(monthRef,{publication:'published',inputState:'closed',
+     scheduleStatus:'provisional-view-only',viewOnly:true,
+     approvedBy:user.uid,approvedAt:now,updatedBy:user.uid,
+     updatedAt:now,version:sourceVersion+1});
+    // Existing day documents are NEVER rewritten by the publish action.
+   }
+   tx.update(publicRef,{
+    publishedMonths:[...new Set([...rosterSnap.data().publishedMonths,month])].sort(),
+    updatedAt:now
+   });
+   tx.set(auditRef,{month,action:'publish-february-view-only',source:isNew?'unsaved-preview':'saved-draft',
+    dayCount:rows.length,practiceCount:currentReview.practice,gameCount:currentReview.game,
+    restCount:currentReview.rest,openingParentInput:false,
+    approvedBy:user.uid,approvedAt:now});
+   // No writes to December, January, March-Nov, or parent answers.
+  });
+  committed=true;
+  febPublishMessage='✅ 2027年2月を保護者へ閲覧公開しました。×・○入力は閉じています。';
+  roster={...roster,publishedMonths:[...new Set([...(roster.publishedMonths||[]),month])].sort()};
+  busy=false;
+  await chooseMonth(month);
+  febPublishMessage='✅ 2027年2月を保護者へ閲覧公開しました。×・○入力は閉じています。';
+  renderActions();
+ }catch(error){
+  febPublishMessage=(committed?'⚠ 公開の保存は完了しましたが、画面確認に失敗しました：':
+   '⚠ 2月の公開は行っていません：')+(error.code||error.message||String(error));
+  status('feb-pub-status',febPublishMessage,'bad');
+ }finally{
+  febPublishBusy=false;busy=false;
+  renderActions();renderDraftControls();showDays();renderCounts();
+ }
+};
+
 async function priorScheduledDays(month){
  const range=[];
  for(let m='2027-01';m<month;m=addMonths(m,1))range.push(m);
