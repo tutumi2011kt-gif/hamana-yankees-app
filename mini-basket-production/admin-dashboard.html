@@ -227,6 +227,67 @@ function showDays(){
  setCalendarFeedback(previewing?'🔒 未保存の仮当番候補です。担当者はFirebaseの確定情報ではありません。':
   '✅ Firebaseから取得した当番カレンダーを表示しています。');
 }
+
+const FEBRUARY_PUBLIC_MONTH='2027-02';
+function reviewFebruaryDays(rows,people,publicRoster){
+ const audit=auditDraft(FEBRUARY_PUBLIC_MONTH,rows,people.map(normalizeMember));
+ const issues=[...audit.problems,...audit.warnings.filter(w=>w.includes('未設定'))];
+ const publicIds=new Set((publicRoster?.members||[]).map(m=>m.id));
+ for(const row of rows){
+  if(row.type!=='practice')continue;
+  const person=people.find(m=>m.id===row.ownerId);
+  if(!person||!publicIds.has(row.ownerId))issues.push(row.date+' の担当者が保護者向け名簿にありません');
+  if(person?.unavailableDates?.includes(row.date))issues.push(row.date+' は担当者の不可日です');
+ }
+ return {ok:issues.length===0&&audit.practice+audit.game+audit.rest===16,
+  issues,warnings:audit.warnings.filter(w=>!w.includes('未設定')),
+  practice:audit.practice,game:audit.game,rest:audit.rest};
+}
+function febDaySignature(d){
+ return JSON.stringify([d?.date,d?.weekday,d?.type,d?.ownerId??null,
+  d?.confirmedSubstituteId??null,d?.activityVerified===true,
+  d?.eventTitle??null,d?.eventLocation??null,
+  d?.cancelledOwnerId??null,JSON.stringify(d?.traineeIds||[]),
+  d?.ledgerCancellationRevision??null,timeValue(d?.updatedAt)]);
+}
+function renderFebruaryPublication(){
+ const area=$('feb-publication');
+ area.hidden=!isAdmin||selectedMonth!==FEBRUARY_PUBLIC_MONTH;
+ if(area.hidden)return;
+ const info=monthsMeta[FEBRUARY_PUBLIC_MONTH];
+ const active=readyMonth===FEBRUARY_PUBLIC_MONTH&&!calendarLoadFailed&&!!roster;
+ const inRoster=roster?.publishedMonths?.includes(FEBRUARY_PUBLIC_MONTH);
+ const published=info?.metadata?.publication==='published'&&inRoster;
+ const unlinked=info?.metadata?.publication==='published'!==Boolean(inRoster);
+ const hasRows=active&&selectedDays.length===16;
+ const review=hasRows?reviewFebruaryDays(selectedDays,members,roster):
+  {ok:false,issues:['2月の全日付を読み込めていません'],practice:0,game:0,rest:0,warnings:[]};
+ const canConfirm=active&&hasRows&&review.ok&&!published&&!unlinked&&
+   (info?.exists===true&&info?.metadata?.publication==='draft'||
+    info?.exists===false&&draftPreview?.month===FEBRUARY_PUBLIC_MONTH);
+ $('feb-pub-consent').disabled=!canConfirm||busy||draftBusy||febPublishBusy;
+ $('feb-pub-button').disabled=!canConfirm||busy||draftBusy||febPublishBusy||!$('feb-pub-consent').checked;
+ $('feb-parent-link').style.display=published?'inline-block':'none';
+ $('feb-pub-summary').textContent=published?
+  '✅ 2月は保護者に閲覧公開済みです。×・○入力は閉じたままです。':
+  'この2月の仮当番をそのまま公開します。練習 '+review.practice+'日・試合 '+review.game+
+  '日・休み '+review.rest+'日。'+
+  (info?.exists?'Firebaseに保存済みの日別担当を一切変更せず、公開設定のみ切り替えます。':
+   '現在表示している未保存の仮当番をそのままFirebaseに登録して公開します。')+
+  '\n公開後も×・○入力は閉じたままです。';
+ if(published){
+  status('feb-pub-status','✅ 2027年2月は保護者が閲覧できます。×・○入力は停止しています。','good');
+ }else if(unlinked){
+  status('feb-pub-status','⚠ Firebaseの公開月一覧と2月の公開設定が不一致です。安全のため停止しました。','bad');
+ }else if(febPublishMessage){
+  status('feb-pub-status',febPublishMessage,febPublishMessage.startsWith('✅')?'good':'bad');
+ }else if(!review.ok){
+  status('feb-pub-status','公開前の確認が必要です：'+review.issues.slice(0,4).join('／'),'bad');
+ }else{
+  status('feb-pub-status','現在は非公開です。確認チェックを入れ、公開ボタンを押した場合だけ保護者が閲覧できます。');
+ }
+}
+
 function renderActions(){
  if(!isAdmin)return;
  const info=monthsMeta[selectedMonth],draftable=selectedMonth>='2027-02'&&selectedMonth<='2027-11';
