@@ -258,7 +258,7 @@ function renderFebruaryPublication(){
  const active=readyMonth===FEBRUARY_PUBLIC_MONTH&&!calendarLoadFailed&&!!roster;
  const inRoster=roster?.publishedMonths?.includes(FEBRUARY_PUBLIC_MONTH);
  const published=info?.metadata?.publication==='published'&&inRoster;
- const unlinked=info?.metadata?.publication==='published'!==Boolean(inRoster);
+ const unlinked=(info?.metadata?.publication==='published')!==Boolean(inRoster);
  const hasRows=active&&selectedDays.length===16;
  const review=hasRows?reviewFebruaryDays(selectedDays,members,roster):
   {ok:false,issues:['2月の全日付を読み込めていません'],practice:0,game:0,rest:0,warnings:[]};
@@ -688,7 +688,7 @@ $('draft-rows').addEventListener('change',event=>{
    !(next.unavailableDates||[]).includes(row.date)?next.id:null;
  }
  draftPreview.initialWarnings=[];
- $('draft-agree').checked=false;
+ $('draft-agree').checked=false;$('feb-pub-consent').checked=false;febPublishMessage='';renderFebruaryPublication();
  draftFeedback='🔒 下書き内容を変更しました。保存前にすべての確認をやり直してください。';
  showDays();renderCounts();renderDraftRows();
 });
